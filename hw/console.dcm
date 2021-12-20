@@ -1,0 +1,77 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP +2.8V
+D Power symbol creates a global label with name "+2.8V"
+K Power symbol
+$ENDCMP
+#
+$CMP AP2301
+D P-channel MOSFET 20V 0.7V 64mohm
+K P-channel MOSFET
+$ENDCMP
+#
+$CMP AP2302
+D N-channel MOSFET 20V 0.7V 45mohm
+K N-channel MOSFET
+$ENDCMP
+#
+$CMP AP3401
+D 1.5MHZ, 1A STEP-DOWN DC - DC BUCK CONVERTER
+K DC DC, buck converter
+$ENDCMP
+#
+$CMP AT25SF081B
+D 8-Mbit SPI Serial Flash Memory
+K SPI Flash
+$ENDCMP
+#
+$CMP ATmega3208
+D MCU 8-bit 32kB flash 4kB RAM 20MHz
+K MCU
+$ENDCMP
+#
+$CMP CUS520
+D Schottky diode 30V 0.28V 5uA
+K Schottky diode
+F ~
+$ENDCMP
+#
+$CMP D5V0P4URL6SO
+D 4 CHANNEL LOW CAPACITANCE TVS DIODE ARRAY 3.3V 4.5V 7.5V
+$ENDCMP
+#
+$CMP Debug_Port
+D Debug header for game console
+K Connector
+$ENDCMP
+#
+$CMP ER-OLED015-3
+D OLED  display 1.5in 128x128 white
+K OLED display
+$ENDCMP
+#
+$CMP FT25C32A
+D 32-kbit SPI Serial EEPROM Memory
+K EEPROM memory
+$ENDCMP
+#
+$CMP MCP73831T-2ATI
+D Single-Cell Li-Ion Li-Po Charge Management Controller
+$ENDCMP
+#
+$CMP MIC2250
+D High-Efficiency Low EMI Boost Regulator 2.5V-5.5V 32V
+K DC DC boost converter
+$ENDCMP
+#
+$CMP SE809
+D Voltage monitor 3.08V
+K Voltage monitor
+$ENDCMP
+#
+$CMP VBAT
+D Power symbol creates a global label with name "VBAT"
+K Power symbol, battery
+$ENDCMP
+#
+#End Doc Library

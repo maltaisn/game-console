@@ -1,0 +1,9 @@
+# Development files
+dev/
+
+# Build files
+out/
+build/
+
+# Jetbrains
+.idea/

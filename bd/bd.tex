@@ -1,0 +1,87 @@
+\documentclass[margin=1cm]{standalone}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes.multipart,arrows.meta,calc}
+
+\usepackage{siunitx}
+\sisetup{
+    retain-explicit-plus,
+    detect-weight
+}
+
+\begin{document}
+
+\renewcommand{\part}[1]{\footnotesize \textcolor{gray}{#1}}
+\begin{tikzpicture}[every text node part/.style={align=center}]
+    \tikzset{
+        block/.style = {draw,rectangle,minimum height=1cm},
+        data_arrow/.style = {-Latex,line width=1pt,color=gray},
+        power_arrow/.style = {-Latex,line width=1pt,color=black},
+        debug_arrow/.style = {-Latex,line width=1pt,color=gray},
+    }
+    \node[draw,rectangle,dashed,minimum width=3cm,minimum height=4.4cm] (mcu) [label={[shift=(mcu.north west)]above right:\textbf{ATmega3208}}] at (0,8.2) {};
+    \node[block,minimum width=2cm] (spi) at (0,9.4) {SPI};
+    \node[block,minimum width=2cm] (adc) at (0,8.2) {ADC};
+    \node[block,rectangle,minimum width=2cm] (timers) at (0,7) {Timers};
+
+    \node[block,rectangle,minimum width=2cm] (buzzer) at (0,5) {Buzzer};
+    \node[block,rectangle,minimum width=2cm] (buttons) at (2.5,5) {Buttons};
+    \node[block,rectangle,minimum width=2cm] (status_led) at (-3.5,7) {Status LED};
+
+    \node[block,minimum width=2cm] (flash) at (4,9.4) {SPI Flash\\\part{1 MB}};
+    \node[block,minimum width=2cm] (eeprom) at (4,10.6) {SPI EEPROM\\\part{4 kB}};
+    \node[block,minimum width=3cm] (oled) at (3.5,8) {OLED Screen\\\part{1.5", 128x128}};
+
+    \node[block,minimum width=2cm] (buck2v8) at (7.5,8.7) {\SI{+2.8}{\volt} buck\\converter\\\part{AP3401}};
+    \node[block,minimum width=2cm] (boost15) at (7.5,6.6) {\SI{+15}{\volt} boost\\converter\\\part{MIC2250}};
+
+    \node[draw,rectangle,dashed,minimum width=13cm,minimum height=2.5cm] (power) [label=above:\textbf{Power management}] at (3.5,2.3) {};
+    \node[block,minimum width=2cm] (batstatus) at (-1.5,2.5) {\small Charge, power\\\& battery\\status};
+    \node[block,minimum width=2cm] (charger) at (1.2,2.5) {Battery\\charger IC\\\part{MCP73831}};
+    \node[block,minimum width=2cm] (battery) at (3.9,2.5) {Lithium-ion\\battery\\\part{\SI{1000}{{\milli\ampere\hour}}}};
+    \node[block,minimum width=2cm] (loadsharing) at (6.6,2.5) {Load sharing};
+    \node[block,minimum width=1.2cm] (usb) at (8.9,2.5) {USB};
+
+    \node[block,minimum width=2cm,color=gray] (debug) at (-3.5,10) {Debug port};
+
+    \draw[data_arrow] (timers.south) -- (buzzer.north);
+    \draw[data_arrow] (buttons.north) |- ($(mcu.east)+(0,-1.5)$);
+    \draw[data_arrow] ($(mcu.west)+(0,0.5)$) -| (status_led.north);
+    \draw[data_arrow] ($(spi.east)+(0,0.2)$) -- ++(1.25,0) |- ($(eeprom.west)+(0.0,0.0)$);
+    \draw[data_arrow] ($(spi.east)+(0,0.0)$) -- ($(flash.west)+(0,0.0)$);
+    \draw[data_arrow] ($(spi.east)+(0,-0.2)$) -| ($(oled.north west)+(0.3,0)$);
+
+    \draw[data_arrow] (oled.south) |- ($(boost15.west)+(0,-0.2)$);
+    \node[color=gray] at ($(oled.south)+(1.2,-1.3)$) {\footnotesize +15V enable};
+
+    \draw[data_arrow] ($(batstatus.north)+(-0.6,0)$) |- (adc.west);
+
+    \draw[power_arrow] ($(buck2v8.west)+(0,0.45)$) -| ++(-0.3,2.3) -| ($(mcu.north east)+(-0.3,0)$);
+    \draw[power_arrow] ($(buck2v8.west)+(0,0.15)$) -- ++(-0.6,0) |- (eeprom.east);
+    \draw[power_arrow] ($(buck2v8.west)+(0,-0.15)$) -- ++(-0.9,0) |- (flash.east);
+    \draw[power_arrow] ($(buck2v8.west)+(0,-0.45)$) -- ++(-0.8,0) |- ($(oled.east)+(0,0.25)$);
+    \draw[power_arrow] ($(boost15.west)+(0,0.2)$) -- ++(-0.8,0) |- ($(oled.east)+(0,-0.2)$);
+
+    \draw[power_arrow] (usb.west) -- (loadsharing.east);
+    \draw[power_arrow] (battery.east) -- (loadsharing.west);
+
+    \draw[power_arrow] ($(loadsharing.north)+(0.4,0)$) -- ($(boost15.south)+(-0.5,0)$);
+    \draw[power_arrow] ($(loadsharing.north)+(0.8,0)$) |- ++(2,2) |- (buck2v8.east);
+
+    \draw[power_arrow,Latex-Latex] (charger.east) -- (battery.west);
+    \draw[power_arrow] (charger.west) -- (batstatus.east);
+    \draw[power_arrow] (usb.south) -- ++(0,-0.7) -| (charger.south);
+
+    \draw[debug_arrow] (debug.east) -- ($(mcu.north west)+(0.0,-0.4)$);
+
+
+    % legend
+    \node[block,minimum width=3.5cm,minimum height=1.5cm] (legend) [label={[shift=(legend.north)]below:\textsc{Legend}}] at (9,11) {};
+    \draw[power_arrow] ($(legend.west)+(0.2,+0.1)$) -- ++(0.8,0) node[label={right:{Power}}] {};
+    \draw[data_arrow] ($(legend.west)+(0.2,-0.4)$) -- ++(0.8,0) node[label={right:{Signal}}] {};
+
+\end{tikzpicture}
+\end{document}

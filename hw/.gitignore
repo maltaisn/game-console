@@ -1,0 +1,14 @@
+# Backups
+*.bck
+*.bck
+*.*-bak
+
+# Cache
+fp-info-cache
+
+# Exported BOM
+*.csv
+*.xml
+
+# Netlist
+*.net

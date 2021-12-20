@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name console)(type KiCad)(uri ${KIPRJMOD}/console.pretty)(options "")(descr ""))
+)
