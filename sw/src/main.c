@@ -35,7 +35,6 @@ int main(void) {
 
     systime_t last_time = 0;
     while (true) {
-        power_take_sample();
         systime_t time;
         do {
             time = time_get();

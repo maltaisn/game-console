@@ -20,7 +20,6 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 
 static void init_registers(void) {
     // ====== CLOCK =====
@@ -51,15 +50,15 @@ static void init_registers(void) {
     // ====== TCB ======
     // TODO
 
-    // ====== RTC/PIT ======
-    // RTC: interrupt every 1/256th s using 32.768 kHz internal clock for system time.
+    // ====== RTC ======
+    // interrupt every 1/256th s using 32.768 kHz internal clock for system time.
     while (RTC.STATUS != 0);
     RTC.PER = 0;
     RTC.INTCTRL = RTC_OVF_bm;
     RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
     RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm;
 
-    // ==== ADC & VREF ====
+    // === ADC & VREF ===
     // 10-bit resolution, 64 samples accumulation, 78 kHz ADC clock,
     // use 2V5 voltage reference & enable result ready interrupt.
     VREF.CTRLA = VREF_ADC0REFSEL_2V5_gc;
@@ -73,6 +72,13 @@ static void init_registers(void) {
     sei();
 }
 
+static void init_battery_monitor(void) {
+    // PIT: interrupt every 1 s for battery sampling. (PIT errata, doesn't use RTC prescaler?)
+    // note: battery monitor interrupt gets called 1 s after start so there's a check made before.
+    RTC.PITINTCTRL = RTC_PI_bm;
+    RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
+}
+
 void init(void) {
     init_registers();
 
@@ -80,4 +86,5 @@ void init(void) {
     power_take_sample();
     power_wait_for_sample();
     sleep_if_low_battery();
+    init_battery_monitor();
 }

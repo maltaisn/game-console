@@ -20,6 +20,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/atomic.h>
+#include "sys/led.h"
 
 static volatile systime_t systick;
 
@@ -29,8 +30,15 @@ ISR(RTC_CNT_vect) {
     systick = time;
 }
 
+ISR(RTC_PIT_vect) {
+    RTC.PITINTFLAGS = RTC_PI_bm;
+    power_take_sample();
+    sleep_if_low_battery();
+}
+
 systime_t time_get() {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
         return systick;
     }
+    return 0;
 }

@@ -19,6 +19,9 @@ OBJCOPY := avr-objcopy
 OBJDUMP := avr-objdump
 AVRDUDE := avrdude
 
+# values defined in the code:
+# UART_BAUD=<baud>: the baud rate for UART communication
+# DISABLE_BAT_PROT: disables auto shutdown for battery overdischarge protection.
 DEFINES += UART_BAUD=$(UART_BAUD)
 
 CFLAGS += -Wall -g -std=gnu11 -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os \

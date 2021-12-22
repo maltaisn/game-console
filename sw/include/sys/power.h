@@ -20,9 +20,6 @@
 
 #include <stdint.h>
 
-// battery level if battery is not discharging or if not sampled yet.
-#define BATTERY_PERCENT_UNKNOWN 0xff
-
 typedef enum battery_status {
     /** Battery status is unknown (not yet sampled or outside known values). */
     BATTERY_UNKNOWN,
@@ -39,6 +36,7 @@ typedef enum battery_status {
 /**
  * Start taking sample for battery status & battery level (if discharging).
  * Sampling takes at least 110-220k cycles.
+ * This gets called automatically on startup & every second by the PIT.
  */
 void power_take_sample(void);
 
@@ -54,16 +52,18 @@ void power_wait_for_sample(void);
 battery_status_t power_get_battery_status(void);
 
 /**
- * If battery level was sampled previously, returns the battery level.
- * Otherwise, returns `BATTERY_PERCENT_UNKNOWN`.
+ * Returns the estimated battery level.
+ * Battery level must have been sampled previously with `power_take_sample()`.
  * Battery level is only available if battery is currently discharging.
  * The level is a percentage from 0 to 100. The system should shutdown at level 0.
+ * Must not be called within interrupt.
  */
 uint8_t power_get_battery_percent(void);
 
 /**
- * If battery level was sampled previously, returns the approximate battery voltage in mV.
- * Otherwise, returns 0. Battery voltage is only available if battery is currently discharging.
+ * Returns the approximate battery voltage in mV, for debug purposes.
+ * Battery must be discharging and battery level must have been sampled previously.
+ * Must not be called within interrupt.
  */
 uint16_t power_get_battery_voltage(void);
 
