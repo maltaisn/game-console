@@ -15,28 +15,33 @@
  * limitations under the License.
  */
 
-#ifndef TIME_H
-#define TIME_H
+#ifndef INPUT_H
+#define INPUT_H
 
 #include <stdint.h>
 
-#define SYSTICK_FREQUENCY 256
+// input state update frequency in Hz.
+#define UPDATE_FREQUENCY 64
+
+#define BUTTONS_COUNT 6
+
+#define BUTTON0 (1 << 0)  // SW2
+#define BUTTON1 (1 << 1)  // SW3
+#define BUTTON2 (1 << 2)  // SW4
+#define BUTTON3 (1 << 3)  // SW5
+#define BUTTON4 (1 << 4)  // SW6
+#define BUTTON5 (1 << 5)  // SW7
 
 /**
- * Convert a number of milliseconds to a number of system ticks.
+ * Returns a bitfield indicating the current (debounced) state of input.
+ * A 1 bit indicates that the button is pressed.
  */
-#define millis_to_ticks(n) ((systime_t) (n / 1000.0 * SYSTICK_FREQUENCY + 0.5))
+uint8_t input_get_state(void);
 
 /**
- * Type used to store system time.
- * The 24-bit counter overflows after 65536 seconds (~18.2 h).
+ * Update current input state.
+ * This is called on systick update.
  */
-typedef __uint24 systime_t;
+void input_update_state(void);
 
-/**
- * Returns the system time value.
- * The system time is incremented every 1/256th second.
- */
-systime_t time_get();
-
-#endif //TIME_H
+#endif //INPUT_H

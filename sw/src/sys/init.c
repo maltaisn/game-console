@@ -73,8 +73,9 @@ static void init_registers(void) {
 }
 
 static void init_battery_monitor(void) {
-    // PIT: interrupt every 1 s for battery sampling. (PIT errata, doesn't use RTC prescaler?)
+    // PIT: interrupt every 1 s for battery sampling.
     // note: battery monitor interrupt gets called 1 s after start so there's a check made before.
+    while (RTC.PITSTATUS != 0);
     RTC.PITINTCTRL = RTC_PI_bm;
     RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
 }

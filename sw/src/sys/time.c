@@ -20,7 +20,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/atomic.h>
-#include "sys/led.h"
+#include "sys/input.h"
 
 static volatile systime_t systick;
 
@@ -28,6 +28,7 @@ ISR(RTC_CNT_vect) {
     RTC.INTFLAGS = RTC_OVF_bm;
     systime_t time = systick + 1;
     systick = time;
+    input_update_state();
 }
 
 ISR(RTC_PIT_vect) {

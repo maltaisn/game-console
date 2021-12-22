@@ -15,30 +15,29 @@
  */
 
 #include <main.h>
-#include <util/delay.h>
-#include <stdbool.h>
 
 #include <sys/uart.h>
 #include <sys/power.h>
 #include <sys/init.h>
 #include <sys/led.h>
 #include "sys/time.h"
+#include "sys/input.h"
 
+//#define TEST_BUTTON
+//#define TEST_BATTERY
+
+#if defined(TEST_BATTERY)
 static const char* status_names[] = {
         "unknown", "no battery", "charging", "charged", "discharging",
 };
 
-int main(void) {
-    init();
-
-    stdout = &uart_output;
-
+static inline void test(void) {
     systime_t last_time = 0;
     while (true) {
         systime_t time;
         do {
             time = time_get();
-        } while (time - last_time < 256);
+        } while (time - last_time < millis_to_ticks(1000));
         last_time = time;
 
         battery_status_t status = power_get_battery_status();
@@ -51,4 +50,36 @@ int main(void) {
         }
         led_toggle();
     }
+}
+#elif defined(TEST_BUTTON)
+static inline void test(void) {
+    uint8_t last_state = 0;
+    while (true) {
+        uint8_t curr_state = input_get_state();
+        uint8_t mask = 1;
+        bool pressed = false;
+        for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
+            uint8_t curr = curr_state & mask;
+            uint8_t last = last_state & mask;
+            if (!last && curr) {
+                printf("button %u pressed\n", i);
+                pressed = true;
+            } else if (last && !curr) {
+                printf("button %u released\n", i);
+            }
+            mask <<= 1;
+        }
+        if (pressed) {
+            led_toggle();
+        }
+        last_state = curr_state;
+    }
+}
+#endif
+
+int main(void) {
+    init();
+
+    stdout = &uart_output;
+    test();
 }
