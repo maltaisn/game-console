@@ -22,6 +22,7 @@
 #include <sys/power.h>
 #include <sys/init.h>
 #include <sys/led.h>
+#include "sys/time.h"
 
 static const char* status_names[] = {
         "unknown", "no battery", "charging", "charged", "discharging",
@@ -32,9 +33,15 @@ int main(void) {
 
     stdout = &uart_output;
 
+    systime_t last_time = 0;
     while (true) {
         power_take_sample();
-        _delay_ms(1000);
+        systime_t time;
+        do {
+            time = time_get();
+        } while (time - last_time < 256);
+        last_time = time;
+
         battery_status_t status = power_get_battery_status();
         if (status == BATTERY_DISCHARGING) {
             uint8_t percent = power_get_battery_percent();

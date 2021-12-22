@@ -51,10 +51,15 @@ static void init_registers(void) {
     // ====== TCB ======
     // TODO
 
-    // ====== RTC ======
-    // TODO
+    // ====== RTC/PIT ======
+    // RTC: interrupt every 1/256th s using 32.768 kHz internal clock for system time.
+    while (RTC.STATUS != 0);
+    RTC.PER = 0;
+    RTC.INTCTRL = RTC_OVF_bm;
+    RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
+    RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm;
 
-    // === ADC & VREF ===
+    // ==== ADC & VREF ====
     // 10-bit resolution, 64 samples accumulation, 78 kHz ADC clock,
     // use 2V5 voltage reference & enable result ready interrupt.
     VREF.CTRLA = VREF_ADC0REFSEL_2V5_gc;
