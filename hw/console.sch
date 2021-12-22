@@ -462,8 +462,6 @@ F 3 "" H 9200 3600 50  0001 C CNN
 	1    9200 3600
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	9500 4450 9600 4450
 Text Notes 2100 4150 0    50   ~ 0
 Flash
 Wire Wire Line
@@ -496,8 +494,6 @@ Text Notes 7100 3200 0    100  ~ 0
 Buzzer
 Wire Wire Line
 	8200 4450 8600 4450
-Wire Wire Line
-	7800 4450 7900 4450
 $Comp
 L console:+2.8V #PWR017
 U 1 1 6147C44A
@@ -630,9 +626,9 @@ Text Label 8750 1600 1    50   ~ 0
 BTN4
 Text Label 9350 1600 1    50   ~ 0
 BTN5
-Text Label 7800 4450 2    50   ~ 0
+Text Label 7600 4450 2    50   ~ 0
 BUZZER+
-Text Label 9600 4450 0    50   ~ 0
+Text Label 9800 4450 0    50   ~ 0
 BUZZER-
 Text Label 6250 3725 0    50   ~ 0
 DS_RES
@@ -1362,4 +1358,60 @@ Text Notes 10450 3050 2    40   ~ 0
 Active power: 15 mW?
 Text Notes 4700 900  2    40   ~ 0
 Active power: 0.6 mW
+$Comp
+L Device:R R24
+U 1 1 61C06CD0
+P 7600 4900
+F 0 "R24" H 7670 4946 50  0000 L CNN
+F 1 "100k" H 7670 4855 50  0000 L CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 7530 4900 50  0001 C CNN
+F 3 "~" H 7600 4900 50  0001 C CNN
+	1    7600 4900
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R25
+U 1 1 61C07CEC
+P 9800 4900
+F 0 "R25" H 9870 4946 50  0000 L CNN
+F 1 "100k" H 9870 4855 50  0000 L CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 9730 4900 50  0001 C CNN
+F 3 "~" H 9800 4900 50  0001 C CNN
+	1    9800 4900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7600 4750 7600 4450
+Wire Wire Line
+	7600 4450 7900 4450
+Wire Wire Line
+	9500 4450 9800 4450
+Wire Wire Line
+	9800 4750 9800 4450
+$Comp
+L power:GND #PWR014
+U 1 1 61C24270
+P 7600 5350
+F 0 "#PWR014" H 7600 5100 50  0001 C CNN
+F 1 "GND" H 7605 5177 50  0001 C CNN
+F 2 "" H 7600 5350 50  0001 C CNN
+F 3 "" H 7600 5350 50  0001 C CNN
+	1    7600 5350
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR015
+U 1 1 61C283D0
+P 9800 5350
+F 0 "#PWR015" H 9800 5100 50  0001 C CNN
+F 1 "GND" H 9805 5177 50  0001 C CNN
+F 2 "" H 9800 5350 50  0001 C CNN
+F 3 "" H 9800 5350 50  0001 C CNN
+	1    9800 5350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9800 5050 9800 5350
+Wire Wire Line
+	7600 5050 7600 5350
 $EndSCHEMATC
