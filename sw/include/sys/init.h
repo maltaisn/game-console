@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -14,18 +15,14 @@
  * limitations under the License.
  */
 
-#include <led.h>
+#ifndef INIT_H
+#define INIT_H
 
-#include <avr/io.h>
+/**
+ * Initialize game console system:
+ * - Configure all registers to initialize all modules.
+ * - Check battery status & level, sleep if battery too low.
+ */
+void init(void);
 
-void led_set(void) {
-    VPORTC.OUT |= PIN0_bm;
-}
-
-void led_clear(void) {
-    VPORTC.OUT &= ~PIN0_bm;
-}
-
-void led_toggle(void) {
-    PORTC.OUTTGL = PIN0_bm;
-}
+#endif //INIT_H

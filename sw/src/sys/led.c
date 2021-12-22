@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -15,12 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef INIT_H
-#define INIT_H
+#include <sys/led.h>
 
-/**
- * Configure all registers to initialize all modules.
- */
-void init(void);
+#include <avr/io.h>
 
-#endif //INIT_H
+void led_set(void) {
+    VPORTC.OUT |= PIN0_bm;
+}
+
+void led_clear(void) {
+    VPORTC.OUT &= ~PIN0_bm;
+}
+
+void led_toggle(void) {
+    PORTC.OUTTGL = PIN0_bm;
+}

@@ -18,10 +18,10 @@
 #include <util/delay.h>
 #include <stdbool.h>
 
-#include <uart.h>
-#include <power.h>
-#include "init.h"
-#include "led.h"
+#include <sys/uart.h>
+#include <sys/power.h>
+#include <sys/init.h>
+#include <sys/led.h>
 
 static const char* status_names[] = {
         "unknown", "no battery", "charging", "charged", "discharging",

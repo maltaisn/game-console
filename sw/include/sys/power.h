@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 // battery level if battery is not discharging or if not sampled yet.
-#define BATTERY_LEVEL_UNKNOWN 0xffff
+#define BATTERY_PERCENT_UNKNOWN 0xff
 
 typedef enum battery_status {
     /** Battery status is unknown (not yet sampled or outside known values). */
@@ -43,6 +43,11 @@ typedef enum battery_status {
 void power_take_sample(void);
 
 /**
+ * Wait until battery sample is ready.
+ */
+void power_wait_for_sample(void);
+
+/**
  * Get current battery status.
  * Returns `BATTERY_UNKNOWN` status if not sampled yet or sampling failed.
  */
@@ -50,7 +55,7 @@ battery_status_t power_get_battery_status(void);
 
 /**
  * If battery level was sampled previously, returns the battery level.
- * Otherwise, returns `BATTERY_LEVEL_UNKNOWN`.
+ * Otherwise, returns `BATTERY_PERCENT_UNKNOWN`.
  * Battery level is only available if battery is currently discharging.
  * The level is a percentage from 0 to 100. The system should shutdown at level 0.
  */
@@ -61,5 +66,11 @@ uint8_t power_get_battery_percent(void);
  * Otherwise, returns 0. Battery voltage is only available if battery is currently discharging.
  */
 uint16_t power_get_battery_voltage(void);
+
+/**
+ * Enable sleep if battery percentage is 0%.
+ * Interrupts are disabled so device cannot wake up from sleep until reset.
+ */
+void sleep_if_low_battery(void);
 
 #endif //POWER_H

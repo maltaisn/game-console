@@ -14,21 +14,26 @@
  * limitations under the License.
  */
 
-#include <init.h>
+#include <sys/init.h>
+#include "sys/uart.h"
+#include "sys/power.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <uart.h>
+#include <avr/sleep.h>
 
-void init(void) {
+static void init_registers(void) {
     // ====== CLOCK =====
     // 10 MHz clock (maximum for 2.8 V supply voltage)
     _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm);
 
     // ====== PORT ======
-    VPORTA.DIR |= PIN0_bm | PIN2_bm | PIN3_bm | PIN4_bm; // TX, buzzer -, buzzer +, MOSI
-    VPORTC.DIR |= PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;  // status LED, display SS, display reset, display D/C
-    VPORTF.DIR |= PIN0_bm | PIN1_bm | PIN2_bm;  // flash SS, eeprom SS, enable VBAT level
+    // TX, buzzer -, buzzer +, MOSI
+    VPORTA.DIR |= PIN0_bm | PIN2_bm | PIN3_bm | PIN4_bm;
+    // status LED, display SS, display reset, display D/C
+    VPORTC.DIR |= PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+    // flash SS, eeprom SS, enable VBAT level
+    VPORTF.DIR |= PIN0_bm | PIN1_bm | PIN2_bm;
 
     // ====== USART ======
     USART0.BAUD = (uint16_t) ((64.0 * F_CPU / (16.0 * UART_BAUD)) + 0.5);
@@ -46,6 +51,9 @@ void init(void) {
     // ====== TCB ======
     // TODO
 
+    // ====== RTC ======
+    // TODO
+
     // === ADC & VREF ===
     // 10-bit resolution, 64 samples accumulation, 78 kHz ADC clock,
     // use 2V5 voltage reference & enable result ready interrupt.
@@ -58,4 +66,13 @@ void init(void) {
 
     // enable interrupts
     sei();
+}
+
+void init(void) {
+    init_registers();
+
+    // check battery level on startup
+    power_take_sample();
+    power_wait_for_sample();
+    sleep_if_low_battery();
 }
