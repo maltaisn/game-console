@@ -21,7 +21,10 @@
 #include <sys/power.h>
 #include <sys/led.h>
 #include <sys/input.h>
-#include "sys/time.h"
+#include <sys/time.h>
+#include <sys/spi.h>
+
+#include <avr/io.h>
 
 typedef enum {
     SPI_CS_FLASH = 0b00,
@@ -30,6 +33,8 @@ typedef enum {
 } spi_cs_sel_t;
 
 // buffer used to receive RX payload and send TX payload.
+// TODO eventually, put this in the same data space as display buffer since
+//  both aren't used at the same time, using linker script.
 static uint8_t packet_payload[PAYLOAD_MAX_SIZE];
 
 static void handle_packet_version(void) {
@@ -61,8 +66,27 @@ static void handle_packet_input(void) {
     comm_transmit(PACKET_INPUT, 1, packet_payload);
 }
 
-static void handle_packet_spi(void) {
-    // TODO not implemented
+static void handle_packet_spi(uint8_t length) {
+    // assert CS line for the selected peripheral
+    const uint8_t options = packet_payload[0];
+    const uint8_t cs = options & 0x3;
+    if (cs == SPI_CS_FLASH) {
+        VPORTF.OUT &= ~PIN0_bm;
+    } else if (cs == SPI_CS_EEPROM) {
+        VPORTF.OUT &= ~PIN1_bm;
+    } else if (cs == SPI_CS_DISPLAY) {
+        VPORTC.OUT &= ~PIN1_bm;
+    }
+
+    // transceive SPI data
+    spi_transceive(length - 1, packet_payload + 1);
+    comm_transmit(PACKET_SPI, length, packet_payload);
+
+    // if last transfer, deassert the CS line.
+    if (options & 0x80) {
+        VPORTF.OUT |= PIN0_bm | PIN1_bm;
+        VPORTC.OUT |= PIN1_bm;
+    }
 }
 
 static void handle_packet_time(void) {
@@ -94,7 +118,7 @@ void comm_receive(void) {
     } else if (type == PACKET_INPUT) {
         handle_packet_input();
     } else if (type == PACKET_SPI) {
-        handle_packet_spi();
+        handle_packet_spi(length);
     } else if (type == PACKET_TIME) {
         handle_packet_time();
     } else {

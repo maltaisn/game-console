@@ -38,14 +38,25 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
+import eeprom
 from battery import BatteryMonitor
-from comm import Comm, CommError, Packet, PacketType
+from comm import Comm, CommError, Packet, PacketType, CommInterface
+from spi import SpiInterface
 
 VERSION_MAJOR = 0
 VERSION_MINOR = 1
 
 BUTTONS_COUNT = 6
 SYSTICK_FREQ = 256
+
+STD_IO = "-"
+#
+# try:
+#     import pydevd_pycharm
+#
+#     pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
+# except ConnectionRefusedError:
+#     pass
 
 parser = argparse.ArgumentParser(description="Programming & debugging program for game console")
 parser.add_argument(
@@ -66,8 +77,8 @@ battery_parser.add_argument(
     "-m", "--monitor", action="store", type=str, dest="monitor", nargs="?", default="", const="-",
     help="Monitor battery status continuously, optionally saving data to CSV file")
 battery_parser.add_argument(
-    "-p", "--period", action="store", type=float, dest="period", default=10,
-    help="Battery monitoring sampling period in seconds (default is 10)")
+    "-p", "--period", action="store", type=float, dest="period", default=5,
+    help="Battery monitoring sampling period in seconds (default is 5)")
 
 # led command
 led_parser = subparsers.add_parser("led", help="Status LED control")
@@ -84,6 +95,33 @@ input_parser.add_argument(
 # time command
 time_parser = subparsers.add_parser("time", help="Get system time")
 
+# eeprom command
+eeprom_parser = subparsers.add_parser("eeprom", help="Read & write to EEPROM")
+eeprom_parser.add_argument(
+    "address", action="store", type=str, default="0", nargs="?",
+    help="Start address for operation, can be decimal literal or hexadecimal literal (0x prefix)")
+eeprom_parser.add_argument(
+    "-r", "--read", action="store_true", default=False, dest="read",
+    help="Enable read operation")
+eeprom_parser.add_argument(
+    "-w", "--write", action="store_true", default=False, dest="write",
+    help="Enable write operation")
+eeprom_parser.add_argument(
+    "-e", "--erase", action="store_true", default=False, dest="erase",
+    help="Erase whole EEPROM")
+eeprom_parser.add_argument(
+    "-s", "--size", action="store", type=str, default=str(eeprom.EEPROM_SIZE), dest="size",
+    help="Read size in bytes, can be decimal or hexadecimal literal (0x prefix). "
+         "By default, in read mode, the whole EEPROM is read. "
+         "By default, in write mode, writing ends at EEPROM capacity or input size. "
+         "This option has no effect on erase.")
+eeprom_parser.add_argument(
+    "-i", "--input", action="store", type=str, default=STD_IO, dest="input",
+    help=f"Input file. Default is '{STD_IO}' for standard input.")
+eeprom_parser.add_argument(
+    "-o", "--output", action="store", type=str, default=STD_IO, dest="output",
+    help=f"Output file. Default is '{STD_IO}' for standard output.")
+
 
 @dataclass
 class Version:
@@ -94,11 +132,12 @@ class Version:
         return f"v{self.major}.{self.minor}"
 
 
-class Prog:
+class Prog(CommInterface):
     """Class used to interpret command line arguments and execute commands."""
     args: argparse.Namespace
     comm: Comm
     fw_version: Optional[Version]
+
     interrupted: bool
     operation_in_progress: bool
 
@@ -137,6 +176,8 @@ class Prog:
             self.command_input()
         elif cmd == "time":
             self.command_time()
+        elif cmd == "eeprom":
+            self.command_eeprom()
 
         self.comm.disconnect()
 
@@ -191,12 +232,12 @@ class Prog:
         self.write(Packet(PacketType.LED, [0x01 if self.args.state == "on" else 0x00]))
 
     def command_battery(self) -> None:
-        monitor = BatteryMonitor(self.comm.write, self.comm.read)
+        monitor = BatteryMonitor(self)
         if self.args.monitor:
             period = self.args.period
             if period < 0.2:
                 raise CommError("Monitoring period must be at least 1 s")
-            if self.args.monitor == "-":
+            if self.args.monitor == STD_IO:
                 monitor.monitor_to_stdout(self.args.period)
             else:
                 monitor.monitor_to_csv(self.args.period, self.args.monitor)
@@ -238,6 +279,12 @@ class Prog:
                             print(f"button {i} released")
                 last_state = curr_state
                 time.sleep(0.03)
+
+    def command_eeprom(self) -> None:
+        spi = SpiInterface(self)
+        driver = eeprom.EepromDriver(spi)
+        config = eeprom.create_config(self.args)
+        eeprom.execute_config(driver, config)
 
 
 def main() -> None:

@@ -15,8 +15,8 @@
  */
 
 #include <sys/init.h>
-#include "sys/uart.h"
-#include "sys/power.h"
+#include <sys/uart.h>
+#include <sys/power.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -27,8 +27,8 @@ static void init_registers(void) {
     _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm);
 
     // ====== PORT ======
-    // TX, buzzer -, buzzer +, MOSI
-    VPORTA.DIR |= PIN0_bm | PIN2_bm | PIN3_bm | PIN4_bm;
+    // TX, buzzer -, buzzer +, MOSI, SCK
+    VPORTA.DIR |= PIN0_bm | PIN2_bm | PIN3_bm | PIN4_bm | PIN6_bm;
     // status LED, display SS, display reset, display D/C
     VPORTC.DIR |= PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
     // flash SS, eeprom SS, enable VBAT level
@@ -40,7 +40,12 @@ static void init_registers(void) {
     USART0.CTRLA = USART_RXCIE_bm;
 
     // ====== SPI ======
-    // TODO
+    // master, 5 MHz SCK, mode 0, MSB first, buffered, no interrupts.
+    SPI0.CTRLB = SPI_BUFEN_bm | SPI_MODE_0_gc | SPI_SSD_bm;
+    SPI0.CTRLA = SPI_MASTER_bm | SPI_CLK2X_bm | SPI_PRESC_DIV4_gc | SPI_ENABLE_bm;
+    // set all CS lines high
+    VPORTF.OUT |= PIN0_bm | PIN1_bm;
+    VPORTC.OUT |= PIN1_bm;
 
     // ====== TCA ======
     // TODO

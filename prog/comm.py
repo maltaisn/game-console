@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import abc
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Sequence, Union
@@ -67,7 +67,15 @@ class Packet:
         return Packet(type, payload)
 
 
-class Comm:
+class CommInterface(abc.ABC):
+    def write(self, packet: Packet) -> None:
+        raise NotImplementedError
+
+    def read(self, payload_size: Optional[int] = None) -> Packet:
+        raise NotImplementedError
+
+
+class Comm(CommInterface):
     """Class used for communication with firmware. Uses pyserial to send and receive packets."""
     filename: str
     baud_rate: int

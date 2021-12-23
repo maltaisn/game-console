@@ -67,7 +67,8 @@
  *      - 10: oled display
  *      - 11: reserved
  *      bit [7] is 1 if this is the last transfer, which means the CS line will be
- *      released at the end of transfer.
+ *      released at the end of transfer. This bit must absolutely be set for the last transfer,
+ *      otherwise there might be two CS lines asserted on the next transfer!
  * [1..n]: SPI data
  *
  * === TIME ===

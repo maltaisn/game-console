@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Optional
 
-from comm import Packet, PacketType, CommError
+from comm import Packet, PacketType, CommError, CommInterface
 
 
 class BatteryStatus(Enum):
@@ -48,18 +48,15 @@ def format_time(t: float) -> str:
 
 class BatteryMonitor:
     """Class used for battery monitoring."""
-    write_packet: Callable[[Packet], None]
-    read_packet: Callable[[int], Packet]
+    comm: CommInterface
 
-    def __init__(self, write_packet: Callable[[Packet], None],
-                 read_packet: Callable[[int], Packet]):
-        self.write_packet = write_packet
-        self.read_packet = read_packet
+    def __init__(self, comm: CommInterface):
+        self.comm = comm
 
     def get_info(self) -> BatteryInfo:
         """Request battery status, percent level & voltage from firmware."""
-        self.write_packet(Packet(PacketType.BATTERY))
-        resp = self.read_packet(4).payload
+        self.comm.write(Packet(PacketType.BATTERY))
+        resp = self.comm.read(4).payload
         status = next((s for s in BatteryStatus if s.status == resp[0]), None)
         if status is None:
             raise CommError("unexpected battery status value")
