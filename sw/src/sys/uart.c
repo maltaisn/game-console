@@ -76,12 +76,12 @@ static int _uart_read(FILE *stream) {
     return c;
 }
 
-void uart_write(char c) {
-    _uart_write(c, 0);
+void uart_write(uint8_t c) {
+    _uart_write((char) c, 0);
 }
 
-char uart_read(void) {
-    return (char) _uart_read(0);
+uint8_t uart_read(void) {
+    return _uart_read(0);
 }
 
 bool uart_available(void) {

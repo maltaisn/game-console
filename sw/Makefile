@@ -1,6 +1,10 @@
 MCU := atmega3208
 F_CPU := 10000000
 
+# firmware version
+VERSION_MAJOR := 0
+VERSION_MINOR := 1
+
 # baud rate used for uart link in debug port
 UART_BAUD := 230400
 
@@ -21,8 +25,10 @@ AVRDUDE := avrdude
 
 # values defined in the code:
 # UART_BAUD=<baud>: the baud rate for UART communication
+# VERSION_MAJOR=<version>: major version
+# VERSION_MINOR=<version>: minor version
 # DISABLE_BAT_PROT: disables auto shutdown for battery overdischarge protection.
-DEFINES += UART_BAUD=$(UART_BAUD)
+DEFINES += UART_BAUD=$(UART_BAUD) VERSION_MAJOR=$(VERSION_MAJOR) VERSION_MINOR=$(VERSION_MINOR)
 
 CFLAGS += -Wall -g -std=gnu11 -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os \
           $(addprefix -D,$(DEFINES)) -I$(INCLUDE_DIR) \

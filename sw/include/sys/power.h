@@ -22,15 +22,15 @@
 
 typedef enum battery_status {
     /** Battery status is unknown (not yet sampled or outside known values). */
-    BATTERY_UNKNOWN,
+    BATTERY_UNKNOWN = 0x00,
     /** Battery not connected. */
-    BATTERY_NONE,
+    BATTERY_NONE = 0x01,
     /** USB connected, battery is charging (red LED). */
-    BATTERY_CHARGING,
+    BATTERY_CHARGING = 0x02,
     /** USB connected, battery charge is complete (green LED). */
-    BATTERY_CHARGED,
+    BATTERY_CHARGED = 0x03,
     /** USB disconnected, battery is discharging. */
-    BATTERY_DISCHARGING,
+    BATTERY_DISCHARGING = 0x04,
 } battery_status_t;
 
 /**

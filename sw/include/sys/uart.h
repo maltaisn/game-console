@@ -36,7 +36,7 @@ extern FILE uart_input;
  * This function is never blocking. Interrupts must be enabled when called,
  * because the function waits for an interrupt in the case that buffer is full.
  */
-void uart_write(char c);
+void uart_write(uint8_t c);
 
 /**
  * Read a byte from the UART. This function is blocking if buffer is empty.
@@ -44,7 +44,7 @@ void uart_write(char c);
  * Interrupts must be enabled when called, because the function waits for an interrupt in
  * the case that the buffer is empty.
  */
-char uart_read(void);
+uint8_t uart_read(void);
 
 /**
  * Returns true if data is available to be read from the RX buffer.
