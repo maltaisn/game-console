@@ -37,9 +37,7 @@ static void init_registers(void) {
     // ====== USART ======
     USART0.BAUD = (uint16_t) ((64.0 * F_CPU / (16.0 * UART_BAUD)) + 0.5);
     USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm;
-#if RX_BUFFER_SIZE > 0
     USART0.CTRLA = USART_RXCIE_bm;
-#endif
 
     // ====== SPI ======
     // TODO

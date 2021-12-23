@@ -16,6 +16,8 @@
 
 #include <main.h>
 
+#include <stdbool.h>
+
 #include <sys/uart.h>
 #include <sys/power.h>
 #include <sys/init.h>
@@ -25,6 +27,7 @@
 
 //#define TEST_BUTTON
 //#define TEST_BATTERY
+#define TEST_UART
 
 #if defined(TEST_BATTERY)
 static const char* status_names[] = {
@@ -73,6 +76,16 @@ static inline void test(void) {
             led_toggle();
         }
         last_state = curr_state;
+    }
+}
+#elif defined(TEST_UART)
+static inline void test(void) {
+    while (true) {
+        // loopback
+        led_clear();
+        uint8_t data = uart_read();
+        led_set();
+        uart_write(data);
     }
 }
 #endif

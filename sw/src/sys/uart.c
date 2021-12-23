@@ -19,12 +19,17 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#if TX_BUFFER_SIZE > 0
 static struct {
     uint8_t data[TX_BUFFER_SIZE];
     uint8_t head;
     volatile uint8_t tail;
 } tx_buf;
+
+static struct {
+    uint8_t data[RX_BUFFER_SIZE];
+    volatile uint8_t head;
+    uint8_t tail;
+} rx_buf;
 
 ISR(USART0_DRE_vect) {
     uint8_t tail = tx_buf.tail;
@@ -35,33 +40,20 @@ ISR(USART0_DRE_vect) {
         USART0.CTRLA &= ~USART_DREIE_bm;
     }
 }
-#endif
-
-
-#if RX_BUFFER_SIZE > 0
-static struct {
-    uint8_t data[RX_BUFFER_SIZE];
-    volatile uint8_t head;
-    uint8_t tail;
-} rx_buf;
 
 ISR(USART0_RXC_vect) {
     uint8_t head = rx_buf.head;
     uint8_t new_head = (head + 1) % RX_BUFFER_SIZE;
     if (new_head == rx_buf.tail) {
-        // buffer overrun, drop data. wait until data is read to reenable interrupt.
+        // buffer full, drop data. wait until data is read to reenable interrupt.
         USART0.CTRLA &= ~USART_RXCIE_bm;
     } else {
         rx_buf.data[head] = USART0.RXDATAL;
         rx_buf.head = new_head;
     }
 }
-#endif
 
 static int _uart_write(char c, FILE *stream) {
-#if TX_BUFFER_SIZE > 0
-    // note that this function should never run if interrupts are disabled!
-    // it will get caught in a loop forever if buffer is full.
     if (tx_buf.tail == tx_buf.head && (USART0.STATUS & USART_DREIF_bm)) {
         // TX data register empty and buffer empty, transmit directly.
         USART0.TXDATAL = c;
@@ -73,24 +65,15 @@ static int _uart_write(char c, FILE *stream) {
         tx_buf.head = new_head;
         USART0.CTRLA |= USART_DREIE_bm;
     }
-#else
-    while (!(USART0.STATUS & USART_DREIF_bm));
-    USART0.TXDATAL = c;
-#endif
     return 0;
 }
 
 static int _uart_read(FILE *stream) {
-#if RX_BUFFER_SIZE > 0
     while (rx_buf.tail == rx_buf.head);  // wait for interrupt to fill buffer.
     uint8_t c = rx_buf.data[rx_buf.tail];
     rx_buf.tail = (rx_buf.tail + 1) % RX_BUFFER_SIZE;
     USART0.CTRLA |= USART_RXCIE_bm;
     return c;
-#else
-    while (!(USART0.STATUS & USART_RXCIF_bm));
-    return USART0.RXDATAL;
-#endif
 }
 
 void uart_write(char c) {
@@ -101,9 +84,12 @@ char uart_read(void) {
     return (char) _uart_read(0);
 }
 
+bool uart_available(void) {
+    return rx_buf.tail != rx_buf.head;
+}
+
 void uart_flush(void) {
     // wait until TX data register is empty.
-    // note that transmission is not done when this returns, but buffer is empty.
     while (USART0.CTRLA & USART_DREIE_bm);
 }
 

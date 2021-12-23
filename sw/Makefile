@@ -2,7 +2,7 @@ MCU := atmega3208
 F_CPU := 10000000
 
 # baud rate used for uart link in debug port
-UART_BAUD := 57600
+UART_BAUD := 230400
 
 BUILD_DIR := build
 SRC_DIR := src
