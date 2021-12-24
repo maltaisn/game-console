@@ -5,8 +5,9 @@ F_CPU := 10000000
 VERSION_MAJOR := 0
 VERSION_MINOR := 1
 
-# baud rate used for uart link in debug port
-UART_BAUD := 230400
+# baud rate used for uart link in debug port. 500k baud works fine, flash & eeprom writes are
+# verified in any case so rare errors should be an issue. Otherwise writing flash is painfully slow.
+UART_BAUD := 500000
 
 BUILD_DIR := build
 SRC_DIR := src

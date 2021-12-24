@@ -22,7 +22,8 @@
 # - Check and monitor battery status.
 # - Change the status LED state.
 # - Get the system time.
-# - TODO program flash & EEPROM
+# - Read & write to EEPROM
+# - Read & write to flash
 #
 # Usage:
 #  ./gcprog.py -v
@@ -40,6 +41,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 import eeprom
+import flash
+import memory
 from battery import BatteryMonitor
 from comm import Comm, CommError, Packet, PacketType, CommInterface
 from spi import SpiInterface
@@ -51,13 +54,6 @@ BUTTONS_COUNT = 6
 SYSTICK_FREQ = 256
 
 STD_IO = "-"
-
-try:
-    import pydevd_pycharm
-
-    pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
-except ConnectionRefusedError:
-    pass
 
 parser = argparse.ArgumentParser(description="Programming & debugging program for game console")
 parser.add_argument(
@@ -97,31 +93,10 @@ input_parser.add_argument(
 time_parser = subparsers.add_parser("time", help="Get system time")
 
 # eeprom command
-eeprom_parser = subparsers.add_parser("eeprom", help="Read & write to EEPROM")
-eeprom_parser.add_argument(
-    "address", action="store", type=str, default="0", nargs="?",
-    help="Start address for operation, can be decimal literal or hexadecimal literal (0x prefix)")
-eeprom_parser.add_argument(
-    "-r", "--read", action="store_true", default=False, dest="read",
-    help="Enable read operation")
-eeprom_parser.add_argument(
-    "-w", "--write", action="store_true", default=False, dest="write",
-    help="Enable write operation")
-eeprom_parser.add_argument(
-    "-e", "--erase", action="store_true", default=False, dest="erase",
-    help="Erase whole EEPROM")
-eeprom_parser.add_argument(
-    "-s", "--size", action="store", type=str, default=str(eeprom.EEPROM_SIZE), dest="size",
-    help="Read size in bytes, can be decimal or hexadecimal literal (0x prefix). "
-         "By default, in read mode, the whole EEPROM is read. "
-         "By default, in write mode, writing ends at EEPROM capacity or input size. "
-         "This option has no effect on erase.")
-eeprom_parser.add_argument(
-    "-i", "--input", action="store", type=str, default=STD_IO, dest="input",
-    help=f"Input file. Default is '{STD_IO}' for standard input.")
-eeprom_parser.add_argument(
-    "-o", "--output", action="store", type=str, default=STD_IO, dest="output",
-    help=f"Output file. Default is '{STD_IO}' for standard output.")
+memory.create_parser(subparsers, eeprom.EEPROM_SIZE, "eeprom")
+
+# flash command
+memory.create_parser(subparsers, flash.FLASH_SIZE, "flash")
 
 
 @dataclass
@@ -178,6 +153,8 @@ class Prog(CommInterface):
             self.command_time()
         elif cmd == "eeprom":
             self.command_eeprom()
+        elif cmd == "flash":
+            self.command_flash()
 
         self.comm.disconnect()
 
@@ -283,8 +260,14 @@ class Prog(CommInterface):
     def command_eeprom(self) -> None:
         spi = SpiInterface(self)
         driver = eeprom.EepromDriver(spi)
-        config = eeprom.create_config(self.args)
-        eeprom.execute_config(driver, config)
+        config = memory.create_config(eeprom.EEPROM_SIZE, self.args)
+        memory.execute_config(driver, config)
+
+    def command_flash(self) -> None:
+        spi = SpiInterface(self)
+        driver = flash.FlashDriver(spi)
+        config = memory.create_config(flash.FLASH_SIZE, self.args)
+        memory.execute_config(driver, config)
 
 
 def main() -> None:

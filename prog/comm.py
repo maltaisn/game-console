@@ -82,7 +82,7 @@ class Comm(CommInterface):
     serial: Optional[Serial]
 
     DEFAULT_FILENAME = "/dev/ttyACM0"
-    DEFAULT_BAUD_RATE = 230400
+    DEFAULT_BAUD_RATE = 500_000  # value set in Makefile for firmware
 
     def __init__(self, filename: str = DEFAULT_FILENAME, baud_rate: int = DEFAULT_BAUD_RATE):
         self.filename = filename
