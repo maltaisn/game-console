@@ -18,6 +18,7 @@
 #include <sys/spi.h>
 
 #include <avr/io.h>
+#include "sys/bitutils.h"
 
 void spi_transceive(uint16_t length, uint8_t data[length]) {
     // SPI is triple-buffered is the transmit direction and double buffered in the receive direction.
@@ -30,11 +31,11 @@ void spi_transceive(uint16_t length, uint8_t data[length]) {
     SPI0.DATA = data[0];
     uint16_t pos = 0;
     while (--length) {
-        while (!(SPI0.INTFLAGS & SPI_DREIF_bm));
+        _WBS(SPI0.INTFLAGS, SPI_DREIF_bm);
         SPI0.DATA = data[pos + 1];
-        while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
+        _WBS(SPI0.INTFLAGS, SPI_RXCIF_bm);
         data[pos++] = SPI0.DATA;
     }
-    while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
+    _WBS(SPI0.INTFLAGS, SPI_RXCIF_bm);
     data[pos] = SPI0.DATA;
 }

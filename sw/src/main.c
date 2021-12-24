@@ -20,7 +20,7 @@
 
 #include <sys/uart.h>
 #include <sys/init.h>
-#include "sys/comm.h"
+#include <sys/comm.h>
 
 int main(void) {
     init();

@@ -90,7 +90,7 @@ static void handle_packet_spi(uint8_t length) {
 }
 
 static void handle_packet_time(void) {
-    systime_t time = time_get();
+    const systime_t time = time_get();
     packet_payload[0] = time & 0xff;
     packet_payload[1] = (time >> 8) & 0xff;
     packet_payload[2] = time >> 16;

@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -14,32 +15,12 @@
  * limitations under the License.
  */
 
-#include <sys/time.h>
-#include <sys/power.h>
+#ifndef BITUTILS_H
+#define BITUTILS_H
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <util/atomic.h>
-#include <sys/input.h>
+/* wait until bitfield set */
+#define _WBS(reg, bits)         while(((reg) & (bits)) == 0)
+/* wait until bitfield clear */
+#define _WBC(reg, bits)         while(((reg) & (bits)) != 0)
 
-static volatile systime_t systick;
-
-ISR(RTC_CNT_vect) {
-    RTC.INTFLAGS = RTC_OVF_bm;
-    systime_t time = systick + 1;
-    systick = time;
-    input_update_state();
-}
-
-ISR(RTC_PIT_vect) {
-    RTC.PITINTFLAGS = RTC_PI_bm;
-    power_take_sample();
-    sleep_if_low_battery();
-}
-
-systime_t time_get() {
-    ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        return systick;
-    }
-    return 0;
-}
+#endif //BITUTILS_H

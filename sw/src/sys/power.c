@@ -70,7 +70,7 @@ static uint8_t battery_percent_cache;
 
 ISR(ADC0_RESRDY_vect) {
     uint16_t res = ADC0.RES;
-    sampler_state_t state = sampler_state;
+    const sampler_state_t state = sampler_state;
     if (state == STATE_STATUS) {
         // set battery status according to precalculated ranges.
         // if none match, battery status is unknown.
@@ -103,7 +103,7 @@ ISR(ADC0_RESRDY_vect) {
     } else if (state == STATE_LEVEL) {
         PORTF.OUT &= ~PIN6_bm;
         // push new battery level to buffer
-        uint8_t head = battery_level_head;
+        const uint8_t head = battery_level_head;
         if (head == BATTERY_BUFFER_HEAD_EMPTY) {
             // buffer is empty, fill it with first sample
             battery_level_head = 0;
@@ -153,7 +153,7 @@ uint8_t power_get_battery_percent(void) {
         return battery_percent_cache;
     }
     // linearly interpolate battery percentage from precalculated points.
-    uint16_t level = get_battery_level_avg();
+    const uint16_t level = get_battery_level_avg();
     uint16_t left = BATTERY_LEVEL_POINTS[0];
     if (level < left) {
         // battery level <0%

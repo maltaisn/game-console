@@ -18,6 +18,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include "sys/bitutils.h"
 
 static struct {
     uint8_t data[TX_BUFFER_SIZE];
@@ -59,7 +60,7 @@ static int _uart_write(char c, FILE *stream) {
         USART0.TXDATAL = c;
     } else {
         // append byte to buffer and transmit later.
-        uint8_t new_head = (tx_buf.head + 1) % TX_BUFFER_SIZE;
+        const uint8_t new_head = (tx_buf.head + 1) % TX_BUFFER_SIZE;
         while (new_head == tx_buf.tail);  // wait for interrupt to empty buffer.
         tx_buf.data[tx_buf.head] = c;
         tx_buf.head = new_head;
@@ -70,7 +71,7 @@ static int _uart_write(char c, FILE *stream) {
 
 static int _uart_read(FILE *stream) {
     while (rx_buf.tail == rx_buf.head);  // wait for interrupt to fill buffer.
-    uint8_t c = rx_buf.data[rx_buf.tail];
+    const uint8_t c = rx_buf.data[rx_buf.tail];
     rx_buf.tail = (rx_buf.tail + 1) % RX_BUFFER_SIZE;
     USART0.CTRLA |= USART_RXCIE_bm;
     return c;
@@ -90,7 +91,7 @@ bool uart_available(void) {
 
 void uart_flush(void) {
     // wait until TX data register is empty.
-    while (USART0.CTRLA & USART_DREIE_bm);
+    _WBS(USART0.CTRLA, USART_DREIE_bm);
 }
 
 FILE uart_output = FDEV_SETUP_STREAM(_uart_write, NULL, _FDEV_SETUP_WRITE);
