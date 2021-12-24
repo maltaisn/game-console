@@ -97,7 +97,7 @@ class Comm(CommInterface):
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
                 bytesize=serial.EIGHTBITS,
-                timeout=0.5,
+                timeout=max(0.5, 10000 / self.baud_rate),
             )
         except SerialException as e:
             raise CommError("could not connect to device") from e

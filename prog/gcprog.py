@@ -34,6 +34,7 @@
 
 import argparse
 import signal
+import sys
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -50,13 +51,13 @@ BUTTONS_COUNT = 6
 SYSTICK_FREQ = 256
 
 STD_IO = "-"
-#
-# try:
-#     import pydevd_pycharm
-#
-#     pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
-# except ConnectionRefusedError:
-#     pass
+
+try:
+    import pydevd_pycharm
+
+    pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
+except ConnectionRefusedError:
+    pass
 
 parser = argparse.ArgumentParser(description="Programming & debugging program for game console")
 parser.add_argument(
@@ -158,8 +159,7 @@ class Prog(CommInterface):
             self.comm.connect()
         except CommError as e:
             if not self.args.version:
-                print(f"Connection error: {e}")
-                exit(1)
+                raise CommError(e)
 
         self.get_version()
         if self.args.version:
@@ -293,7 +293,7 @@ def main() -> None:
         prog = Prog(args)
         prog.do_command()
     except CommError as e:
-        print(f"ERROR: {e}")
+        print(f"ERROR: {e}", file=sys.stderr)
         exit(1)
 
 

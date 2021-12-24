@@ -12,9 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from enum import Enum
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Callable
 
 from comm import CommInterface, PacketType, Packet
+from utils import ProgressCallback
 
 
 class SpiPeripheral(Enum):
@@ -38,7 +39,8 @@ class SpiInterface:
         self.last_peripheral = None
         self.last_transfer = True
 
-    def transceive(self, per: SpiPeripheral, data: Sequence[int], last: bool = True) -> bytes:
+    def transceive(self, per: SpiPeripheral, data: Sequence[int], last: bool = True,
+                   progress: ProgressCallback = None) -> bytes:
         """
         Transmit and receive data with peripheral on SPI bus.
         A flag indicates the last transfer. This handles transfer larger than maximum allowed
@@ -69,5 +71,8 @@ class SpiInterface:
             self.comm.write(Packet(PacketType.SPI, payload))
             read += self.comm.read(len(payload)).payload[1:]
             pos += length
+
+            if progress:
+                progress(pos, len(data))
 
         return read

@@ -12,15 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import argparse
-import itertools
 import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Optional, Tuple, List
 
 from comm import CommError
 from spi import SpiInterface, SpiPeripheral
+from utils import ProgressCallback, print_progress_bar
 
 # This module is used to read, write & erase the EEPROM chip on the game console
 # The EEPROM chip model number is FT25C32A
@@ -50,28 +49,37 @@ class EepromDriver:
     def __init__(self, spi: SpiInterface):
         self.spi = spi
 
-    def read(self, start: int, count: int) -> bytes:
+    def read(self, start: int, count: int,
+             progress: Optional[ProgressCallback]) -> bytes:
+        """Read a number of bytes from EEPROM from a start address.
+        A callback can be used to show progress. Returns the read bytes."""
+        if count == 0:
+            return bytes()
+
         self._wait_ready()
-        data = bytearray()
         command = [INSTR_READ, (start >> 8) & 0xff, start & 0xff]
         # insert dummy MOSI bytes
         for i in range(count):
             command.append(0)
-        received = self.spi.transceive(SpiPeripheral.EEPROM, command)
+
+        received = self.spi.transceive(SpiPeripheral.EEPROM, command,
+                                       progress=None if progress is None else
+                                       lambda c, t: progress(c - 3, t - 3))
         return received[3:]
 
-    def write(self, start: int, count: int, data: Iterable[int]) -> None:
+    def _write(self, address: int, data: bytes,
+               progress: Optional[ProgressCallback]) -> None:
+        """Write bytes to EEPROM at an address."""
+        # wait until ready and enable write latch
         written = 0
-        address = start
         it = iter(data)
-        while written < count:
-            # wait until ready and enable write latch
+        while written < len(data):
             self._wait_ready()
             self.spi.transceive(SpiPeripheral.EEPROM, [INSTR_WREN])
             # write data for one page
             command = [INSTR_WRITE, (address >> 8) & 0xff, address & 0xff]
-            page_end = (address & ~0x1f) + PAGE_SIZE
-            while written < count and address < page_end:
+            page_end = (address & ~(PAGE_SIZE - 1)) + PAGE_SIZE
+            while written < len(data) and address < page_end:
                 byte = next(it, None)
                 if byte is None:
                     break
@@ -79,9 +87,40 @@ class EepromDriver:
                 written += 1
                 address += 1
             self.spi.transceive(SpiPeripheral.EEPROM, command)
+            if progress:
+                progress(written, len(data))
 
-    def erase(self) -> None:
-        self.write(0x0000, EEPROM_SIZE, itertools.repeat(ERASE_BYTE))
+    def write(self, address: int, count: int, data: bytes, old_data: bytes,
+              progress: Optional[ProgressCallback]) -> int:
+        """Write a number of bytes to EEPROM at an address. Returns the number of bytes
+        written. A callback can be used to show progress. Old data is provided to make a diff
+        and only update the minimum to save write cycles and improve speed."""
+        # identify all sequences to write (diffing)
+        start = -1
+        total = 0
+        sequences: List[Tuple[int, int]] = []
+        for i in range(count + 1):
+            if start != -1 and (i == count or data[i] == old_data[i]):
+                # end of diff sequence, write it.
+                sequences.append((start, i))
+                total += i - start
+                start = -1
+            elif i != count and start == -1 and data[i] != old_data[i]:
+                start = i
+
+        # write new data in identified sequences
+        if sequences:
+            written = 0
+            progress_delegate = None if progress is None else \
+                lambda c, t: progress(written + c, total)
+            for start, end in sequences:
+                self._write(start + address, data[start:end], progress_delegate)
+                written += end - start
+        elif progress:
+            # no data to write, content identical
+            progress(0, 0)
+
+        return total
 
     def _wait_ready(self) -> None:
         """Wait until EEPROM status register indicates ready status"""
@@ -126,7 +165,7 @@ def create_config(args: argparse.Namespace) -> Config:
         size = parse_dec_or_hex_number(args.size)
     except ValueError:
         raise CommError("invalid size")
-    if size < 0 or size > EEPROM_SIZE:
+    if size <= 0 or size > EEPROM_SIZE:
         raise CommError("size out of bounds")
 
     if args.write:
@@ -140,6 +179,7 @@ def create_config(args: argparse.Namespace) -> Config:
                 raise CommError("input is not a file")
             with open(path, "rb") as file:
                 input_data = file.read(size)
+            size = min(size, len(input_data))
     else:
         input_data = []
 
@@ -154,13 +194,10 @@ def create_config(args: argparse.Namespace) -> Config:
 
 
 def execute_config(driver: EepromDriver, config: Config) -> None:
-    # read first, then write or erase
+    # read first, in any case
+    read_data = driver.read(config.address, config.size,
+                            print_progress_bar("Reading", 9, 30) if config.verbose else None)
     if config.read:
-        start_time = time.time()
-        read_data = driver.read(config.address, config.size)
-        end_time = time.time()
-        if config.verbose:
-            print(f"Read {config.size} bytes from EEPROM in {end_time - start_time:.2f} s")
         if config.output_file == STD_IO:
             sys.stdout.buffer.write(read_data)
         else:
@@ -169,24 +206,20 @@ def execute_config(driver: EepromDriver, config: Config) -> None:
 
     if config.write:
         count = len(config.input_data)
-        start_time = time.time()
-        driver.write(config.address, count, config.input_data)
-        end_time = time.time()
-        if config.verbose:
-            print(f"Written {count} bytes to EEPROM in {end_time - start_time:.2f} s")
+        driver.write(config.address, count, config.input_data, read_data,
+                     print_progress_bar("Writing", 9, 30) if config.verbose else None)
 
         # reread the written range and validate data
         # if verification fails just abort operation
-        start_time = time.time()
-        read_data = driver.read(config.address, count)
-        end_time = time.time()
+        read_data = driver.read(config.address, count,
+                                print_progress_bar("Verifying", 9, 30) if config.verbose else None)
         if read_data != config.input_data:
             raise CommError("EEPROM verification failed")
-        elif config.verbose:
-            print(f"Succesfully verified data in {end_time - start_time:.2f} s")
 
     elif config.erase:
-        start_time = time.time()
-        driver.erase()
-        end_time = time.time()
-        print(f"Erased EEPROM in {end_time - start_time:.2f} s")
+        # "erasing" is just a facility for writing 0xff everywhere...
+        data = bytearray()
+        for i in range(config.size):
+            data.append(ERASE_BYTE)
+        driver.write(config.address, config.size, data, read_data,
+                     print_progress_bar("Erasing", 9, 30) if config.verbose else None)
