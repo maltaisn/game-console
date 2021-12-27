@@ -15,21 +15,24 @@
  * limitations under the License.
  */
 
-#ifndef SPI_H
-#define SPI_H
+#include <sys/flash.h>
+#include <sys/spi.h>
 
-#include <stdint.h>
+#include <avr/io.h>
 
-/**
- * Transmit and receive data on the SPI bus. Length must be at least 1.
- * The CS line for the selected peripheral should be driven low before and after.
- */
-void spi_transceive(uint16_t length, uint8_t data[length]);
+#define INSTRUCTION_READ 0x03
 
-/**
- * Transmit data on the SPI bus. Length must be at least 1.
- * The CS line for the selected peripheral should be driven low before and after.
- */
-void spi_transmit(uint16_t length, const uint8_t data[length]);
+#define flash_select() (VPORTF.OUT &= ~PIN0_bm)
+#define flash_deselect() (VPORTF.OUT |= PIN0_bm)
 
-#endif //SPI_H
+void flash_read(uint24_t address, uint16_t length, uint8_t dest[length]) {
+    uint8_t header[4];
+    header[0] = INSTRUCTION_READ;
+    header[1] = address >> 16;
+    header[2] = (address >> 8) & 0xff;
+    header[3] = address & 0xff;
+    flash_select();
+    spi_transceive(4, header);
+    spi_transceive(length, dest);
+    flash_deselect();
+}

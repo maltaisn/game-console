@@ -207,7 +207,7 @@ def create_config(mem_size: int, args: argparse.Namespace) -> Config:
                 raise CommError("input is not a file")
             with open(path, "rb") as file:
                 input_data = file.read(size)
-            size = min(size, len(input_data))
+        size = min(size, len(input_data))
     else:
         input_data = bytes()
 

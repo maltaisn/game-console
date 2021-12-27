@@ -15,21 +15,22 @@
  * limitations under the License.
  */
 
-#ifndef SPI_H
-#define SPI_H
+#ifndef FLASH_H
+#define FLASH_H
 
+#include <sys/defs.h>
 #include <stdint.h>
 
-/**
- * Transmit and receive data on the SPI bus. Length must be at least 1.
- * The CS line for the selected peripheral should be driven low before and after.
- */
-void spi_transceive(uint16_t length, uint8_t data[length]);
+#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+
+/** Address in flash (20-bit). */
+typedef uint24_t flash_t;
 
 /**
- * Transmit data on the SPI bus. Length must be at least 1.
- * The CS line for the selected peripheral should be driven low before and after.
+ * Read a number of bytes from flash starting from an address.
+ * The bytes are copied to the destination buffer.
+ * If reading past the end of flash, the address will be wrapped around.
  */
-void spi_transmit(uint16_t length, const uint8_t data[length]);
+void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
 
-#endif //SPI_H
+#endif //FLASH_H

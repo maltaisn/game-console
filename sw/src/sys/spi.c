@@ -38,3 +38,16 @@ void spi_transceive(uint16_t length, uint8_t data[length]) {
     while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
     data[pos] = SPI0.DATA;
 }
+
+void spi_transmit(uint16_t length, const uint8_t data[length]) {
+    // same as transceive but not receiving.
+    SPI0.DATA = *data++;
+    while (--length) {
+        while (!(SPI0.INTFLAGS & SPI_DREIF_bm));
+        SPI0.DATA = *data++;
+        while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
+        SPI0.DATA;
+    }
+    while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
+    SPI0.DATA;
+}
