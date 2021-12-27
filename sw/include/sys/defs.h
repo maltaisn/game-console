@@ -15,29 +15,21 @@
  * limitations under the License.
  */
 
-#ifndef TIME_H
-#define TIME_H
+#ifndef DEFS_H
+#define DEFS_H
 
+#ifdef __AVR__
+typedef __uint24 uint24_t;
+#else
 #include <stdint.h>
-#include <sys/defs.h>
+typedef uint32_t uint24_t;
+#endif
 
-#define SYSTICK_FREQUENCY 256
+#ifdef __AVR__
+typedef __int24 int24_t;
+#else
+#include <stdint.h>
+typedef int32_t int24_t;
+#endif
 
-/**
- * Convert a number of milliseconds to a number of system ticks.
- */
-#define millis_to_ticks(n) ((systime_t) (n / 1000.0 * SYSTICK_FREQUENCY + 0.5))
-
-/**
- * Type used to store system time.
- * The 24-bit counter overflows after 65536 seconds (~18.2 h).
- */
-typedef uint24_t systime_t;
-
-/**
- * Returns the system time value.
- * The system time is incremented every 1/256th second.
- */
-systime_t time_get();
-
-#endif //TIME_H
+#endif //DEFS_H

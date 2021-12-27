@@ -17,6 +17,8 @@
 
 #include <sys/power.h>
 
+#include <sys/defs.h>
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
@@ -136,7 +138,7 @@ battery_status_t power_get_battery_status(void) {
  *  If buffer is not full last measurement is repeated. */
 static uint16_t get_battery_level_avg(void) {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        __uint24 sum = 0;
+        uint24_t sum = 0;
         for (uint8_t i = 0; i < BATTERY_BUFFER_SIZE; ++i) {
             sum += battery_level_buf[i];
         }
