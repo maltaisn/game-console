@@ -36,30 +36,30 @@
  * The payload of different packet types defined are described below.
  * "RX" refers to the receiving side of the game console and "TX" refers to the transmitting side.
  *
- * === VERSION ===
+ * VERSION: get the firmware version
  * - RX payload: empty
  * - TX payload:
  * [0]: version major
  * [1]: version minor
  *
- * === BATTERY ===
+ * BATTERY: get the battery status
  * - RX payload: empty
  * - TX payload:
  * [0]: battery status (see enum values in power.h).
  * [1]: battery estimated percentage if discharging, undefined otherwise.
  * [2..3]: battery estimated voltage if discharging, undefined otherwise (little-endian, mV).
  *
- * === LED ===
+ * LED: change status LED state
  * - RX payload:
  * [0]: new LED state (1=on, others=off)
  * - No TX packet
  *
- * === INPUT ===
+ * INPUT: get input state
  * - RX payload: empty
  * - TX payload:
  * [0]: bits [0:5] indicate the state of buttons (1=pressed).
  *
- * === SPI ===
+ * SPI: transfer data on the SPI bus
  * RX & TX packets have an identical format.
  * [0]: bits [0:1] indicate the selected peripheral
  *      - 00: flash memory
@@ -71,10 +71,27 @@
  *      otherwise there might be two CS lines asserted on the next transfer!
  * [1..n]: SPI data
  *
- * === TIME ===
+ * TIME: get system time
  * - RX payload: empty
  * - TX payload:
  * [0..2]: system time (little-endian)
+ *
+ * FAST MODE: enable or disable fast mode
+ * - RX payload:
+ * [0]: 0 to disable fast mode, others to enable
+ * - TX payload: empty
+ * The TX packet serves as an acknoledgement that the speed has been changed,
+ * and is transmitted at the new baud rate.
+ * The fast mode should not be enabled twice!
+ *
+ * DEBUG: used by firmware to send debug info
+ * - No RX packet
+ * - TX payload:
+ * [0..n]: debug data / message
+ *
+ * RESET: trigger software reset
+ * - RX payload: empty
+ * - No TX packet
  */
 
 typedef enum {
@@ -84,23 +101,37 @@ typedef enum {
     PACKET_INPUT = 0x03,
     PACKET_SPI = 0x04,
     PACKET_TIME = 0x05,
+    PACKET_FAST_MODE = 0x06,
+    PACKET_DEBUG = 0x07,
+    PACKET_RESET = 0x08,
 } packet_type_t;
+
+/**
+ * Buffer used to store the packet payload on receive and transmit.
+ * TODO eventually, put this in the same data space as display buffer since
+ *  both aren't used at the same time, using linker script.
+ */
+extern uint8_t comm_payload_buf[PAYLOAD_MAX_SIZE];
 
 /**
  * Receive & decode data from RX.
  * Once a packet signature is detected, this function blocks until packet is fully received.
+ * If a fast mode enable packet is received, this function blocks until fast mode is disabled.
+ * Must not be called with interrupts enabled.
  */
 void comm_receive(void);
 
 /**
  * Transmit packet of `type` with a payload of `length` bytes to TX.
+ * The payload is contained in the `comm_payload_buf` buffer.
  */
-void comm_transmit(uint8_t type, uint8_t length, const uint8_t payload[length]);
+void comm_transmit(uint8_t type, uint8_t length);
 
 /**
  * Function called when a packet of undefined type is received.
  * Can be used to implement custom packets.
+ * The payload is contained in the `comm_payload_buf` buffer and has a `length`.
  */
-void comm_undef_packet_callback(uint8_t type, uint8_t length, uint8_t payload[length]);
+void comm_undef_packet_callback(uint8_t type, uint8_t length);
 
 #endif //COMM_H

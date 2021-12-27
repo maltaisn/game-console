@@ -48,7 +48,7 @@ from comm import Comm, CommError, Packet, PacketType, CommInterface
 from spi import SpiInterface
 
 VERSION_MAJOR = 0
-VERSION_MINOR = 1
+VERSION_MINOR = 2
 
 BUTTONS_COUNT = 6
 SYSTICK_FREQ = 256
@@ -60,11 +60,13 @@ parser.add_argument(
     "-D", "--device", action="store", type=str, dest="device", default=Comm.DEFAULT_FILENAME,
     help=f"UART device filename (default is {Comm.DEFAULT_FILENAME})")
 parser.add_argument(
-    "-b", "--baud", action="store", type=int, dest="baud_rate", default=Comm.DEFAULT_BAUD_RATE,
-    help=f"Baud rate (default is {Comm.DEFAULT_BAUD_RATE})")
+    "-b", "--baud", action="store", type=int, nargs=2, dest="baud_rate",
+    default=[Comm.DEFAULT_BAUD_RATE, Comm.DEFAULT_BAUD_RATE_FAST],
+    help=f"Baud rates, normal & fast (default is "
+         f"[{Comm.DEFAULT_BAUD_RATE} {Comm.DEFAULT_BAUD_RATE_FAST}])")
 parser.add_argument(
     "-v", "--version", action="store_true", dest="version",
-    help="Show version info")
+    help="Show gcprog version, and firmware version if connected")
 
 subparsers = parser.add_subparsers(dest="command")
 
@@ -90,13 +92,19 @@ input_parser.add_argument(
     help="Get continuous updates on input state")
 
 # time command
-time_parser = subparsers.add_parser("time", help="Get system time")
+subparsers.add_parser("time", help="Get system time")
 
 # eeprom command
-memory.create_parser(subparsers, eeprom.EEPROM_SIZE, "eeprom")
+memory.create_parser(subparsers, eeprom.EEPROM_SIZE, "EEPROM")
 
 # flash command
 memory.create_parser(subparsers, flash.FLASH_SIZE, "flash")
+
+# monitor command
+subparsers.add_parser("monitor", help="Monitor debug messages")
+
+# reset command
+subparsers.add_parser("reset", help="Trigger software reset")
 
 
 @dataclass
@@ -116,6 +124,7 @@ class Prog(CommInterface):
 
     interrupted: bool
     operation_in_progress: bool
+    fast_baud_enabled: bool
 
     VERSION = Version(VERSION_MAJOR, VERSION_MINOR)
 
@@ -123,10 +132,11 @@ class Prog(CommInterface):
         self.args = args
         self.interrupted = False
         self.operation_in_progress = False
+        self.fast_baud_enabled = False
         signal.signal(signal.SIGINT, self.sigint_handler)
 
         # connect to serial device
-        self.comm = Comm(args.device, args.baud_rate)
+        self.comm = Comm(args.device, args.baud_rate[0], args.baud_rate[1])
         self.fw_version = None
 
     def do_command(self) -> None:
@@ -155,13 +165,17 @@ class Prog(CommInterface):
             self.command_eeprom()
         elif cmd == "flash":
             self.command_flash()
+        elif cmd == "monitor":
+            self.command_monitor()
+        elif cmd == "reset":
+            self.command_reset()
 
         self.comm.disconnect()
 
     def get_version(self) -> None:
         if self.comm.is_connected():
             self.write(Packet(PacketType.VERSION))
-            version = self.read(2).payload
+            version = self.read(PacketType.VERSION).payload
             self.fw_version = Version(version[0], version[1])
 
     def check_version(self) -> None:
@@ -178,6 +192,13 @@ class Prog(CommInterface):
         if self.fw_version:
             print(f"firmware {self.fw_version}")
 
+    def interrupt_exit(self) -> None:
+        self.interrupted = False
+        if self.fast_baud_enabled:
+            self.set_fast_baud_rate(False)
+        self.comm.disconnect()
+        exit(1)
+
     def write(self, packet: Packet) -> None:
         """Packet write wrapper around Comm.write to ensure that write operation
         is not interrupted and to ensure that RX is flushed afterwards if interrupted."""
@@ -185,25 +206,31 @@ class Prog(CommInterface):
         self.comm.write(packet)
         if self.interrupted:
             # a packet was possibly returned, discard it (introduces a small delay).
-            self.comm.serial.readall()
-            exit(1)
+            self.comm.serial.read_all()
+            self.interrupt_exit()
         self.operation_in_progress = False
 
-    def read(self, payload_size: Optional[int] = None) -> Packet:
+    def read(self, expected_type: Optional[PacketType] = None) -> Packet:
         """Packet read wrapper around Comm.read to ensure that read operation is not interrupted."""
         self.operation_in_progress = True
-        packet = self.comm.read(payload_size)
+        packet = self.comm.read(expected_type)
         if self.interrupted:
-            exit(1)
+            self.interrupt_exit()
         self.operation_in_progress = False
         return packet
+
+    def set_fast_baud_rate(self, enabled: bool) -> None:
+        self.write(Packet(PacketType.FAST_MODE, [0x01 if enabled else 0x00]))
+        self.comm.serial.flush()
+        self.fast_baud_enabled = enabled
+        self.read(PacketType.FAST_MODE)
+        self.comm.set_fast_baud_rate(enabled)
 
     def sigint_handler(self, signum, frame):
         if self.operation_in_progress:
             self.interrupted = True
         else:
-            self.comm.disconnect()
-            exit(1)
+            self.interrupt_exit()
 
     def command_led(self) -> None:
         self.write(Packet(PacketType.LED, [0x01 if self.args.state == "on" else 0x00]))
@@ -228,7 +255,7 @@ class Prog(CommInterface):
 
     def command_time(self) -> None:
         self.write(Packet(PacketType.TIME))
-        resp = self.read(3).payload
+        resp = self.read(PacketType.TIME).payload
         systick = resp[0] | resp[1] << 8 | resp[2] << 16
         systime = systick / SYSTICK_FREQ
         print(f"System time is {systick} ({systime:.2f} s)")
@@ -237,7 +264,7 @@ class Prog(CommInterface):
         tx_packet = Packet(PacketType.INPUT)
         # print instantaneous input state
         self.write(tx_packet)
-        last_state = self.read(1).payload[0]
+        last_state = self.read(PacketType.INPUT).payload[0]
         for i in range(BUTTONS_COUNT):
             if last_state & (1 << i):
                 print(f"button {i} pressed")
@@ -245,7 +272,7 @@ class Prog(CommInterface):
             # print input state changes
             while True:
                 self.write(tx_packet)
-                curr_state = self.read(1).payload[0]
+                curr_state = self.read(PacketType.INPUT).payload[0]
                 if last_state is not None:
                     for i in range(BUTTONS_COUNT):
                         last_pressed = last_state & (1 << i)
@@ -258,16 +285,34 @@ class Prog(CommInterface):
                 time.sleep(0.03)
 
     def command_eeprom(self) -> None:
+        self.set_fast_baud_rate(True)
         spi = SpiInterface(self)
         driver = eeprom.EepromDriver(spi)
         config = memory.create_config(eeprom.EEPROM_SIZE, self.args)
         memory.execute_config(driver, config)
+        self.set_fast_baud_rate(False)
+        self.write(Packet(PacketType.RESET))
+
+    def command_monitor(self) -> None:
+        while True:
+            try:
+                packet = self.read()
+            except CommError:
+                continue  # ignore empty packet due to timeouts
+            if packet.packet_type == PacketType.DEBUG.value:
+                print(packet.payload.decode('utf-8'), end="")
 
     def command_flash(self) -> None:
+        self.set_fast_baud_rate(True)
         spi = SpiInterface(self)
         driver = flash.FlashDriver(spi)
         config = memory.create_config(flash.FLASH_SIZE, self.args)
         memory.execute_config(driver, config)
+        self.set_fast_baud_rate(False)
+        self.write(Packet(PacketType.RESET))
+
+    def command_reset(self) -> None:
+        self.write(Packet(PacketType.RESET))
 
 
 def main() -> None:

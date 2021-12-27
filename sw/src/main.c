@@ -18,15 +18,18 @@
 
 #include <stdbool.h>
 
-#include <sys/uart.h>
 #include <sys/init.h>
 #include <sys/comm.h>
 
+#include <util/delay.h>
+
 int main(void) {
     init();
-    stdout = &uart_output;
 
     while (true) {
         comm_receive();
+
+        // emulate game loop delay
+        _delay_ms(30);
     }
 }

@@ -54,12 +54,9 @@ static const uint16_t BATTERY_LEVEL_POINTS[] = {
         47579, 49598, 50895, 52481, 53683, 54259, 54788, 55509, 56278, 56999, 58393,
 };
 
-// register used to set power flags:
-// 7: battery percent cached
-#define power_reg GPIOR0
+#define STATE_BATTERY_PERCENT_CACHED 1
 
-#define POWER_REG_BATTERY_PERCENT_CACHED (1 << 7)
-
+static volatile uint8_t power_state;
 static volatile sampler_state_t sampler_state;
 static volatile battery_status_t battery_status;
 
@@ -114,7 +111,7 @@ ISR(ADC0_RESRDY_vect) {
             battery_level_buf[head] = res;
             battery_level_head = (head + 1) % BATTERY_BUFFER_SIZE;
         }
-        power_reg &= ~POWER_REG_BATTERY_PERCENT_CACHED;
+        power_state &= ~STATE_BATTERY_PERCENT_CACHED;
         sampler_state = STATE_DONE;
     }
 }
@@ -149,7 +146,7 @@ static uint16_t get_battery_level_avg(void) {
 }
 
 uint8_t power_get_battery_percent(void) {
-    if (power_reg & POWER_REG_BATTERY_PERCENT_CACHED) {
+    if (power_state & STATE_BATTERY_PERCENT_CACHED) {
         return battery_percent_cache;
     }
     // linearly interpolate battery percentage from precalculated points.

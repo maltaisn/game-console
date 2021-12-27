@@ -32,6 +32,9 @@ class PacketType(Enum):
     INPUT = 0x03
     SPI = 0x04
     TIME = 0x05
+    FAST_MODE = 0x06
+    DEBUG = 0x07
+    RESET = 0x08
 
 
 @dataclass
@@ -69,9 +72,11 @@ class Packet:
 
 class CommInterface(abc.ABC):
     def write(self, packet: Packet) -> None:
+        """Write a packet to the communication interface."""
         raise NotImplementedError
 
-    def read(self, payload_size: Optional[int] = None) -> Packet:
+    def read(self, expected_type: Optional[PacketType] = None) -> Packet:
+        """Read a packet from the communication interface (optionally a specific packet type)."""
         raise NotImplementedError
 
 
@@ -79,14 +84,18 @@ class Comm(CommInterface):
     """Class used for communication with firmware. Uses pyserial to send and receive packets."""
     filename: str
     baud_rate: int
+    baud_rate_fast: int
     serial: Optional[Serial]
 
     DEFAULT_FILENAME = "/dev/ttyACM0"
-    DEFAULT_BAUD_RATE = 500_000  # value set in Makefile for firmware
+    DEFAULT_BAUD_RATE = 19_200
+    DEFAULT_BAUD_RATE_FAST = 1_000_000
 
-    def __init__(self, filename: str = DEFAULT_FILENAME, baud_rate: int = DEFAULT_BAUD_RATE):
+    def __init__(self, filename: str = DEFAULT_FILENAME,
+                 baud_rate: int = DEFAULT_BAUD_RATE, baud_rate_fast: int = DEFAULT_BAUD_RATE_FAST):
         self.filename = filename
         self.baud_rate = baud_rate
+        self.baud_rate_fast = baud_rate_fast
         self.serial = None
 
     def connect(self) -> None:
@@ -97,8 +106,11 @@ class Comm(CommInterface):
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
                 bytesize=serial.EIGHTBITS,
-                timeout=max(0.5, 10000 / self.baud_rate),
+                timeout=0.1,
             )
+            self.serial.read_all()  # discard content from before program started
+            # set timeout in relation with normal baud rate (faster = smaller timeout)
+            self.serial.timeout = max(0.5, 10000 / self.baud_rate)
         except SerialException as e:
             raise CommError("could not connect to device") from e
 
@@ -112,13 +124,22 @@ class Comm(CommInterface):
     def write(self, packet: Packet) -> None:
         self.serial.write(packet.encode())
 
-    def read(self, payload_size: Optional[int] = None) -> Packet:
-        data: bytes
-        if payload_size is None:
-            data = self.serial.readall()
-        else:
-            length = payload_size + 3
-            data = self.serial.read(length)
-            if len(data) != length:
+    def read(self, expected_type: Optional[PacketType] = None) -> Packet:
+        while True:
+            header = self.serial.read(3)
+            if len(header) != 3:
                 raise CommError("incomplete packet")
-        return Packet.decode(data)
+            if header[0] != Packet.SIGNATURE_BYTE:
+                continue
+            length = header[2]
+            payload = self.serial.read(length)
+            if len(payload) != length:
+                raise CommError("incomplete packet")
+            packet = Packet.decode(header + payload)
+            if not expected_type or packet.packet_type == expected_type.value:
+                return packet
+
+    def set_fast_baud_rate(self, enabled: bool) -> None:
+        """Enable or disable fast baud rate."""
+        if self.is_connected():
+            self.serial.baudrate = self.baud_rate_fast if enabled else self.baud_rate

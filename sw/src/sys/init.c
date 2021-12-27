@@ -15,12 +15,11 @@
  */
 
 #include <sys/init.h>
-#include <sys/uart.h>
 #include <sys/power.h>
+#include <sys/uart.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "sys/bitutils.h"
 
 static void init_registers(void) {
     // ====== CLOCK =====
@@ -36,9 +35,13 @@ static void init_registers(void) {
     VPORTF.DIR |= PIN0_bm | PIN1_bm | PIN2_bm;
 
     // ====== USART ======
-    USART0.BAUD = (uint16_t) ((64.0 * F_CPU / (16.0 * UART_BAUD)) + 0.5);
-    USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm;
+    uart_set_normal_mode();
+    USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
     USART0.CTRLA = USART_RXCIE_bm;
+    // USART RX interrupt has priority so that when buffer is half full,
+    // a flag can be set from level 1 interrupt to trigger a level 0 interrupt
+    // that will start processing data.
+    CPUINT.LVL1VEC = USART0_RXC_vect_num;
 
     // ====== SPI ======
     // master, 5 MHz SCK, mode 0, MSB first, buffered, no interrupts.

@@ -139,7 +139,7 @@ def print_progress_bar(verbose: bool, name: str) -> ProgressCallback:
         print("\033[2K", end="")  # erase previous bar
         print(f"{name.ljust(PROGRESS_BAR_MARGIN, ' ')} "  # title
               f"| {('#' * n)}{' ' * (PROGRESS_BAR_WIDTH - n)} | "  # progress bar
-              f"{f'{progress:.0%},':<5} {f'{time.time() - start:.1f} s,':<8} "  # percent & time
+              f"{f'{math.floor(progress * 100):.0f}%,':<5} {f'{time.time() - start:.1f} s,':<8} "  # percent & time
               f"{readable_size(current)} / {readable_size(total)}\r", end="")  # curr & total size
         if current == total:
             print()
@@ -149,7 +149,7 @@ def print_progress_bar(verbose: bool, name: str) -> ProgressCallback:
 
 def create_parser(subparsers, size: int, name: str) -> None:
     """Add parser with a `name` to `subparsers` for a memory device with a certain `size`."""
-    parser = subparsers.add_parser(name, help=f"Read & write to {name}")
+    parser = subparsers.add_parser(name.lower(), help=f"Read & write to {name}")
     parser.add_argument(
         "address", action="store", type=str, default="0", nargs="?",
         help="Start address for operation, can be decimal literal "

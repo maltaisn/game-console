@@ -18,7 +18,14 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "sys/bitutils.h"
+
+// As given by datasheet formula, Table 23-1, Rev. C 01/2021, for asynchronous USART with CLK2X=1
+#define uart_baud_rate_reg(baud) ((uint16_t) ((64.0 * F_CPU / (8.0 * baud)) + 0.5))
+
+#define STATE_TRANSMITTED 1
+#define STATE_FAST 2
+
+static uint8_t state;
 
 static struct {
     uint8_t data[TX_BUFFER_SIZE];
@@ -54,9 +61,11 @@ ISR(USART0_RXC_vect) {
     }
 }
 
-static int _uart_write(char c, FILE *stream) {
+void uart_write(uint8_t c) {
+    state |= STATE_TRANSMITTED;
     if (tx_buf.tail == tx_buf.head && (USART0.STATUS & USART_DREIF_bm)) {
         // TX data register empty and buffer empty, transmit directly.
+        USART0.STATUS = USART_TXCIF_bm;
         USART0.TXDATAL = c;
     } else {
         // append byte to buffer and transmit later.
@@ -66,10 +75,9 @@ static int _uart_write(char c, FILE *stream) {
         tx_buf.head = new_head;
         USART0.CTRLA |= USART_DREIE_bm;
     }
-    return 0;
 }
 
-static int _uart_read(FILE *stream) {
+uint8_t uart_read(void) {
     while (rx_buf.tail == rx_buf.head);  // wait for interrupt to fill buffer.
     const uint8_t c = rx_buf.data[rx_buf.tail];
     rx_buf.tail = (rx_buf.tail + 1) % RX_BUFFER_SIZE;
@@ -77,22 +85,29 @@ static int _uart_read(FILE *stream) {
     return c;
 }
 
-void uart_write(uint8_t c) {
-    _uart_write((char) c, 0);
-}
-
-uint8_t uart_read(void) {
-    return _uart_read(0);
-}
-
 bool uart_available(void) {
     return rx_buf.tail != rx_buf.head;
 }
 
 void uart_flush(void) {
-    // wait until TX data register is empty.
-    _WBS(USART0.CTRLA, USART_DREIE_bm);
+    if (!(state & STATE_TRANSMITTED)) {
+        // nothing was transmitted, TXCIF bit will not be set.
+        return;
+    }
+    // wait until TX data register is empty and until last transmission is complete.
+    while ((USART0.CTRLA & USART_DREIE_bm) || !(USART0.STATUS & USART_TXCIF_bm));
 }
 
-FILE uart_output = FDEV_SETUP_STREAM(_uart_write, NULL, _FDEV_SETUP_WRITE);
-FILE uart_input = FDEV_SETUP_STREAM(NULL, _uart_read, _FDEV_SETUP_READ);
+void uart_set_fast_mode(void) {
+    state |= STATE_FAST;
+    USART0.BAUD = uart_baud_rate_reg(UART_BAUD_FAST);
+}
+
+void uart_set_normal_mode(void) {
+    state &= ~STATE_FAST;
+    USART0.BAUD = uart_baud_rate_reg(UART_BAUD);
+}
+
+bool uart_is_in_fast_mode(void) {
+    return (state & STATE_FAST) != 0;
+}

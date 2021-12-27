@@ -14,7 +14,7 @@
 from enum import Enum
 from typing import Sequence
 
-from comm import CommInterface, PacketType, Packet
+from comm import CommInterface, PacketType, Packet, CommError
 from utils import ProgressCallback
 
 
@@ -74,11 +74,14 @@ class SpiInterface:
                 last_part = False
 
             # create packet & send it
-            payload = bytearray()
-            payload.append(self.peripheral.value | (0x80 if last_part else 0x00))
-            payload += bytes(data[pos:pos + length])
-            self.comm.write(Packet(PacketType.SPI, payload))
-            read += self.comm.read(len(payload)).payload[1:]
+            payload_tx = bytearray()
+            payload_tx.append(self.peripheral.value | (0x80 if last_part else 0x00))
+            payload_tx += bytes(data[pos:pos + length])
+            self.comm.write(Packet(PacketType.SPI, payload_tx))
+            payload_rx = self.comm.read(PacketType.SPI).payload
+            read += payload_rx[1:]
+            if len(payload_rx) != len(payload_tx):
+                raise CommError("short SPI packet")
             pos += length
 
             if progress:

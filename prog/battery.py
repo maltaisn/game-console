@@ -56,7 +56,7 @@ class BatteryMonitor:
     def get_info(self) -> BatteryInfo:
         """Request battery status, percent level & voltage from firmware."""
         self.comm.write(Packet(PacketType.BATTERY))
-        resp = self.comm.read(4).payload
+        resp = self.comm.read(PacketType.BATTERY).payload
         status = next((s for s in BatteryStatus if s.status == resp[0]), None)
         if status is None:
             raise CommError("unexpected battery status value")

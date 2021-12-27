@@ -18,18 +18,11 @@
 #ifndef UART_H
 #define UART_H
 
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define RX_BUFFER_SIZE 64
 #define TX_BUFFER_SIZE 32
-
-extern FILE uart_output;
-extern FILE uart_input;
-
-// Note: if buffer size is not zero, interrupts should always be enabled when using the
-// following functions! This means none of them can be used within an interrupt.
-// The reason is that interrupts are used to exit from infinite loops.
 
 /**
  * Write a byte to the UART. The byte may be buffered or transmitted directly.
@@ -53,10 +46,25 @@ uint8_t uart_read(void);
 bool uart_available(void);
 
 /**
- * Wait until TX buffer is empty.
- * Not that this doesn't mean that data is finished transmitting, only that buffer is empty.
+ * Wait until TX buffer is empty and last transmission is complete.
  * Interrupts must be enabled when this is called.
  */
 void uart_flush(void);
+
+/**
+ * Set UART in fast mode (use UART_BAUD_FAST baud rate).
+ */
+void uart_set_fast_mode(void);
+
+/**
+ * Set UART in normal mode (use UART_BAUD baud rate).
+ */
+void uart_set_normal_mode(void);
+
+/**
+ * Returns true if UART is currently in fast mode.
+ */
+bool uart_is_in_fast_mode(void);
+
 
 #endif //UART_H

@@ -15,12 +15,29 @@
  * limitations under the License.
  */
 
-#ifndef BITUTILS_H
-#define BITUTILS_H
+#ifndef DEBUG_H
+#define DEBUG_H
 
-/* wait until bitfield set */
-#define _WBS(reg, bits)         while(((reg) & (bits)) == 0)
-/* wait until bitfield clear */
-#define _WBC(reg, bits)         while(((reg) & (bits)) != 0)
+#include <stdint.h>
 
-#endif //BITUTILS_H
+/**
+ * Print string.
+ */
+void debug_print(const char* str);
+
+/**
+ * Print newline
+ */
+void debug_println(void);
+
+/**
+ * Print hexadecimal number (8-bit).
+ */
+void debug_print_hex8(uint8_t n);
+
+/**
+ * Print hexadecimal number (32-bit).
+ */
+void debug_print_hex32(uint32_t n);
+
+#endif //DEBUG_H

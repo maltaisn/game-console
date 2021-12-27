@@ -32,28 +32,25 @@ typedef enum {
     SPI_CS_DISPLAY = 0b10,
 } spi_cs_sel_t;
 
-// buffer used to receive RX payload and send TX payload.
-// TODO eventually, put this in the same data space as display buffer since
-//  both aren't used at the same time, using linker script.
-static uint8_t packet_payload[PAYLOAD_MAX_SIZE];
+uint8_t comm_payload_buf[PAYLOAD_MAX_SIZE];
 
 static void handle_packet_version(void) {
-    packet_payload[0] = VERSION_MAJOR;
-    packet_payload[1] = VERSION_MINOR;
-    comm_transmit(PACKET_VERSION, 2, packet_payload);
+    comm_payload_buf[0] = VERSION_MAJOR;
+    comm_payload_buf[1] = VERSION_MINOR;
+    comm_transmit(PACKET_VERSION, 2);
 }
 
 static void handle_packet_battery(void) {
-    packet_payload[0] = power_get_battery_status();
-    packet_payload[1] = power_get_battery_percent();
+    comm_payload_buf[0] = power_get_battery_status();
+    comm_payload_buf[1] = power_get_battery_percent();
     uint16_t voltage = power_get_battery_voltage();
-    packet_payload[2] = voltage & 0xff;
-    packet_payload[3] = voltage >> 8;
-    comm_transmit(PACKET_BATTERY, 4, packet_payload);
+    comm_payload_buf[2] = voltage & 0xff;
+    comm_payload_buf[3] = voltage >> 8;
+    comm_transmit(PACKET_BATTERY, 4);
 }
 
 static void handle_packet_led(void) {
-    if (packet_payload[0] == 1) {
+    if (comm_payload_buf[0] == 1) {
         led_set();
     } else {
         led_clear();
@@ -62,14 +59,15 @@ static void handle_packet_led(void) {
 }
 
 static void handle_packet_input(void) {
-    packet_payload[0] = input_get_state();
-    comm_transmit(PACKET_INPUT, 1, packet_payload);
+    comm_payload_buf[0] = input_get_state();
+    comm_transmit(PACKET_INPUT, 1);
 }
 
 static void handle_packet_spi(uint8_t length) {
     // assert CS line for the selected peripheral
-    const uint8_t options = packet_payload[0];
+    const uint8_t options = comm_payload_buf[0];
     const uint8_t cs = options & 0x3;
+    // TODO put in spi module
     if (cs == SPI_CS_FLASH) {
         VPORTF.OUT &= ~PIN0_bm;
     } else if (cs == SPI_CS_EEPROM) {
@@ -79,8 +77,8 @@ static void handle_packet_spi(uint8_t length) {
     }
 
     // transceive SPI data
-    spi_transceive(length - 1, packet_payload + 1);
-    comm_transmit(PACKET_SPI, length, packet_payload);
+    spi_transceive(length - 1, comm_payload_buf + 1);
+    comm_transmit(PACKET_SPI, length);
 
     // if last transfer, deassert the CS line.
     if (options & 0x80) {
@@ -91,10 +89,30 @@ static void handle_packet_spi(uint8_t length) {
 
 static void handle_packet_time(void) {
     const systime_t time = time_get();
-    packet_payload[0] = time & 0xff;
-    packet_payload[1] = (time >> 8) & 0xff;
-    packet_payload[2] = time >> 16;
-    comm_transmit(PACKET_TIME, 3, packet_payload);
+    comm_payload_buf[0] = time & 0xff;
+    comm_payload_buf[1] = (time >> 8) & 0xff;
+    comm_payload_buf[2] = time >> 16;
+    comm_transmit(PACKET_TIME, 3);
+}
+
+static void handle_packet_fast_mode(void) {
+    comm_transmit(PACKET_FAST_MODE, 0);
+    uart_flush();
+
+    if (comm_payload_buf[0]) {
+        uart_set_fast_mode();
+        while (uart_is_in_fast_mode()) {
+            // in fast mode we're continuously decoding packets to avoid losing any data.
+            // the loop will end when a fast mode disable packet is sent.
+            comm_receive();
+        }
+    } else {
+        uart_set_normal_mode();
+    }
+}
+
+static void handle_packet_reset(void) {
+    _PROTECTED_WRITE(RSTCTRL.SWRR, RSTCTRL_SWRE_bm);
 }
 
 void comm_receive(void) {
@@ -104,7 +122,7 @@ void comm_receive(void) {
     const packet_type_t type = uart_read();
     const uint8_t length = uart_read();
     uint8_t count = length;
-    uint8_t* ptr = packet_payload;
+    uint8_t* ptr = comm_payload_buf;
     while (count--) {
         *ptr++ = uart_read();
     }
@@ -121,21 +139,25 @@ void comm_receive(void) {
         handle_packet_spi(length);
     } else if (type == PACKET_TIME) {
         handle_packet_time();
+    } else if (type == PACKET_FAST_MODE) {
+        handle_packet_fast_mode();
+    } else if (type == PACKET_RESET) {
+        handle_packet_reset();
     } else {
-        comm_undef_packet_callback(type, length, packet_payload);
+        comm_undef_packet_callback(type, length);
     }
 }
 
-void comm_transmit(uint8_t type, uint8_t length, const uint8_t payload[length]) {
+void comm_transmit(uint8_t type, uint8_t length) {
     uart_write(PACKET_SIGNATURE);
     uart_write(type);
     uart_write(length);
+    const uint8_t* payload = comm_payload_buf;
     while (length--) {
         uart_write(*payload++);
     }
 }
 
-__attribute__((weak)) void comm_undef_packet_callback(
-        uint8_t type, uint8_t length, uint8_t payload[length]) {
+__attribute__((weak)) void comm_undef_packet_callback(uint8_t type, uint8_t length) {
     // undefined packets ignored by default.
 }

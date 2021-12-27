@@ -3,11 +3,13 @@ F_CPU := 10000000
 
 # firmware version
 VERSION_MAJOR := 0
-VERSION_MINOR := 1
+VERSION_MINOR := 2
 
-# baud rate used for uart link in debug port. 500k baud works fine, flash & eeprom writes are
-# verified in any case so rare errors should be an issue. Otherwise writing flash is painfully slow.
-UART_BAUD := 500000
+# baud rates used for uart link in debug port.
+# by default the baud rate is slower, but a faster baud rate can be enabled with the "fast mode"
+# packet.
+UART_BAUD := 19200
+UART_BAUD_FAST := 1000000
 
 BUILD_DIR := build
 SRC_DIR := src
@@ -25,11 +27,13 @@ OBJDUMP := avr-objdump
 AVRDUDE := avrdude
 
 # values defined in the code:
-# UART_BAUD=<baud>: the baud rate for UART communication
+# UART_BAUD=<baud>: baud rate for normal UART communication
+# UART_BAUD_FAST=<baud>: baud rate for fast UART communication
 # VERSION_MAJOR=<version>: major version
 # VERSION_MINOR=<version>: minor version
 # DISABLE_BAT_PROT: disables auto shutdown for battery overdischarge protection.
-DEFINES += UART_BAUD=$(UART_BAUD) VERSION_MAJOR=$(VERSION_MAJOR) VERSION_MINOR=$(VERSION_MINOR)
+DEFINES += UART_BAUD=$(UART_BAUD) UART_BAUD_FAST=$(UART_BAUD_FAST) \
+           VERSION_MAJOR=$(VERSION_MAJOR) VERSION_MINOR=$(VERSION_MINOR)
 
 CFLAGS += -Wall -g -std=gnu11 -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os \
           $(addprefix -D,$(DEFINES)) -I$(INCLUDE_DIR) \
