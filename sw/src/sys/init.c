@@ -17,6 +17,7 @@
 #include <sys/init.h>
 #include <sys/power.h>
 #include <sys/uart.h>
+#include <sys/sound.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -34,28 +35,45 @@ static void init_registers(void) {
     // flash SS, eeprom SS, enable VBAT level
     VPORTF.DIR |= PIN0_bm | PIN1_bm | PIN2_bm;
 
+    // set buzzer H-bridge inputs low
+    VPORTA.OUT = PIN2_bm | PIN3_bm;
+    // set all CS lines high
+    VPORTF.OUT = PIN0_bm | PIN1_bm;
+    VPORTC.OUT = PIN1_bm;
+
     // ====== USART ======
     uart_set_normal_mode();
     USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
     USART0.CTRLA = USART_RXCIE_bm;
-    // USART RX interrupt has priority so that when buffer is half full,
-    // a flag can be set from level 1 interrupt to trigger a level 0 interrupt
-    // that will start processing data.
     CPUINT.LVL1VEC = USART0_RXC_vect_num;
 
     // ====== SPI ======
     // master, 5 MHz SCK, mode 0, MSB first, buffered, no interrupts.
     SPI0.CTRLB = SPI_BUFEN_bm | SPI_MODE_0_gc | SPI_SSD_bm;
     SPI0.CTRLA = SPI_MASTER_bm | SPI_CLK2X_bm | SPI_PRESC_DIV4_gc | SPI_ENABLE_bm;
-    // set all CS lines high
-    VPORTF.OUT |= PIN0_bm | PIN1_bm;
-    VPORTC.OUT |= PIN1_bm;
 
     // ====== TCA ======
-    // TODO
+    // Prescaler 2, split mode, single slope PWM on compare channel 3.
+    // PWM is output on PA3 for buzzer. Only high timer is used, low timer is unused.
+    TCA0.SPLIT.CTRLD = TCA_SPLIT_SPLITM_bm;
+    TCA0.SPLIT.HPER = SOUND_PWM_MAX;
+    TCA0.SPLIT.HCMP0 = 0;
+    TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc;
+    // Set the event system channel 0 to PA3, with event user EVOUTA pin (PA2).
+    // PA2 will be inverted when sound is enabled to drive H-bridge setup.
+    EVSYS.CHANNEL0 = EVSYS_GENERATOR_PORT0_PIN3_gc;
+    EVSYS.USEREVOUTA = EVSYS_CHANNEL_CHANNEL0_gc;
 
     // ====== TCB ======
-    // TODO
+    // Used for each sound channel. Prescaler = 2, periodic interrupt mode.
+    TCB0.CTRLA = TCB_CLKSEL_CLKDIV2_gc;
+    TCB0.INTCTRL = TCB_CAPT_bm;
+
+    TCB1.CTRLA = TCB_CLKSEL_CLKDIV2_gc;
+    TCB1.INTCTRL = TCB_CAPT_bm;
+
+    TCB2.CTRLA = TCB_CLKSEL_CLKDIV2_gc;
+    TCB2.INTCTRL = TCB_CAPT_bm;
 
     // ====== RTC ======
     // interrupt every 1/256th s using 32.768 kHz internal clock for system time.

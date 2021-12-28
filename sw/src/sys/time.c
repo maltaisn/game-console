@@ -16,6 +16,7 @@
 
 #include <sys/time.h>
 #include <sys/power.h>
+#include <sys/sound.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -29,6 +30,7 @@ ISR(RTC_CNT_vect) {
     systime_t time = systick + 1;
     systick = time;
     input_update_state();
+    sound_update();
 }
 
 ISR(RTC_PIT_vect) {
