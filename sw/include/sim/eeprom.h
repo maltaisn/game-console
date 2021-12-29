@@ -15,29 +15,28 @@
  * limitations under the License.
  */
 
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifdef SIMULATION
 
-#include <stdint.h>
+#ifndef SIM_EEPROM_H
+#define SIM_EEPROM_H
 
-/**
- * Print string.
- */
-void debug_print(const char* str);
+#include <stdio.h>
 
 /**
- * Print newline
+ * Load EEPROM content from binary file.
  */
-void debug_println(void);
+void eeprom_load(FILE* file);
 
 /**
- * Print hexadecimal number (8-bit).
+ * Load EEPROM content as all erased bytes.
  */
-void debug_print_hex8(uint8_t n);
+void eeprom_load_erased(void);
 
 /**
- * Print hexadecimal number (32-bit).
+ * Load EEPROM content from binary file.
  */
-void debug_print_hex32(uint32_t n);
+void eeprom_save(const char* filename);
 
-#endif //DEBUG_H
+#endif //SIM_EEPROM_H
+
+#endif //SIMULATION

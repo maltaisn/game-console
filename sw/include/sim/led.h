@@ -15,22 +15,18 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#ifdef SIMULATION
 
-#include "defs.h"
-#include <stdint.h>
+#ifndef SIM_LED_H
+#define SIM_LED_H
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
-
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+#include <stdbool.h>
 
 /**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
+ * Returns true if status LED is currently on.
  */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+bool led_get(void);
 
-#endif //SYS_FLASH_H
+#endif //SIM_LED_H
+
+#endif //SIMULATION

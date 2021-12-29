@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef COMM_H
-#define COMM_H
+#ifndef CORE_COMM_H
+#define CORE_COMM_H
 
 #include <stdint.h>
 
@@ -108,8 +108,6 @@ typedef enum {
 
 /**
  * Buffer used to store the packet payload on receive and transmit.
- * TODO eventually, put this in the same data space as display buffer since
- *  both aren't used at the same time, using linker script.
  */
 extern uint8_t comm_payload_buf[PAYLOAD_MAX_SIZE];
 
@@ -134,4 +132,4 @@ void comm_transmit(uint8_t type, uint8_t length);
  */
 void comm_undef_packet_callback(uint8_t type, uint8_t length);
 
-#endif //COMM_H
+#endif //CORE_COMM_H

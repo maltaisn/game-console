@@ -15,22 +15,18 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#ifdef SIMULATION
 
-#include "defs.h"
-#include <stdint.h>
+#ifndef SIM_SOUND_H
+#define SIM_SOUND_H
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
-
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+#include <stdbool.h>
 
 /**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
+ * Returns true if sound output is currently enabled.
  */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+bool sound_is_output_enabled(void);
 
-#endif //SYS_FLASH_H
+#endif //SIM_SOUND_H
+
+#endif //SIMULATION

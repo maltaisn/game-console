@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -15,22 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <sys/sound.h>
+#include <sim/sound.h>
 
-#include "defs.h"
-#include <stdint.h>
+static sound_volume_t volume;
+static bool output_enabled;
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+void sound_set_output_enabled(bool enabled) {
+    output_enabled = enabled;
+}
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+bool sound_is_output_enabled(void) {
+    return output_enabled;
+}
 
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+void sound_set_volume_impl(sound_volume_t vol) {
+    volume = vol;
+}
 
-#endif //SYS_FLASH_H
+sound_volume_t sound_get_volume_impl(void) {
+    return volume;
+}
+
+void sound_play_note(const track_t* track, uint8_t channel) {
+    // TODO
+}

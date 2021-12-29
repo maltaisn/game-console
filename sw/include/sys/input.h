@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef INPUT_H
-#define INPUT_H
+#ifndef SYS_INPUT_H
+#define SYS_INPUT_H
 
 #include <stdint.h>
 
@@ -44,4 +44,4 @@ uint8_t input_get_state(void);
  */
 void input_update_state(void);
 
-#endif //INPUT_H
+#endif //SYS_INPUT_H

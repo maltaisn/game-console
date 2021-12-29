@@ -15,22 +15,43 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <sys/spi.h>
 
-#include "defs.h"
-#include <stdint.h>
+#include <memory.h>
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+void spi_transceive(uint16_t length, uint8_t data[length]) {
+    // not implemented: receive all 0x00
+    memset(data, 0x00, length);
+}
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+void spi_transmit(uint16_t length, const uint8_t data[length]) {
+    // not implemented.
+}
 
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+void spi_select_flash(void) {
+    // no-op
+}
 
-#endif //SYS_FLASH_H
+void spi_select_eeprom(void) {
+    // no-op
+}
+
+void spi_select_display(void) {
+    // no-op
+}
+
+void spi_deselect_flash(void) {
+    // no-op
+}
+
+void spi_deselect_eeprom(void) {
+    // no-op
+}
+
+void spi_deselect_display(void) {
+    // no-op
+}
+
+void spi_deselect_all(void) {
+    // no-op
+}

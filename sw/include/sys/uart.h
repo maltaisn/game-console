@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef UART_H
-#define UART_H
+#ifndef SYS_UART_H
+#define SYS_UART_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -67,4 +67,4 @@ void uart_set_normal_mode(void);
 bool uart_is_in_fast_mode(void);
 
 
-#endif //UART_H
+#endif //SYS_UART_H

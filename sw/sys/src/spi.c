@@ -51,3 +51,33 @@ void spi_transmit(uint16_t length, const uint8_t data[length]) {
     while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
     SPI0.DATA;
 }
+
+void spi_select_flash(void) {
+    VPORTF.OUT &= ~PIN0_bm;
+}
+
+void spi_select_eeprom(void) {
+    VPORTF.OUT &= ~PIN1_bm;
+}
+
+void spi_select_display(void) {
+    VPORTC.OUT &= ~PIN1_bm;
+}
+
+void spi_deselect_flash(void) {
+    VPORTF.OUT |= PIN0_bm;
+}
+
+void spi_deselect_eeprom(void) {
+    VPORTF.OUT |= PIN1_bm;
+}
+
+void spi_deselect_display(void) {
+    VPORTC.OUT |= PIN1_bm;
+}
+
+void spi_deselect_all(void) {
+    VPORTF.OUT |= PIN0_bm;
+    VPORTF.OUT |= PIN1_bm;
+    VPORTC.OUT |= PIN1_bm;
+}

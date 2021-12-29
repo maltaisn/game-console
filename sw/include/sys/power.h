@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef POWER_H
-#define POWER_H
+#ifndef SYS_POWER_H
+#define SYS_POWER_H
 
 #include <stdint.h>
 
@@ -73,4 +73,4 @@ uint16_t power_get_battery_voltage(void);
  */
 void sleep_if_low_battery(void);
 
-#endif //POWER_H
+#endif //SYS_POWER_H

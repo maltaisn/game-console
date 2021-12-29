@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef LED_H
-#define LED_H
+#ifndef SYS_LED_H
+#define SYS_LED_H
 
 void led_set(void);
 
@@ -24,4 +24,4 @@ void led_clear(void);
 
 void led_toggle(void);
 
-#endif //LED_H
+#endif //SYS_LED_H

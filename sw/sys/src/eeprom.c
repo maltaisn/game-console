@@ -18,8 +18,6 @@
 #include <sys/eeprom.h>
 #include <sys/spi.h>
 
-#include <avr/io.h>
-
 #define INSTRUCTION_WREN 0x06
 #define INSTRUCTION_RDSR 0x05
 #define INSTRUCTION_READ 0x03
@@ -29,19 +27,16 @@
 
 #define PAGE_SIZE 32
 
-#define eeprom_select() (VPORTF.OUT &= ~PIN1_bm)
-#define eeprom_deselect() (VPORTF.OUT |= PIN1_bm)
-
 /**
  * Wait until EEPROM status register indicates ready status.
  */
 static void eeprom_wait_ready(void) {
     uint8_t rdsr_cmd[2];
     do {
-        eeprom_select();
+        spi_select_eeprom();
         rdsr_cmd[0] = INSTRUCTION_RDSR;
         spi_transceive(2, rdsr_cmd);
-        eeprom_deselect();
+        spi_deselect_eeprom();
     } while (rdsr_cmd[1] & STATUS_BUSY_MASK);
 }
 
@@ -50,10 +45,10 @@ void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[length]) {
     read_cmd[0] = INSTRUCTION_READ;
     read_cmd[1] = address >> 8;
     read_cmd[2] = address & 0xff;
-    eeprom_select();
+    spi_select_eeprom();
     spi_transmit(3, read_cmd);
     spi_transceive(length, dest);
-    eeprom_deselect();
+    spi_deselect_eeprom();
 }
 
 void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[length]) {
@@ -64,20 +59,20 @@ void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[length]) 
     while (length) {
         eeprom_wait_ready();
 
-        eeprom_select();
+        spi_select_eeprom();
         spi_transmit(1, &wren_cmd);
-        eeprom_deselect();
+        spi_deselect_eeprom();
 
         write_cmd[1] = address >> 8;
         write_cmd[2] = address & 0xff;
-        eeprom_select();
+        spi_select_eeprom();
         spi_transmit(3, write_cmd);
         uint8_t page_length = PAGE_SIZE - address % PAGE_SIZE;
         if (page_length > length) {
             page_length = length;
         }
         spi_transmit(page_length, src);
-        eeprom_deselect();
+        spi_deselect_eeprom();
 
         address += page_length;
         length -= page_length;

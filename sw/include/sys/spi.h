@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef SPI_H
-#define SPI_H
+#ifndef SYS_SPI_H
+#define SYS_SPI_H
 
 #include <stdint.h>
 
@@ -32,4 +32,15 @@ void spi_transceive(uint16_t length, uint8_t data[length]);
  */
 void spi_transmit(uint16_t length, const uint8_t data[length]);
 
-#endif //SPI_H
+// Peripheral selection
+void spi_select_flash(void);
+void spi_select_eeprom(void);
+void spi_select_display(void);
+
+// Peripheral deselection
+void spi_deselect_flash(void);
+void spi_deselect_eeprom(void);
+void spi_deselect_display(void);
+void spi_deselect_all(void);
+
+#endif //SYS_SPI_H

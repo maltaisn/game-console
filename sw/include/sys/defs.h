@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef DEFS_H
-#define DEFS_H
+#ifndef SYS_DEFS_H
+#define SYS_DEFS_H
 
 #ifdef __AVR__
 typedef __uint24 uint24_t;
@@ -32,4 +32,4 @@ typedef __int24 int24_t;
 typedef int32_t int24_t;
 #endif
 
-#endif //DEFS_H
+#endif //SYS_DEFS_H

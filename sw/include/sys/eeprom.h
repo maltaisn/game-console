@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef EEPROM_H
-#define EEPROM_H
+#ifndef SYS_EEPROM_H
+#define SYS_EEPROM_H
 
 #include <stdint.h>
 
@@ -39,4 +39,4 @@ void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[length]);
  */
 void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[length]);
 
-#endif //EEPROM_H
+#endif //SYS_EEPROM_H

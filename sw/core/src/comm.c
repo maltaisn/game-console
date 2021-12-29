@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <sys/comm.h>
+#include <core/comm.h>
 
 #include <sys/uart.h>
 #include <sys/power.h>
@@ -23,8 +23,12 @@
 #include <sys/input.h>
 #include <sys/time.h>
 #include <sys/spi.h>
+#include <sys/reset.h>
 
-#include <avr/io.h>
+#ifdef SIMULATION
+#include <stdio.h>
+#include <memory.h>
+#endif
 
 typedef enum {
     SPI_CS_FLASH = 0b00,
@@ -32,6 +36,8 @@ typedef enum {
     SPI_CS_DISPLAY = 0b10,
 } spi_cs_sel_t;
 
+// TODO eventually, put this in the same data space as display buffer since
+//  both aren't used at the same time, using linker script.
 uint8_t comm_payload_buf[PAYLOAD_MAX_SIZE];
 
 static void handle_packet_version(void) {
@@ -67,13 +73,12 @@ static void handle_packet_spi(uint8_t length) {
     // assert CS line for the selected peripheral
     const uint8_t options = comm_payload_buf[0];
     const uint8_t cs = options & 0x3;
-    // TODO put in spi module
     if (cs == SPI_CS_FLASH) {
-        VPORTF.OUT &= ~PIN0_bm;
+        spi_select_flash();
     } else if (cs == SPI_CS_EEPROM) {
-        VPORTF.OUT &= ~PIN1_bm;
+        spi_select_eeprom();
     } else if (cs == SPI_CS_DISPLAY) {
-        VPORTC.OUT &= ~PIN1_bm;
+        spi_select_display();
     }
 
     // transceive SPI data
@@ -82,8 +87,7 @@ static void handle_packet_spi(uint8_t length) {
 
     // if last transfer, deassert the CS line.
     if (options & 0x80) {
-        VPORTF.OUT |= PIN0_bm | PIN1_bm;
-        VPORTC.OUT |= PIN1_bm;
+        spi_deselect_all();
     }
 }
 
@@ -112,7 +116,7 @@ static void handle_packet_fast_mode(void) {
 }
 
 static void handle_packet_reset(void) {
-    _PROTECTED_WRITE(RSTCTRL.SWRR, RSTCTRL_SWRE_bm);
+    reset_system();
 }
 
 void comm_receive(void) {
@@ -149,6 +153,16 @@ void comm_receive(void) {
 }
 
 void comm_transmit(uint8_t type, uint8_t length) {
+#ifdef SIMULATION
+    if (type == PACKET_DEBUG) {
+        // intercept debug packet in simulation to print them to console.
+        char buf[PAYLOAD_MAX_SIZE + 1];
+        memcpy(buf, comm_payload_buf, length);
+        buf[length] = '\0';
+        fputs(buf, stdout);
+    }
+#endif
+
     uart_write(PACKET_SIGNATURE);
     uart_write(type);
     uart_write(length);

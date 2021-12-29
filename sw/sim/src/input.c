@@ -15,22 +15,14 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <sys/input.h>
+#include <sys/time.h>
 
-#include "defs.h"
-#include <stdint.h>
+uint8_t input_get_state(void) {
+    // TODO check keys
+    return 0;
+}
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
-
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
-
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
-
-#endif //SYS_FLASH_H
+void input_update_state(void) {
+    // no-op
+}

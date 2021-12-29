@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-#ifndef TIME_H
-#define TIME_H
+#ifndef SYS_TIME_H
+#define SYS_TIME_H
 
 #include <stdint.h>
-#include <sys/defs.h>
+#include "defs.h"
 
 #define SYSTICK_FREQUENCY 256
 
@@ -40,4 +40,4 @@ typedef uint24_t systime_t;
  */
 systime_t time_get();
 
-#endif //TIME_H
+#endif //SYS_TIME_H

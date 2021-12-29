@@ -15,24 +15,26 @@
  * limitations under the License.
  */
 
-#include <sys/flash.h>
-#include <sys/spi.h>
+#ifdef SIMULATION
 
-#include <avr/io.h>
+#ifndef SIM_POWER_H
+#define SIM_POWER_H
 
-#define INSTRUCTION_READ 0x03
+#include <stdint.h>
 
-#define flash_select() (VPORTF.OUT &= ~PIN0_bm)
-#define flash_deselect() (VPORTF.OUT |= PIN0_bm)
+#include <sys/power.h>
 
-void flash_read(uint24_t address, uint16_t length, uint8_t dest[length]) {
-    uint8_t header[4];
-    header[0] = INSTRUCTION_READ;
-    header[1] = address >> 16;
-    header[2] = (address >> 8) & 0xff;
-    header[3] = address & 0xff;
-    flash_select();
-    spi_transceive(4, header);
-    spi_transceive(length, dest);
-    flash_deselect();
-}
+/**
+ * Set current battery status.
+ */
+void power_set_battery_status(battery_status_t status);
+
+/**
+ * Set current battery level in percent.
+ * Battery level is set to 100% by default and doesn't change.
+ */
+void power_set_battery_level(uint8_t level);
+
+#endif //SIM_POWER_H
+
+#endif //SIMULATION

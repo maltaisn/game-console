@@ -18,6 +18,7 @@
 #include <sys/power.h>
 #include <sys/uart.h>
 #include <sys/sound.h>
+#include <sys/spi.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -38,8 +39,7 @@ static void init_registers(void) {
     // set buzzer H-bridge inputs low
     VPORTA.OUT = PIN2_bm | PIN3_bm;
     // set all CS lines high
-    VPORTF.OUT = PIN0_bm | PIN1_bm;
-    VPORTC.OUT = PIN1_bm;
+    spi_deselect_all();
 
     // ====== USART ======
     uart_set_normal_mode();

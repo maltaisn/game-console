@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -15,22 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <sys/init.h>
 
-#include "defs.h"
-#include <stdint.h>
+#include <sim/flash.h>
+#include <sim/eeprom.h>
+#include <sim/time.h>
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+void init(void) {
+    // initialize memories as initially empty; they can be loaded from a file later.
+    eeprom_load_erased();
+    flash_load_erased();
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
-
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
-
-#endif //SYS_FLASH_H
+    time_init();
+}

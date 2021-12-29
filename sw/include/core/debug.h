@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -14,9 +15,29 @@
  * limitations under the License.
  */
 
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef CORE_DEBUG_H
+#define CORE_DEBUG_H
 
-int main(void);
+#include <stdint.h>
 
-#endif //MAIN_H
+/**
+ * Print string.
+ */
+void debug_print(const char* str);
+
+/**
+ * Print newline
+ */
+void debug_println(void);
+
+/**
+ * Print hexadecimal number (8-bit).
+ */
+void debug_print_hex8(uint8_t n);
+
+/**
+ * Print hexadecimal number (32-bit).
+ */
+void debug_print_hex32(uint32_t n);
+
+#endif //CORE_DEBUG_H

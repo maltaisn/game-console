@@ -15,22 +15,21 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <sys/flash.h>
+#include <sys/spi.h>
 
-#include "defs.h"
-#include <stdint.h>
+#include <avr/io.h>
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+#define INSTRUCTION_READ 0x03
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
-
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
-
-#endif //SYS_FLASH_H
+void flash_read(flash_t address, uint16_t length, uint8_t dest[length]) {
+    uint8_t header[4];
+    header[0] = INSTRUCTION_READ;
+    header[1] = address >> 16;
+    header[2] = (address >> 8) & 0xff;
+    header[3] = address & 0xff;
+    spi_select_flash();
+    spi_transceive(4, header);
+    spi_transceive(length, dest);
+    spi_deselect_flash();
+}

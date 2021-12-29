@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef INIT_H
-#define INIT_H
+#ifndef SYS_INIT_H
+#define SYS_INIT_H
 
 /**
  * Initialize game console system:
@@ -25,4 +25,4 @@
  */
 void init(void);
 
-#endif //INIT_H
+#endif //SYS_INIT_H

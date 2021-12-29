@@ -15,22 +15,31 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#ifdef SIMULATION
 
-#include "defs.h"
-#include <stdint.h>
+#ifndef SIM_FLASH_H
+#define SIM_FLASH_H
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+#include <sys/flash.h>
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+#include <stdio.h>
 
 /**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
+ * Returns a pointer to flash data at an address.
+ * Note that this isn't 100% equivalent to `flash_read` since it won't wrap around the end.
  */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+const uint8_t* flash_at(flash_t address);
 
-#endif //SYS_FLASH_H
+/**
+ * Load flash content from binary file.
+ */
+void flash_load(FILE* file);
+
+/**
+ * Load flash content as all erased bytes.
+ */
+void flash_load_erased(void);
+
+#endif //SIM_FLASH_H
+
+#endif //SIMULATION

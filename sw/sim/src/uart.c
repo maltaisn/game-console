@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -15,22 +14,35 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <sys/uart.h>
 
-#include "defs.h"
-#include <stdint.h>
+static bool fast_mode;
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+void uart_write(uint8_t c) {
+    // not implemented
+}
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+uint8_t uart_read(void) {
+    // not implemented
+    return 0;
+}
 
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+bool uart_available(void) {
+    return false;
+}
 
-#endif //SYS_FLASH_H
+void uart_flush(void) {
+    // not implemented
+}
+
+void uart_set_fast_mode(void) {
+    fast_mode = true;
+}
+
+void uart_set_normal_mode(void) {
+    fast_mode = false;
+}
+
+bool uart_is_in_fast_mode(void) {
+    return fast_mode;
+}

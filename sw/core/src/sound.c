@@ -17,13 +17,6 @@
 
 #include <sys/sound.h>
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <util/atomic.h>
-#include "sys/led.h"
-
-#define NO_NOTE 0x54
-
 #define TRACK_DATA_END_MASK ((flash_t) 0x800000)
 
 #define IMMEDIATE_PAUSE_OFFSET 0x55
@@ -32,37 +25,12 @@
 
 #define TRACK_END 0xff
 
-// The size of each track buffer, to avoid reading from flash one byte at a time.
-// A buffer size of 16 should give about 1-3 seconds of equivalent playback time.
-#define TRACK_BUFFER_SIZE 16
-
 // Minimum number of bytes left in buffer required to not refresh.
 // This corresponds to the worst case of <note> + <2 bytes duration>.
 #define TRACK_BUFFER_MIN_SIZE 3
 
 // The size in bytes of the track header in sound data.
 #define TRACK_HEADER_SIZE 4
-
-typedef struct {
-    // Current position in note data array, in flash data space.
-    // TRACK_DATA_END if channel isn't used or when all data has been read for track.
-    flash_t data;
-    // Pause duration used after note using immediate pause encoding.
-    uint8_t immediate_pause;
-    // Note being currently played (0-83).
-    uint8_t note;
-    // Time left for note currently being played, in 1/16th of a beat, -1.
-    uint16_t duration_left;
-    // Total duration of note currently being played, in 1/16th of a beat, -1.
-    // The MSB of this field indicates whether the current note is followed by the most common pause.
-    uint16_t duration_total;
-    // Number of times that the current note duration is to be repeated yet.
-    uint8_t duration_repeat;
-    // Buffer used to store upcoming sound data.
-    uint8_t buffer[TRACK_BUFFER_SIZE];
-    // Current position in buffer.
-    uint8_t buffer_pos;
-} track_t;
 
 #define TRACK0_ACTIVE (TRACK0_STARTED | TRACK0_PLAYING)
 #define TRACK1_ACTIVE (TRACK1_STARTED | TRACK1_PLAYING)
@@ -84,48 +52,10 @@ static uint8_t tempo;
 // Delay in system ticks until next 1/16th of a beat is played on all tracks (minus one).
 static uint8_t delay;
 
-#define CHANNEL0_ON (1 << 0)
-#define CHANNEL1_ON (1 << 1)
-#define CHANNEL2_ON (1 << 2)
-#define CHANNELS_ALL_ON (CHANNEL0_ON | CHANNEL1_ON | CHANNEL2_ON)
-
-// As a whole this register indicates an index in the PWM_LEVELS array.
-// - 0:2 indicate the current level of the output for each channel (CHANNELn_ON masks).
-// - 3:4 indicate the current volume level (sound_volume_t enum).
-//   If volume is SOUND_VOLUME_OFF, the PWM_LEVELS array is not accessed.
-// To slightly reduce interrupt latency, a general purpose I/O register is used
-// since it allows single cycle access.
-//
-// Note A: TCB interrupts are triggered frequently enough (500-1000x per second) that
-// zeroing the state of all tracks as an optimization won't make any perceptible difference.
-#define out_level GPIOR0
-
-// Timer counts for TCA PWM timer.
-// The number corresponds to the number of bits set in the 0-7 position,
-// multiplied by an arbitrary constant to account for the volume.
-// Maximum value in array must be SOUND_MAX_PWM.
-static uint8_t PWM_LEVELS[] = {
-        0, 1, 1, 2, 1, 2, 2, 3,     // volume = 0, duty cycle 0 to 12%
-        0, 2, 2, 4, 2, 4, 4, 6,     // volume = 1, duty cycle 0 to 24%
-        0, 4, 4, 8, 4, 8, 8, 12,    // volume = 2, duty cycle 0 to 48%
-        0, 8, 8, 16, 8, 16, 16, 24, // volume = 3, duty cycle 0 to 96%
-};
-
-// Timer counts for TCB channel timers, for each playable note.
-// Counts are calculated using the following formula:
-//   [count] = round([f_cpu] / [prescaler] / [note frequency] / 2) - 1
-// Maximum error is about 0.01 semitone.
-static uint16_t TIMER_NOTES[] = {
-        38222, 36076, 34051, 32140, 30336, 28634, 27026, 25510, 24078, 22726, 21451, 20247,
-        19110, 18038, 17025, 16070, 15168, 14316, 13513, 12754, 12038, 11363, 10725, 10123,
-        9555, 9018, 8512, 8034, 7583, 7158, 6756, 6377, 6019, 5681, 5362, 5061,
-        4777, 4509, 4256, 4017, 3791, 3578, 3377, 3188, 3009, 2840, 2680, 2530,
-        2388, 2254, 2127, 2008, 1895, 1789, 1688, 1593, 1504, 1419, 1340, 1264,
-        1193, 1126, 1063, 1003, 947, 894, 844, 796, 751, 709, 669, 632, 596,
-};
-
+/**
+ * Fill track data buffer starting from a position by reading from flash.
+ */
 static void track_fill_buffer(track_t* track, uint8_t start) {
-    // Fill the rest of the buffer with data from flash.
     const uint8_t read_len = TRACK_BUFFER_SIZE - start;
     flash_read(track->data, read_len, &track->buffer[start]);
     track->data += read_len;
@@ -139,48 +69,27 @@ static void track_fill_buffer(track_t* track, uint8_t start) {
     }
 }
 
-#define TCA_ENABLE() (TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc | TCA_SPLIT_ENABLE_bm)
-#define TCA_DISABLE() (TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc)
-
-#define TCB_ENABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm)
-#define TCB_DISABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc)
-
 /**
  * Enable or disable buzzer output depending on volume level and whether there's any track playing.
  * This allows to save CPU time (no timer interrupts) and reduce current consumption.
  */
-static void update_buzzer_output(void) {
-    // see Note A
-    TCB_DISABLE(TCB0);
-    TCB_DISABLE(TCB1);
-    TCB_DISABLE(TCB2);
-
+static void update_output_state(void) {
     uint8_t tracks_state = tracks_on;
     bool any_tracks_active = (tracks_state & TRACK0_ACTIVE) == TRACK0_ACTIVE ||
                              (tracks_state & TRACK1_ACTIVE) == TRACK1_ACTIVE ||
                              (tracks_state & TRACK2_ACTIVE) == TRACK2_ACTIVE;
-    if (sound_get_volume() != SOUND_VOLUME_OFF && any_tracks_active) {
-        TCA0.SPLIT.CTRLB = TCA_SPLIT_HCMP0EN_bm;
-        PORTA.PIN2CTRL = PORT_INVEN_bm;
-        TCA_ENABLE();
-        led_set();
-    } else {
-        TCA0.SPLIT.CTRLB = 0;
-        PORTA.PIN2CTRL = 0;
-        VPORTA.OUT |= PIN2_bm | PIN3_bm;
-        TCA_DISABLE();
-        led_clear();
-    }
+    sound_set_output_enabled(sound_get_volume() != SOUND_VOLUME_OFF && any_tracks_active);
 }
 
 /**
  * Read the next note in track data and set it as current note with its duration.
  * Preconditions: track->duration_left == 0, track is playing.
+ * This is called within an interrupt in actual implementation.
  */
 static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
     if (track->duration_total & IMMEDIATE_PAUSE_MASK) {
         // note is followed by an immediate pause.
-        track->note = NO_NOTE;
+        track->note = TRACK_NO_NOTE;
         track->duration_left = track->immediate_pause;
         track->duration_total &= ~IMMEDIATE_PAUSE_MASK;
         return;
@@ -190,7 +99,7 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
     if (note == TRACK_END) {
         // no more notes in track, done playing.
         tracks_on &= ~track_playing_mask;
-        update_buzzer_output();
+        update_output_state();
         return;
     }
 
@@ -198,7 +107,7 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
         // single byte encoding for pause, no associated duration.
         // note that this doesn't update duration_total!
         track->duration_left = note - SHORT_PAUSE_OFFSET;
-        track->note = NO_NOTE;
+        track->note = TRACK_NO_NOTE;
         return;
     }
 
@@ -230,23 +139,8 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
 }
 
 /**
- * Play current note of track on sound channel.
- */
-static void play_note(const track_t* track, uint8_t channel) {
-    bool has_note = track->note != NO_NOTE;
-    TCB_t* tcb = &TCB0 + channel;
-    if (has_note) {
-        tcb->CCMP = TIMER_NOTES[track->note];
-        TCB_ENABLE(*tcb);
-    } else {
-        TCB_DISABLE(*tcb);
-        // see Note A
-        out_level &= ~CHANNELS_ALL_ON;
-    }
-}
-
-/**
  * Update the current note for all playing tracks.
+ * This is called within an interrupt in actual implementation.
  */
 static void tracks_seek_note(void) {
     uint8_t track_active_mask = TRACK0_ACTIVE;
@@ -268,7 +162,7 @@ static void tracks_seek_note(void) {
                     track_fill_buffer(track, j);
                 }
                 track_seek_note(track, track_active_mask & TRACKS_PLAYING_ALL);
-                play_note(track, channel);
+                sound_play_note(track, channel);
             } else {
                 --track->duration_left;
             }
@@ -293,24 +187,26 @@ void sound_load(flash_t address) {
             track->duration_repeat = 0;
             track->buffer_pos = 0;
             track_fill_buffer(track, 0);
+            // TODO not atomic
             tracks_on |= track_playing_mask;
             address += (flash_t) track_length;
         }
         track_playing_mask <<= 1;
     }
-    update_buzzer_output();
+    update_output_state();
 }
 
 void sound_start(uint8_t t) {
+    // TODO not atomic
     tracks_on |= t;
-    update_buzzer_output();
+    update_output_state();
 }
 
 void sound_stop(uint8_t t) {
-    ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        tracks_on = (tracks_on & ~TRACKS_STARTED_ALL) | ~t;
-    }
-    update_buzzer_output();
+    // TODO not atomic
+    tracks_on &= ~TRACKS_STARTED_ALL;
+    tracks_on |= ~t;
+    update_output_state();
 }
 
 bool sound_check_tracks(uint8_t t) {
@@ -327,12 +223,12 @@ uint8_t sound_get_tempo(void) {
 
 void sound_set_volume(sound_volume_t volume) {
     // should be in atomic block but won't affect sound noticeably.
-    out_level = (out_level & CHANNELS_ALL_ON) | volume;
-    update_buzzer_output();
+    sound_set_volume_impl(volume);
+    update_output_state();
 }
 
 sound_volume_t sound_get_volume(void) {
-    return out_level & ~CHANNELS_ALL_ON;
+    return sound_get_volume_impl();
 }
 
 void sound_increase_volume(void) {
@@ -356,32 +252,4 @@ void sound_update(void) {
     } else {
         --delay;
     }
-}
-
-// TCB interrupts:
-// - update channel output level bit field
-// - update TCA0 PWM duty cycle
-
-ISR(TCB0_INT_vect) {
-    uint8_t level = out_level;
-    level ^= CHANNEL0_ON;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level - SOUND_VOLUME_INCREMENT];
-    out_level = level;
-    TCB0.INTFLAGS = TCB_CAPT_bm;
-}
-
-ISR(TCB1_INT_vect) {
-    uint8_t level = out_level;
-    level ^= CHANNEL1_ON;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level - SOUND_VOLUME_INCREMENT];
-    out_level = level;
-    TCB1.INTFLAGS = TCB_CAPT_bm;
-}
-
-ISR(TCB2_INT_vect) {
-    uint8_t level = out_level;
-    level ^= CHANNEL2_ON;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level - SOUND_VOLUME_INCREMENT];
-    out_level = level;
-    TCB2.INTFLAGS = TCB_CAPT_bm;
 }

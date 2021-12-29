@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -15,22 +14,26 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <sys/led.h>
+#include <stdbool.h>
 
-#include "defs.h"
-#include <stdint.h>
+static bool led_on;
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+void led_set(void) {
+    led_on = true;
+    // TODO update gui
+}
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+void led_clear(void) {
+    led_on = false;
+    // TODO update gui
+}
 
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+void led_toggle(void) {
+    led_on = !led_on;
+    // TODO update gui
+}
 
-#endif //SYS_FLASH_H
+bool led_get(void) {
+    return led_on;
+}

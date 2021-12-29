@@ -15,22 +15,21 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#ifdef SIMULATION
 
-#include "defs.h"
-#include <stdint.h>
-
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
-
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+#ifndef SIM_TIME_H
+#define SIM_TIME_H
 
 /**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
+ * Initialize time module.
  */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+void time_init(void);
 
-#endif //SYS_FLASH_H
+/**
+ * Do the things normally done in periodic RTC interrupt.
+ */
+void time_update(void);
+
+#endif //SIM_TIME_H
+
+#endif //SIMULATION

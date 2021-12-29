@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2021 Nicolas Maltais
  *
@@ -15,22 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef SYS_FLASH_H
-#define SYS_FLASH_H
+#include <test.h>
 
-#include "defs.h"
-#include <stdint.h>
+#include <sys/main.h>
+#include <sys/time.h>
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+#include <core/comm.h>
+#include "core/debug.h"
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+#ifdef SIMULATION
+#include <stdio.h>
+#include <sim/flash.h>
+#endif
 
-/**
- * Read a number of bytes from flash starting from an address.
- * The bytes are copied to the destination buffer.
- * If reading past the end of flash, the address will be wrapped around.
- */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+void setup(void) {
 
-#endif //SYS_FLASH_H
+}
+
+void loop(void) {
+    comm_receive();
+
+    debug_print("Hello world!\n");
+
+    systime_t start = time_get();
+    while (time_get() - start < millis_to_ticks(1000));
+}
