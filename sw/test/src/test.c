@@ -20,12 +20,11 @@
 #include <sys/time.h>
 
 #include <core/comm.h>
+#include <stdbool.h>
 #include "core/debug.h"
+#include "sys/input.h"
 
-#ifdef SIMULATION
-#include <stdio.h>
-#include <sim/flash.h>
-#endif
+static uint8_t last_state;
 
 void setup(void) {
 
@@ -34,8 +33,21 @@ void setup(void) {
 void loop(void) {
     comm_receive();
 
-    debug_print("Hello world!\n");
-
-    systime_t start = time_get();
-    while (time_get() - start < millis_to_ticks(1000));
+    uint8_t state = input_get_state();
+    uint8_t mask = BUTTON0;
+    for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
+        bool curr = state & mask;
+        bool last = last_state & mask;
+        if (curr && !last) {
+            debug_print("Button ");
+            debug_print_hex8(i);
+            debug_print(" pressed\n");
+        } else if (!curr && last) {
+            debug_print("Button ");
+            debug_print_hex8(i);
+            debug_print(" released\n");
+        }
+        mask <<= 1;
+    }
+    last_state = state;
 }

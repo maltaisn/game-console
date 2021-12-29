@@ -1,27 +1,20 @@
-
 ifndef TARGET
-  TARGET := test
+  $(error No target set. Set target to compile with TARGET=...)
 endif
 
-.PHONY: clean all sim disasm
+# When changing between simulation and game console compilation, write the value to a file.
+# This file is a prerequisite on object files that will force recompilation.
+ifeq ($(wildcard .sim),)
+  $(shell touch .sim)
+endif
+ifneq ($(SIM),$(shell cat .sim 2>/dev/null))
+  $(shell echo -n $(SIM) > .sim)
+endif
 
-all:
-	$(MAKE) -C sys all
-	$(MAKE) -C core all
-	$(MAKE) -C $(TARGET) all
+ifdef SIM
+  include sim.mk
+else
+  include gc.mk
+endif
 
-clean:
-	$(MAKE) -C sys clean
-	$(MAKE) -C sim clean
-	$(MAKE) -C core clean
-	$(MAKE) -C core clean SIM=1
-	$(MAKE) -C $(TARGET) clean
-	$(MAKE) -C $(TARGET) clean SIM=1
-
-sim:
-	$(MAKE) -C sim all
-	$(MAKE) -C core all SIM=1
-	$(MAKE) -C $(TARGET) all SIM=1
-
-disasm: all
-	$(MAKE) -C $(TARGET) disasm
+include $(TARGET)/target.mk
