@@ -17,8 +17,6 @@
 #ifndef SYS_MAIN_H
 #define SYS_MAIN_H
 
-int main(void);
-
 /**
  * Called after core is initialized to setup program.
  */

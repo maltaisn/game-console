@@ -19,6 +19,7 @@
 #include "sys/uart.h"
 #include "sys/sound.h"
 #include "sys/spi.h"
+#include "sys/display.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -113,4 +114,9 @@ void init(void) {
     power_wait_for_sample();
     sleep_if_low_battery();
     init_battery_monitor();
+
+    // initialize display
+    display_init();
+    power_set_15v_reg_enabled(true);
+    display_set_enabled(true);
 }

@@ -17,6 +17,7 @@
 
 #include <sim/power.h>
 #include <sys/power.h>
+#include "sys/display.h"
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -25,6 +26,7 @@
 
 static battery_status_t battery_status;
 static uint8_t battery_percent = 100;
+static bool reg_15v_enabled;
 
 void power_take_sample(void) {
     // no-op
@@ -61,4 +63,13 @@ void power_set_battery_status(battery_status_t status) {
 
 void power_set_battery_level(uint8_t level) {
     battery_percent = level;
+}
+
+bool power_is_15v_reg_enabled(void) {
+    return reg_15v_enabled;
+}
+
+void power_set_15v_reg_enabled(bool enabled) {
+    display_set_gpio(enabled ? DISPLAY_GPIO_OUTPUT_HI : DISPLAY_GPIO_OUTPUT_LO);
+    reg_15v_enabled = enabled;
 }

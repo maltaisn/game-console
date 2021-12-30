@@ -17,48 +17,70 @@
 
 #include "sim/glut.h"
 
+#include "sys/time.h"
+
 #include <GL/glut.h>
 #include "sim/time.h"
 #include "sim/input.h"
+#include "sim/display.h"
 
 static void window_draw(void) {
-    // TODO
+    glEnable (GL_BLEND);
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glPushMatrix();
+    glScalef((float) WINDOW_WIDTH / DISPLAY_WIDTH, (float) WINDOW_HEIGHT / DISPLAY_HEIGHT, 1);
+    display_draw();
+    glPopMatrix();
 }
 
 static void callback_display(void) {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 10);
+    glOrtho(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0, 0, 10);  // invert Y coordinate
+
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
+
     glLoadIdentity();
     window_draw();
     glPopMatrix();
+
     glutSwapBuffers();
 }
 
-static void time_update_wrapper(int arg) {
+static void callback_reshape(int width, int height) {
+    glutReshapeWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
+}
+
+static void callback_time_timer(int arg) {
+    glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
     time_update();
-    glutTimerFunc(4, time_update_wrapper, 0);
+}
+
+static void callback_redisplay_timer(int arg) {
+    glutTimerFunc((unsigned int) (1000.0 / DISPLAY_FPS + 0.5), callback_redisplay_timer, 0);
+    glutPostRedisplay();
 }
 
 void glut_init(void) {
-    char* argv[1];
-    int argc = 1;
-    argv[0] = 0;
-    glutInit(&argc, argv);
+    // double buffered, RGB display.
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-    glutInitWindowSize(512, 512);
+    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     glutCreateWindow("Game console simulator");
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     glutDisplayFunc(callback_display);
-
-    glutTimerFunc(4, time_update_wrapper, 0);
+    glutReshapeFunc(callback_reshape);
 
     glutKeyboardFunc(input_on_key_down);
     glutKeyboardUpFunc(input_on_key_up);
     glutSpecialFunc(input_on_key_down_special);
     glutSpecialUpFunc(input_on_key_up_special);
     glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
+
+    glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
+    glutTimerFunc((unsigned int) (1000.0 / DISPLAY_FPS + 0.5), callback_redisplay_timer, 0);
 }

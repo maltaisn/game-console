@@ -28,6 +28,10 @@ void spi_transmit(uint16_t length, const uint8_t data[length]) {
     // not implemented.
 }
 
+void spi_transmit_single(uint8_t byte) {
+    // not implemented.
+}
+
 void spi_select_flash(void) {
     // no-op
 }

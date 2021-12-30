@@ -15,7 +15,8 @@
  */
 
 #include "sys/main.h"
-#include "sys/init.h"
+#include "sys/power.h"
+#include "sys/display.h"
 
 #include "sim/time.h"
 #include "sim/glut.h"
@@ -34,17 +35,30 @@ static void* loop_thread(void* arg) {
     return 0;
 }
 
-int main(void) {
+int main(int argc, char** argv) {
+    // == hardware initialization (similar to sys/init.c)
+    // check battery level on startup
+    power_take_sample();
+    power_wait_for_sample();
+    sleep_if_low_battery();
+
+    // initialize display
+    display_init();
+    power_set_15v_reg_enabled(true);
+    display_set_enabled(true);
+
+    // == simulator initialization
     // initialize memories as initially empty; they can be loaded from a file later.
     eeprom_load_erased();
     flash_load_erased();
-
     time_init();
 
+    glutInit(&argc, argv);
     glut_init();
 
     pthread_t thread;
     pthread_create(&thread, NULL, loop_thread, NULL);
 
     glutMainLoop();
+    return 0;
 }

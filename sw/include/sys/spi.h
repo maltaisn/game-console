@@ -32,6 +32,12 @@ void spi_transceive(uint16_t length, uint8_t data[length]);
  */
 void spi_transmit(uint16_t length, const uint8_t data[length]);
 
+/**
+ * Transmit a single byte on the SPI bus.
+ * The CS line for the selected peripheral should be driven low before and after.
+ */
+void spi_transmit_single(uint8_t byte);
+
 // Peripheral selection
 void spi_select_flash(void);
 void spi_select_eeprom(void);

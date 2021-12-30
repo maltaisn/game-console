@@ -17,14 +17,21 @@
 #include <test.h>
 
 #include <sys/main.h>
-#include <sys/time.h>
 
-#include <core/comm.h>
-#include <stdbool.h>
-#include "core/debug.h"
 #include "sys/input.h"
+#include "sys/display.h"
+#include "sys/time.h"
 
-static uint8_t last_state;
+#include "core/graphics.h"
+#include "core/comm.h"
+
+#define WIDTH 24
+#define HEIGHT 32
+
+static disp_x_t x = (DISPLAY_WIDTH - WIDTH) / 2;
+static disp_y_t y = (DISPLAY_HEIGHT - HEIGHT) / 2;
+static disp_color_t color = DISPLAY_COLOR_WHITE;
+static systime_t last_move;
 
 void setup(void) {
 
@@ -33,21 +40,41 @@ void setup(void) {
 void loop(void) {
     comm_receive();
 
-    uint8_t state = input_get_state();
-    uint8_t mask = BUTTON0;
-    for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
-        bool curr = state & mask;
-        bool last = last_state & mask;
-        if (curr && !last) {
-            debug_print("Button ");
-            debug_print_hex8(i);
-            debug_print(" pressed\n");
-        } else if (!curr && last) {
-            debug_print("Button ");
-            debug_print_hex8(i);
-            debug_print(" released\n");
+    static uint8_t last_state;
+    uint8_t curr_state = input_get_state();
+
+    systime_t time = time_get();
+    if (last_move - time > millis_to_ticks(100)) {
+        last_move = time;
+
+        if (!(last_state & BUTTON0) && (curr_state & BUTTON0)) {
+            // change the color
+            --color;
+            if (color == 0xff) {
+                color = DISPLAY_COLOR_WHITE;
+            }
         }
-        mask <<= 1;
+        if (curr_state & BUTTON1) {
+            if (x > 0) --x;
+        }
+        if (curr_state & BUTTON2) {
+            if (y > 0) --y;
+        }
+        if (curr_state & BUTTON3) {
+            if (y < DISPLAY_HEIGHT - HEIGHT) ++y;
+        }
+        if (curr_state & BUTTON5) {
+            if (x < DISPLAY_WIDTH - WIDTH) ++x;
+        }
+
+        last_state = curr_state;
+
+        display_first_page();
+        do {
+            graphics_clear(DISPLAY_COLOR_BLACK);
+            graphics_set_color(color);
+            graphics_fill_rect(x, y, WIDTH, HEIGHT);
+        } while (display_next_page());
+        last_state = curr_state;
     }
-    last_state = state;
 }

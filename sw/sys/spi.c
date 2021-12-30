@@ -52,6 +52,12 @@ void spi_transmit(uint16_t length, const uint8_t data[length]) {
     SPI0.DATA;
 }
 
+void spi_transmit_single(uint8_t byte) {
+    SPI0.DATA = byte;
+    while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
+    SPI0.DATA;
+}
+
 void spi_select_flash(void) {
     VPORTF.OUT &= ~PIN0_bm;
 }

@@ -15,14 +15,26 @@
  * limitations under the License.
  */
 
-#ifndef SIM_GLUT_H
-#define SIM_GLUT_H
+#ifndef SIM_DISPLAY_H
+#define SIM_DISPLAY_H
 
-#define DISPLAY_FPS 24
+#include <sys/display.h>
 
-#define WINDOW_WIDTH 640
-#define WINDOW_HEIGHT 640
+#include <stdint.h>
+#include <stdbool.h>
 
-void glut_init(void);
+#define DISPLAY_COLOR_R 1.0f
+#define DISPLAY_COLOR_G 1.0f
+#define DISPLAY_COLOR_B 1.0f
 
-#endif //SIM_GLUT_H
+// maximum contrast after which there's no difference
+#define DISPLAY_MAX_CONTRAST 0x7f
+// gap in percent between pixels
+#define DISPLAY_PIXEL_GAP 0.2f
+
+/**
+ * Draw the display on a frame where each pixel is 1x1.
+ */
+void display_draw(void);
+
+#endif //SIM_DISPLAY_H

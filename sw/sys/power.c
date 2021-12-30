@@ -18,6 +18,7 @@
 #include "sys/power.h"
 
 #include "sys/defs.h"
+#include "sys/display.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -56,7 +57,8 @@ static const uint16_t BATTERY_LEVEL_POINTS[] = {
         47579, 49598, 50895, 52481, 53683, 54259, 54788, 55509, 56278, 56999, 58393,
 };
 
-#define STATE_BATTERY_PERCENT_CACHED 1
+#define STATE_BATTERY_PERCENT_CACHED (1 << 0)
+#define STATE_15V_ENABLED (1 << 1)
 
 static volatile uint8_t power_state;
 static volatile sampler_state_t sampler_state;
@@ -182,10 +184,22 @@ void sleep_if_low_battery(void) {
     if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
         // battery is too low, put CPU to sleep
         // interrupts are disabled, only reset will wake up.
+        power_set_15v_reg_enabled(false);
         cli();
         sleep_enable();
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_cpu();
     }
 #endif
+}
+
+bool power_is_15v_reg_enabled(void) {
+    return (power_state & STATE_15V_ENABLED) != 0;
+}
+
+void power_set_15v_reg_enabled(bool enabled) {
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        power_state |= STATE_15V_ENABLED;
+    }
+    display_set_gpio(enabled ? DISPLAY_GPIO_OUTPUT_HI : DISPLAY_GPIO_OUTPUT_LO);
 }

@@ -19,6 +19,7 @@
 #define SYS_POWER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum battery_status {
     /** Battery status is unknown (not yet sampled or outside known values). */
@@ -66,6 +67,16 @@ uint8_t power_get_battery_percent(void);
  * Must not be called within interrupt.
  */
 uint16_t power_get_battery_voltage(void);
+
+/**
+ * Returns true if the +15V regulator is currently enabled.
+ */
+bool power_is_15v_reg_enabled(void);
+
+/**
+ * Enable or disable the +15V regulator for the display.
+ */
+void power_set_15v_reg_enabled(bool enabled);
 
 /**
  * Enable sleep if battery percentage is 0%.

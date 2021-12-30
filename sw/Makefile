@@ -11,7 +11,7 @@ ifneq ($(SIM),$(shell cat .sim 2>/dev/null))
   $(shell echo -n $(SIM) > .sim)
 endif
 
-ifdef SIM
+ifeq ($(SIM),1)
   include sim.mk
 else
   include gc.mk

@@ -1,19 +1,6 @@
 .DEFAULT_GOAL := all
 
-# define values present in the code:
-# VERSION_MAJOR=<version>: major version
-# VERSION_MINOR=<version>: minor version
-# UART_BAUD=<baud>: baud rate for normal UART communication
-# UART_BAUD_FAST=<baud>: baud rate for fast UART communication
-# DISABLE_BAT_PROT: disables auto shutdown for battery overdischarge protection.
-
-# core firmware version
-DEFINES += VERSION_MAJOR=0 VERSION_MINOR=2
-
-# baud rates used for uart link in debug port.
-# by default the baud rate is slower, but a faster baud rate
-# can be enabled with the "fast mode" packet.
-DEFINES += UART_BAUD=19200 UART_BAUD_FAST=1000000
+include defs.mk
 
 BUILD_DIR := build
 SRC_DIRS += $(TARGET)/src core
@@ -49,14 +36,9 @@ endif
 $(BUILD_DIR)/%.o: %.c .sim
 	@mkdir -p $(@D)
 ifneq ($(E),)
-	@echo CC $<
+	@echo $(CC) $<
 endif
 	$(E)$(CC) -c -o $@ $< $(CFLAGS) $(DEPFLAGS)
 
 clean:
 	rm -rf $(BUILD_DIR)
-
-.PHONY: debug
-
-debug:
-	@echo $(OBJECTS)
