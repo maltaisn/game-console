@@ -28,10 +28,7 @@
 #define WIDTH 24
 #define HEIGHT 32
 
-static disp_x_t x = (DISPLAY_WIDTH - WIDTH) / 2;
-static disp_y_t y = (DISPLAY_HEIGHT - HEIGHT) / 2;
-static disp_color_t color = DISPLAY_COLOR_WHITE;
-static systime_t last_move;
+static bool reversed = false;
 
 void setup(void) {
 
@@ -40,41 +37,31 @@ void setup(void) {
 void loop(void) {
     comm_receive();
 
-    static uint8_t last_state;
-    uint8_t curr_state = input_get_state();
-
-    systime_t time = time_get();
-    if (last_move - time > millis_to_ticks(100)) {
-        last_move = time;
-
-        if (!(last_state & BUTTON0) && (curr_state & BUTTON0)) {
-            // change the color
-            --color;
-            if (color == 0xff) {
-                color = DISPLAY_COLOR_WHITE;
+    display_first_page();
+    static disp_y_t i = 0;
+    do {
+        graphics_clear(DISPLAY_COLOR_BLACK);
+        graphics_set_color(DISPLAY_COLOR_WHITE);
+        if (reversed) {
+            if (i >= DISPLAY_WIDTH) {
+                graphics_line(0, DISPLAY_WIDTH - (i - DISPLAY_WIDTH) - 1, DISPLAY_WIDTH - 1, i - DISPLAY_WIDTH);
+            } else {
+                graphics_line(i, 0, DISPLAY_WIDTH - i - 1, DISPLAY_HEIGHT - 1);
+            }
+        } else {
+            if (i >= DISPLAY_WIDTH) {
+                graphics_line(DISPLAY_WIDTH - 1, i - DISPLAY_WIDTH, 0, DISPLAY_WIDTH - (i - DISPLAY_WIDTH) - 1);
+            } else {
+                graphics_line(DISPLAY_WIDTH - i - 1, DISPLAY_HEIGHT - 1, i, 0);
             }
         }
-        if (curr_state & BUTTON1) {
-            if (x > 0) --x;
-        }
-        if (curr_state & BUTTON2) {
-            if (y > 0) --y;
-        }
-        if (curr_state & BUTTON3) {
-            if (y < DISPLAY_HEIGHT - HEIGHT) ++y;
-        }
-        if (curr_state & BUTTON5) {
-            if (x < DISPLAY_WIDTH - WIDTH) ++x;
-        }
+    } while (display_next_page());
 
-        last_state = curr_state;
+    systime_t start = time_get();
+    while (time_get() - start < millis_to_ticks(10));
 
-        display_first_page();
-        do {
-            graphics_clear(DISPLAY_COLOR_BLACK);
-            graphics_set_color(color);
-            graphics_fill_rect(x, y, WIDTH, HEIGHT);
-        } while (display_next_page());
-        last_state = curr_state;
+    ++i;
+    if (i == 0) {
+        reversed = !reversed;
     }
 }
