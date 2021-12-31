@@ -25,6 +25,8 @@ uint8_t display_buffer[DISPLAY_BUFFER_SIZE];
 disp_y_t display_page_ystart;
 disp_y_t display_page_yend;
 
+pthread_mutex_t display_mutex;
+
 static uint8_t disp_data[DISPLAY_SIZE];
 static uint8_t* disp_data_ptr;
 static bool disp_enabled;
@@ -41,6 +43,8 @@ void display_init(void) {
     display_clear(DISPLAY_COLOR_BLACK);
 
     disp_data_ptr = 0;
+
+    pthread_mutex_init(&display_mutex, 0);
 }
 
 void display_clear(disp_color_t color) {
@@ -67,6 +71,7 @@ void display_first_page(void) {
     display_page_ystart = 0;
     display_page_yend = PAGE_HEIGHT;
     disp_data_ptr = disp_data;
+    pthread_mutex_lock(&display_mutex);
 }
 
 bool display_next_page(void) {
@@ -82,6 +87,7 @@ bool display_next_page(void) {
     bool has_next_page = display_page_ystart < DISPLAY_HEIGHT;
     if (!has_next_page) {
         disp_data_ptr = 0;
+        pthread_mutex_unlock(&display_mutex);
     }
     return has_next_page;
 }
@@ -102,15 +108,12 @@ void display_draw(void) {
         return;
     }
 
-    // copy display data to limit artifacts due to updating it while rendering.
-    uint8_t data[DISPLAY_SIZE];
-    memcpy(data, disp_data, DISPLAY_SIZE);
-
     const float pixel_size = 1 - DISPLAY_PIXEL_GAP;
 
     glPushMatrix();
     glTranslatef(DISPLAY_PIXEL_GAP / 2, DISPLAY_PIXEL_GAP / 2, 0);
-    const uint8_t* data_ptr = data;
+    pthread_mutex_lock(&display_mutex);
+    const uint8_t* data_ptr = disp_data;
     for (disp_y_t row = 0 ; row < DISPLAY_NUM_ROWS ; ++row) {
         glBegin(GL_QUADS);
         disp_x_t x = 0;
@@ -132,5 +135,6 @@ void display_draw(void) {
         glEnd();
         glTranslatef(0, 1, 0);
     }
+    pthread_mutex_unlock(&display_mutex);
     glPopMatrix();
 }

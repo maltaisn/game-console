@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <pthread.h>
+
 #define DISPLAY_COLOR_R 1.0f
 #define DISPLAY_COLOR_G 1.0f
 #define DISPLAY_COLOR_B 1.0f
@@ -33,6 +35,11 @@
 #define DISPLAY_MAX_CONTRAST 0x7f
 // gap in percent between pixels
 #define DISPLAY_PIXEL_GAP 0.2f
+
+// mutex used to synchronize access to display data buffer (for full display).
+// display data is updated from a different thread than the one that draws the display,
+// synchronization is required to avoid rendering artifacts.
+extern pthread_mutex_t display_mutex;
 
 /**
  * Draw the display on a frame where each pixel is 1x1.
