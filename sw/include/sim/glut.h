@@ -15,14 +15,21 @@
  * limitations under the License.
  */
 
+#ifdef SIMULATION
+
 #ifndef SIM_GLUT_H
 #define SIM_GLUT_H
 
+#include <sys/display.h>
+
 #define DISPLAY_FPS 24
 
-#define WINDOW_WIDTH 640
-#define WINDOW_HEIGHT 640
+#define DISPLAY_PIXEL_SIZE 5
+#define WINDOW_WIDTH 710
+#define WINDOW_HEIGHT 680
 
 void glut_init(void);
 
 #endif //SIM_GLUT_H
+
+#endif //SIMULATION

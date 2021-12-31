@@ -56,6 +56,8 @@ int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glut_init();
 
+    setup();
+
     pthread_t thread;
     pthread_create(&thread, NULL, loop_thread, NULL);
 

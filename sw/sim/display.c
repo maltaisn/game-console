@@ -86,16 +86,6 @@ bool display_next_page(void) {
     return has_next_page;
 }
 
-static void draw_background(void) {
-    glColor3f(0, 0, 0);
-    glBegin(GL_QUADS);
-    glVertex2f(0, 0);
-    glVertex2f(0, DISPLAY_HEIGHT);
-    glVertex2f(DISPLAY_WIDTH, DISPLAY_HEIGHT);
-    glVertex2f(DISPLAY_WIDTH, 0);
-    glEnd();
-}
-
 static float get_pixel_opacity(disp_color_t color) {
     if (disp_inverted) {
         color = DISPLAY_COLOR_WHITE - color;
@@ -106,7 +96,7 @@ static float get_pixel_opacity(disp_color_t color) {
     return color_factor * contrast_factor;
 }
 
-static void draw_pixels(void) {
+void display_draw(void) {
     if (!disp_enabled || disp_gpio_mode != DISPLAY_GPIO_OUTPUT_HI) {
         // display OFF or 15V regulator is disabled, nothing shown.
         return;
@@ -143,9 +133,4 @@ static void draw_pixels(void) {
         glTranslatef(0, 1, 0);
     }
     glPopMatrix();
-}
-
-void display_draw(void) {
-    draw_background();
-    draw_pixels();
 }

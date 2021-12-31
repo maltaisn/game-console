@@ -24,6 +24,9 @@
 
 #include "core/graphics.h"
 #include "core/comm.h"
+#include "sys/led.h"
+
+#include <sim/power.h>
 
 #define WIDTH 24
 #define HEIGHT 32
@@ -31,7 +34,9 @@
 static bool reversed = false;
 
 void setup(void) {
-
+#ifdef SIMULATION
+    power_set_battery_status(BATTERY_CHARGED);
+#endif
 }
 
 void loop(void) {
@@ -59,6 +64,10 @@ void loop(void) {
 
     systime_t start = time_get();
     while (time_get() - start < millis_to_ticks(10));
+
+    if (!(i & 0xf)) {
+        led_toggle();
+    }
 
     ++i;
     if (i == 0) {

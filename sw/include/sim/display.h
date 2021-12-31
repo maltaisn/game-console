@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#ifdef SIMULATION
+
 #ifndef SIM_DISPLAY_H
 #define SIM_DISPLAY_H
 
@@ -38,3 +40,5 @@
 void display_draw(void);
 
 #endif //SIM_DISPLAY_H
+
+#endif //SIMULATION

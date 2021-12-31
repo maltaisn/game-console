@@ -5,7 +5,7 @@ include common.mk
 
 CC := gcc
 
-LIBS += glut pthread
+LIBS += glut pthread m
 
 DEFINES += SIMULATION
 

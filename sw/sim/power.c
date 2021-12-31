@@ -24,7 +24,7 @@
 
 #define BATTERY_PERCENT_UNKNOWN 0xff
 
-static battery_status_t battery_status;
+static battery_status_t battery_status = BATTERY_DISCHARGING;
 static uint8_t battery_percent = 100;
 static bool reg_15v_enabled;
 

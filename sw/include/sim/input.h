@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#ifdef SIMULATION
+
 #ifndef SIM_INPUT_H
 #define SIM_INPUT_H
 
@@ -27,3 +29,5 @@ void input_on_key_down_special(int key, int x, int y);
 void input_on_key_up_special(int key, int x, int y);
 
 #endif //SIM_INPUT_H
+
+#endif //SIMULATION
