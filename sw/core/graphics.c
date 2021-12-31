@@ -74,6 +74,12 @@ void graphics_clear(disp_color_t c) {
 }
 
 static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
+#ifdef GRAPHICS_CHECKS
+    if (x >= DISPLAY_WIDTH || y < display_page_ystart || y >= display_page_yend) {
+        check_message("graphics_pixel_fast: drawing outside bounds");
+        return;
+    }
+#endif
     const uint8_t y0 = y - display_page_ystart;
     uint8_t* buffer = &display_buffer[y0 * DISPLAY_NUM_COLS + x / 2];
     if (x & 1) {
@@ -90,13 +96,19 @@ void graphics_pixel(const disp_x_t x, const disp_y_t y) {
         return;
     }
 #endif
-    if (y >= display_page_ystart && y <= display_page_yend) {
+    if (y >= display_page_ystart && y < display_page_yend) {
         graphics_pixel_fast(x, y);
     }
 }
 
 static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y) {
     // preconditions: y must be in current page, 0 <= y < PAGE_HEIGHT.
+#ifdef GRAPHICS_CHECKS
+    if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
+        check_message("graphics_hline_fast: outside of bounds");
+        return;
+    }
+#endif
     uint8_t* buffer = &display_buffer[y * DISPLAY_NUM_COLS + x0 / 2];
     if (x0 & 1) {
         // handle half block at the start
@@ -161,7 +173,7 @@ void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
     }
 }
 
-void graphics_line(disp_x_t x0, disp_y_t y0, const disp_x_t x1, const disp_y_t y1) {
+void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
 #ifdef GRAPHICS_CHECKS
     if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH ||
         y0 >= DISPLAY_HEIGHT || y1 >= DISPLAY_HEIGHT) {
@@ -175,39 +187,68 @@ void graphics_line(disp_x_t x0, disp_y_t y0, const disp_x_t x1, const disp_y_t y
         graphics_hline(x0, x1, y0);
     } else {
         // https://en.wikipedia.org/wiki/Bresenham's_line_algorithm#All_cases
-        // FIXME Does not handle quick exit when out of page and int16_t might be replaced by int8_t?
-        int8_t dx;
-        int8_t sx;
-        if (x0 < x1) {
-            dx = (int8_t) (x1 - x0);
-            sx = 1;
-        } else {
-            dx = (int8_t) (x0 - x1);
-            sx = -1;
+        // taken from: https://github.com/olikraus/u8g2/blob/7d1108521680fbb14147a867e0ea15769119b78b/csrc/u8g2_line.c
+        // adapted to include out of page fast path.
+        int8_t dx = (int8_t) ((int8_t) x0 - x1);
+        int8_t dy = (int8_t) ((int8_t) y0 - y1);
+        if (dx < 0) dx = (int8_t) -dx;
+        if (dy < 0) dy = (int8_t) -dy;
+        bool swapxy = false;
+        if (dy > dx) {
+            swapxy = true;
+            swap(uint8_t, dx, dy);
+            swap(uint8_t, x0, y0);
+            swap(uint8_t, x1, y1);
         }
-        int8_t dy;
-        int8_t sy;
-        if (y0 < y1) {
-            dy = (int8_t) (y0 - y1);
-            sy = 1;
-        } else {
-            dy = (int8_t) (y1 - y0);
-            sy = -1;
+        if (x0 > x1) {
+            swap(uint8_t, x0, x1);
+            swap(uint8_t, y0, y1);
         }
-        int16_t err = (int16_t) (dx + dy);
-        while (true) {
-            graphics_pixel(x0, y0);
-            if (x0 == x1 && y0 == y1) {
-                break;
+        int8_t err = (int8_t) (dx >> 1);
+        if (swapxy) {
+            // octants 2, 3, 6, 7
+            const int8_t ystep = y1 > y0 ? 1 : -1;
+            for (; x0 <= x1 && x0 < display_page_yend; ++x0) {
+                if (x0 >= display_page_ystart) {
+                    graphics_pixel_fast(y0, x0);
+                }
+                err = (int8_t) (err - dy);
+                if (err < 0) {
+                    y0 += ystep;
+                    err = (int8_t) (err + dx);
+                }
             }
-            const int16_t e2 = (int16_t) (err * 2);
-            if (e2 >= dy) {
-                err = (int16_t) (err + dy);
-                x0 += sx;
+        } else if (y1 > y0) {
+            // octants 1, 4
+            if (y0 < display_page_yend) {
+                for (; x0 <= x1; ++x0) {
+                    if (y0 >= display_page_ystart) {
+                        graphics_pixel_fast(x0, y0);
+                    }
+                    err = (int8_t) (err - dy);
+                    if (err < 0) {
+                        ++y0;
+                        if (y0 >= display_page_yend) {
+                            break; // out of page
+                        }
+                        err = (int8_t) (err + dx);
+                    }
+                }
             }
-            if (e2 <= dx) {
-                err = (int16_t) (err + dx);
-                y0 += sy;
+        } else if (y0 >= display_page_ystart) {
+            // octants 5, 8
+            for (; x0 <= x1; ++x0) {
+                if (y0 < display_page_yend) {
+                    graphics_pixel_fast(x0, y0);
+                }
+                err = (int8_t) (err - dy);
+                if (err < 0) {
+                    --y0;
+                    if (y0 < display_page_ystart) {
+                        break; // out of page
+                    }
+                    err = (int8_t) (err + dx);
+                }
             }
         }
     }
@@ -223,8 +264,8 @@ void graphics_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const ui
 #endif
     const uint8_t right = x + w - 1;
     const uint8_t bottom = y + h - 1;
-    graphics_hline(x, right, y);
-    graphics_hline(x, right, bottom);
+    graphics_hline(x + 1, right - 1, y);
+    graphics_hline(x + 1, right - 1, bottom);
     graphics_vline(y, bottom, x);
     graphics_vline(y, bottom, right);
 }

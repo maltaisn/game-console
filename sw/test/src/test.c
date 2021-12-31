@@ -28,9 +28,6 @@
 
 #include <sim/power.h>
 
-#define WIDTH 24
-#define HEIGHT 32
-
 static bool reversed = false;
 
 void setup(void) {
