@@ -91,7 +91,6 @@ static void window_draw(void) {
     draw_led(22.5f, 90, 0.95f, 0.95f, 0.95f, led_get());
 
     draw_display();
-
 }
 
 static void callback_display(void) {

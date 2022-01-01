@@ -142,7 +142,11 @@ void display_set_inverted(bool inverted) {
 }
 
 void display_set_contrast(uint8_t contrast) {
-    write_command1(DISPLAY_MODE_NORMAL);
+    uint8_t command[2];
+    command[0] = DISPLAY_SET_CONTRAST;
+    command[1] = contrast;
+    set_command_mode();
+    write_data(sizeof command, command);
 }
 
 void display_set_gpio(display_gpio_t mode) {
@@ -150,7 +154,7 @@ void display_set_gpio(display_gpio_t mode) {
     command[0] = DISPLAY_SET_GPIO;
     command[1] = mode;
     set_command_mode();
-    write_data(2, command);
+    write_data(sizeof command, command);
 }
 
 void display_first_page(void) {

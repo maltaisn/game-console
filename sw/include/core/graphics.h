@@ -41,14 +41,45 @@
 #ifdef SIMULATION
 /**
  * If any drawing functions is used in such a way that drawing would happen
- * outside of the display area, corruption will happen when checks are disabled.
+ * outside of the display area, RAM corruption will happen when checks are disabled.
  * There are no protections against invalid draw calls when targeting the game console,
  * only in the simulator, or if GRAPHICS_CHECKS is explicitly defined.
+ * This is enables various runtime checks for other functions.
  */
 #define GRAPHICS_CHECKS
 #endif
 
-/** A font is just an address to the font data in flash data space. */
+/**
+ * A font is just an address to the font data in the unified data space.
+ *
+ * The font format is a 5-byte header followed by glyph data (by bit position):
+ * [0]: glyph count
+ * [8]: bytes per char (1-33)
+ * [16]: glyph width, minus one (0-15)
+ * [20]: glyph height, minus one (0-15)
+ * [24]: bits of Y offset per glyph (0-4)
+ * [28]: max Y offset (0-15)
+ * [32]: line spacing (0-32)
+ * [40+]: glyph data
+ *
+ * Remarks:
+ * - Each glyph data is byte aligned and takes a number of bytes. From most significant bit to
+ *     least significant bit and from most significant byte to least significant byte, glyph data
+ *     first encodes the bits for Y offset, then 0 or 1 for set pixels, from left to right, and
+ *     from top to bottom. Glyph data bytes are in little endian order.
+ * - The glyph offset bits are not reversed. For example if using 3 bits of Y offset and
+ *     the first byte of a glyph is 0b00100000, then the offset is 1, not 4.
+ * - Glyphs are placed in order, within two ranges: 0x21-0x7f and 0xa0-0xff.
+ *     Chars outside these ranges cannot be encoded.
+ *     If glyph count is less or equal to 95 (0x5f), only the 0x21-0x7f range is present.
+ *     Maximum glyph count is 191 (0xc0)
+ * - Maximum glyph size is 16x16, using size byte 0xff.
+ * - A glyph can have at most 33 bytes per char, in other words a 16x16 glyph with 7 bit Y offset.
+ * - 1 pixel is always left between glyphs when drawing a string, this space is not encoded.
+ * - Y offset can only be positive (Y positive goes down).
+ * - Glyphs are drawn from their top left corner.
+ * - Characters that are not encoded in font will appear blank (a notable example is the space).
+ */
 typedef data_ptr_t graphics_font_t;
 
 /**
@@ -143,13 +174,34 @@ void graphics_image(data_ptr_t data, uint8_t w, uint8_t h);
 void graphics_image_part(data_ptr_t data, uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 
 /**
- * Draw text from buffer using the current font and color.
+ * Draw a single glyph using the current font and color.
+ * The glyph must fit within the screen.
  */
-void graphics_text(disp_x_t x, disp_y_t y, const char* text);
+void graphics_glyph(int8_t x, int8_t y, char c);
+
+/**
+ * Draw text using the current font and color.
+ * Text that would be drawn past the end of display is not drawn.
+ */
+void graphics_text(int8_t x, int8_t y, const char* text);
+
+/**
+ * Draw text using the current font and color.
+ * The text will wrap to next line on space separators whenever possible.
+ * `wrap_x` must be at most equal to DISPLAY_WIDTH and must be greater or equal to `x`.
+ */
+void graphics_text_wrap(int8_t x, int8_t y, uint8_t wrap_x, const char* text);
+
+/**
+ * Measure text width with current font (no wrapping).
+ * If text size exceeds display width, DISPLAY_WIDTH is returned.
+ */
+uint8_t graphics_text_width(const char* text);
 
 /**
  * Draw decimal number using the current font and color.
+ * The drawn text is not wrapped.
  */
-void graphics_text_num(disp_x_t x, disp_y_t y, uint32_t num);
+void graphics_text_num(int8_t x, int8_t y, int32_t num);
 
 #endif //CORE_GRAPHICS_H

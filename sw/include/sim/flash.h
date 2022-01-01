@@ -31,9 +31,14 @@
 const uint8_t* flash_at(flash_t address);
 
 /**
- * Load flash content from binary file.
+ * Load flash content from an array.
  */
-void flash_load(FILE* file);
+void flash_load(size_t length, const uint8_t data[length]);
+
+/**
+ * Load flash content from a file.
+ */
+void flash_load_file(FILE* file);
 
 /**
  * Load flash content as all erased bytes.

@@ -25,7 +25,7 @@
 #define DATA_FLASH_MASK 0x800000
 
 #define data_mcu(ptr) ((data_ptr_t) (intptr_t) (ptr))
-#define data_flashr(addr) ((addr) | DATA_FLASH_MASK)
+#define data_flash(addr) ((addr) | DATA_FLASH_MASK)
 #define data_eeprom(addr) ((addr) | DATA_EEPROM_MASK)
 
 #ifdef SIMULATION

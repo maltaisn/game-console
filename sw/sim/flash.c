@@ -42,7 +42,17 @@ const uint8_t* flash_at(flash_t address) {
     return &flash[address];
 }
 
-void flash_load(FILE* file) {
+void flash_load(size_t length, const uint8_t data[length]) {
+    if (length > FLASH_SIZE) {
+        length = FLASH_SIZE;
+    }
+    memcpy(flash, data, length);
+}
+
+void flash_load_file(FILE* file) {
+    if (!file || ferror(file)) {
+        return;
+    }
     uint8_t* ptr = flash;
     while (true) {
         size_t n = READ_BUFFER_SIZE;

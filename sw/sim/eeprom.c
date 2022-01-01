@@ -49,7 +49,21 @@ void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[length]) 
     }
 }
 
-void eeprom_load(FILE* file) {
+const uint8_t* eeprom_at(eeprom_t address) {
+    return &eeprom[address];
+}
+
+void eeprom_load(size_t length, const uint8_t data[length]) {
+    if (length > EEPROM_SIZE) {
+        length = EEPROM_SIZE;
+    }
+    memcpy(eeprom, data, length);
+}
+
+void eeprom_load_file(FILE* file) {
+    if (!file || ferror(file)) {
+        return;
+    }
     uint8_t* ptr = eeprom;
     while (true) {
         size_t n = READ_BUFFER_SIZE;
@@ -71,4 +85,8 @@ void eeprom_load(FILE* file) {
 
 void eeprom_load_erased(void) {
     memset(eeprom, ERASE_BYTE, EEPROM_SIZE);
+}
+
+void eeprom_save(FILE* file) {
+    // TODO
 }

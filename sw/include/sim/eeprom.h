@@ -20,12 +20,26 @@
 #ifndef SIM_EEPROM_H
 #define SIM_EEPROM_H
 
+#include <sys/eeprom.h>
+
 #include <stdio.h>
+#include <stdint.h>
 
 /**
- * Load EEPROM content from binary file.
+ * Returns a pointer to EEPROM data at an address.
+ * Note that this isn't 100% equivalent to `eeprom_read` since it won't wrap around the end.
  */
-void eeprom_load(FILE* file);
+const uint8_t* eeprom_at(eeprom_t address);
+
+/**
+ * Load EEPROM content from an array.
+ */
+void eeprom_load(size_t length, const uint8_t data[length]);
+
+/**
+ * Load EEPROM content from a file.
+ */
+void eeprom_load_file(FILE* file);
 
 /**
  * Load EEPROM content as all erased bytes.
@@ -33,9 +47,9 @@ void eeprom_load(FILE* file);
 void eeprom_load_erased(void);
 
 /**
- * Load EEPROM content from binary file.
+ * Save EEPROM content to a file.
  */
-void eeprom_save(const char* filename);
+void eeprom_save(FILE* file);
 
 #endif //SIM_EEPROM_H
 

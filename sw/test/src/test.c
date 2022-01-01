@@ -22,52 +22,69 @@
 #include "sys/display.h"
 #include "sys/time.h"
 
+#include "sim/flash.h"
+
 #include "core/graphics.h"
 #include "core/comm.h"
-#include "sys/led.h"
 
-#include <sim/power.h>
+static const char TEXT[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam "
+                           "fermentum erat ut imperdiet blandit. Vivamus facilisis, risus in "
+                           "semper tincidunt, lorem orci ullamcorper purus, sed viverra lacus "
+                           "arcu id ex. Nulla facilisi. Aliquam ac est tempor enim eleifend "
+                           "gravida eget at nibh. Aenean vel egestas nunc.";
 
-static bool reversed = false;
+static int8_t x = 10;
+static int8_t y = 10;
+static systime_t last_move;
 
 void setup(void) {
 #ifdef SIMULATION
-    power_set_battery_status(BATTERY_CHARGED);
+    FILE* file = fopen("data/font/u8g2_font_6x10_tf_ext.dat", "r");
+    flash_load_file(file);
+    fclose(file);
 #endif
 }
 
 void loop(void) {
     comm_receive();
 
-    display_first_page();
-    static disp_y_t i = 0;
-    do {
-        graphics_clear(DISPLAY_COLOR_BLACK);
-        graphics_set_color(DISPLAY_COLOR_WHITE);
-        if (reversed) {
-            if (i >= DISPLAY_WIDTH) {
-                graphics_line(0, DISPLAY_WIDTH - (i - DISPLAY_WIDTH) - 1, DISPLAY_WIDTH - 1, i - DISPLAY_WIDTH);
-            } else {
-                graphics_line(i, 0, DISPLAY_WIDTH - i - 1, DISPLAY_HEIGHT - 1);
-            }
-        } else {
-            if (i >= DISPLAY_WIDTH) {
-                graphics_line(DISPLAY_WIDTH - 1, i - DISPLAY_WIDTH, 0, DISPLAY_WIDTH - (i - DISPLAY_WIDTH) - 1);
-            } else {
-                graphics_line(DISPLAY_WIDTH - i - 1, DISPLAY_HEIGHT - 1, i, 0);
-            }
+    uint8_t curr_state = input_get_state();
+
+    systime_t time = time_get();
+    if (time - last_move > millis_to_ticks(30)) {
+        last_move = time;
+
+        if (curr_state & BUTTON1) {
+            --x;
+            printf("x = %d\n", x);
         }
-    } while (display_next_page());
+        if (curr_state & BUTTON2) {
+            --y;
+            printf("y = %d\n", y);
+        }
+        if (curr_state & BUTTON3) {
+            ++y;
+            printf("y = %d\n", y);
+        }
+        if (curr_state & BUTTON5) {
+            ++x;
+            printf("x = %d\n", x);
+        }
 
-    systime_t start = time_get();
-    while (time_get() - start < millis_to_ticks(10));
-
-    if (!(i & 0xf)) {
-        led_toggle();
-    }
-
-    ++i;
-    if (i == 0) {
-        reversed = !reversed;
+        display_first_page();
+        do {
+            graphics_clear(DISPLAY_COLOR_BLACK);
+            graphics_set_color(DISPLAY_COLOR_WHITE);
+            graphics_set_font(data_flash(0x000000));
+            graphics_text_wrap(x, y, DISPLAY_WIDTH - 1, TEXT);
+            graphics_set_color(7);
+            if (x >= 0 && y >= 0) {
+                graphics_pixel(x, y);
+            }
+            if (x > 0) {
+                graphics_vline(0, DISPLAY_HEIGHT - 1, x - 1);
+            }
+            graphics_vline(0, DISPLAY_HEIGHT - 1, DISPLAY_WIDTH - 1);
+        } while (display_next_page());
     }
 }
