@@ -50,6 +50,83 @@
 #endif
 
 /**
+ * An image is just an address to the image data in unified data space.
+ *
+ * There are two defined image formats, one for 1-bit images and another for 4-bit images.
+ * In both cases, the encoding is a mix of raw data and run-length encoded data.
+ * This limits the worst case overhead (an image with no run lengths, only raw data) and
+ * allows significant size savings on images with long run lengths.
+ * Compression is not really an option here since the image must be indexed and compression
+ * algorithms often require continuous decoding, with a window for back references.
+ *
+ * INDEXING
+ *
+ * Both format have an index after the header to skip parts of the image quickly.
+ * Indeed, since the display is refreshed in many pages, there would be a huge performance
+ * loss having to iterate over an image to skip parts that are not drawn. This is especially
+ * important with images stored in external memory since reading each byte takes several cycles.
+ * With indexing, the overhead added by pages is limited to reading at most 256 extra bytes.
+ * This can be reduced further by choosing an appropriate index granularity.
+ *
+ * The index granularity is the number of rows between each entry in the index.
+ * For example, if the granularity is 3 rows for an image with 128 rows, the index will contain
+ * 42 entries. This will increase the size of the image by at least 42 bytes.
+ * The current state of the encoder and decoder is also reset on an index bound, to make it
+ * possible to jump to the location pointed by the index without knowing the prior state.
+ * This fact may also increase the image size slightly.
+ *
+ * FORMAT DESCRIPTION
+ *
+ * The header format is:
+ * [0]: image flags:
+ *      - 0x1: 1-bit format (4-bit if not set)
+ *      - 0x2: indexed
+ *      - others: unused
+ * [1]: image width, -1 (width is from 1 to 256)
+ * [2]: image height, -1 (height is from 1 to 256)
+ *
+ * If not indexed, index section is omitted completely.
+ * If indexed index format is:
+ * [3]: index granularity. The 0x00 value is prohibited.
+ * [4..(n+3)]: index entries, n = floor(image_height / granularity)
+ *             The first index entry is the offset from position 4 to the start of image data.
+ *             The following entries are offsets from the previous entry.
+ *             If granularity is greater or equal to image height, n = 0 and there are no entries.
+ *
+ * The image data starts at position 3 if not indexed and at position (n+4) if indexed.
+ * The data is encoded differently depending on the encoding indicated by the flag byte.
+ * Important: the state of the encoder and decoder is reset on index boundaries!
+ *
+ * 1-bit encoding:
+ * The MSB of each byte determines its type:
+ * - Raw byte: MSB is not set. The remaining 7 bits is raw data for the next pixels.
+ *             The data is encoded from MSB (bit 6) to LSB (bit 0). (0=transparent, 1=color).
+ * - RLE byte: MSB is set. Bit 6 indicates the run-length color (0=transparent, 1=color).
+ *             The remaining 6 bits indicate the run length, minus 8.
+ *             Thus the run length can be from 8 to 71.
+ * Neither sequence type is allowed to cross an index boundary.
+ *
+ * 4-bit encoding:
+ * - Raw sequence: starts with a byte indicating the number of "raw" color bytes that follow.
+ *     The MSB on the length byte is 0. The remaining bits indicated the length, minus one.
+ *     Thus a raw sequence can have a length of 1 to 128.
+ * - RLE length: the MSB is 1, the remaining bits indicate the run length, minus 4.
+ *     Thus the run length can be 3 to 130. The color for the run is defined by the
+ *     second nibble if a RLE color byte has already been parsed, or the first nibble
+ *     if no color byte has been parsed.
+ * - RLE color: two nibbles indicating the color for the RLE immediately before and
+ *     the next one encountered in the stream.
+ * The first byte can be either a raw sequence length byte or a RLE byte.
+ * No sequence can cross an index boundary. The RLE color byte is reset on index boundary.
+ * A raw sequence can exceptionnally encode an odd number of pixels if crossing an index boundary.
+ */
+typedef data_ptr_t graphics_image_t;
+
+// These can be defined to disable support for 1-bit or 4-bit image encoding and save some space.
+//#define GRAPHICS_NO_1BIT_IMAGE
+//#define GRAPHICS_NO_4BIT_IMAGE
+
+/**
  * A font is just an address to the font data in the unified data space.
  *
  * The font format is a 5-byte header followed by glyph data (by bit position):
@@ -163,25 +240,31 @@ void graphics_ellipse(disp_x_t x, disp_y_t y, uint8_t rx, uint8_t ry);
 void graphics_filled_ellipse(disp_x_t x, disp_y_t y, uint8_t rx, uint8_t ry);
 
 /**
- * Draw an image from unified data space.
+ * Draw an image from unified data space, with top left corner at position (x, y).
+ * The image is encoded using one of the encodings described above.
+ * 1-bit image will be drawn using current color and current color has no effect on 4-bit images.
+ * The image must fully fit within display bounds.
  */
-void graphics_image(data_ptr_t data, uint8_t w, uint8_t h);
+void graphics_image(graphics_image_t data, disp_x_t x, disp_y_t y);
 
 /**
- * Draw a portion of an image from unified data space.
- * The portion drawn is from the top left position (x, y), with a width and a height in pixels.
+ * Same as `graphics_image` but draws a portion of an image.
+ * The region coordinates are within the image, (0, 0) being the top left corner.
+ * The right and bottom coordinates are inclusive.
+ * The image region must fully fit within display bounds.
  */
-void graphics_image_part(data_ptr_t data, uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
+                           uint8_t left, uint8_t top, uint8_t right, uint8_t bottom);
 
 /**
  * Draw a single glyph using the current font and color.
- * The glyph must fit within the screen.
+ * The glyph can be drawn partially or completely outside of screen bounds.
  */
 void graphics_glyph(int8_t x, int8_t y, char c);
 
 /**
  * Draw text using the current font and color.
- * Text that would be drawn past the end of display is not drawn.
+ * Text that would be drawn past outside of the display is not drawn.
  */
 void graphics_text(int8_t x, int8_t y, const char* text);
 

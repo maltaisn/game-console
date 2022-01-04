@@ -27,19 +27,15 @@
 #include "core/graphics.h"
 #include "core/comm.h"
 
-static const char TEXT[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam "
-                           "fermentum erat ut imperdiet blandit. Vivamus facilisis, risus in "
-                           "semper tincidunt, lorem orci ullamcorper purus, sed viverra lacus "
-                           "arcu id ex. Nulla facilisi. Aliquam ac est tempor enim eleifend "
-                           "gravida eget at nibh. Aenean vel egestas nunc.";
-
-static int8_t x = 10;
-static int8_t y = 10;
 static systime_t last_move;
+static uint8_t last_state;
+
+static uint8_t x, y;
+static bool binary;
 
 void setup(void) {
 #ifdef SIMULATION
-    FILE* file = fopen("data/font/u8g2_font_6x10_tf_ext.dat", "r");
+    FILE* file = fopen("data/flash.dat", "r");
     flash_load_file(file);
     fclose(file);
 #endif
@@ -51,40 +47,44 @@ void loop(void) {
     uint8_t curr_state = input_get_state();
 
     systime_t time = time_get();
-    if (time - last_move > millis_to_ticks(30)) {
+    if (time - last_move > millis_to_ticks(10)) {
         last_move = time;
 
         if (curr_state & BUTTON1) {
-            --x;
-            printf("x = %d\n", x);
+            if (x > 0) {
+                --x;
+            }
         }
         if (curr_state & BUTTON2) {
-            --y;
-            printf("y = %d\n", y);
+            if (y > 0) {
+                --y;
+            }
         }
         if (curr_state & BUTTON3) {
-            ++y;
-            printf("y = %d\n", y);
+            if (y < 128) {
+                ++y;
+            }
         }
         if (curr_state & BUTTON5) {
-            ++x;
-            printf("x = %d\n", x);
+            if (x < 128) {
+                ++x;
+            }
         }
+        if ((curr_state & BUTTON4) && !(last_state & BUTTON4)) {
+            binary = !binary;
+        }
+
+        last_state = curr_state;
 
         display_first_page();
         do {
             graphics_clear(DISPLAY_COLOR_BLACK);
             graphics_set_color(DISPLAY_COLOR_WHITE);
-            graphics_set_font(data_flash(0x000000));
-            graphics_text_wrap(x, y, DISPLAY_WIDTH - 1, TEXT);
-            graphics_set_color(7);
-            if (x >= 0 && y >= 0) {
-                graphics_pixel(x, y);
+            if (binary) {
+                graphics_image_region(data_flash(0x60af), 0, 0, x, y, x + 127, y + 127);
+            } else {
+                graphics_image_region(data_flash(0), 0, 0, x, y, x + 127, y + 127);
             }
-            if (x > 0) {
-                graphics_vline(0, DISPLAY_HEIGHT - 1, x - 1);
-            }
-            graphics_vline(0, DISPLAY_HEIGHT - 1, DISPLAY_WIDTH - 1);
         } while (display_next_page());
     }
 }
