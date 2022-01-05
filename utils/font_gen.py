@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
 
+#  Copyright 2022 Nicolas Maltais
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 # Usage:
 #
 #     ./font_gen.py --help
@@ -70,7 +84,7 @@ class FontData:
     width: int
     height: int
     line_spacing: int
-    glyphs: List[GlyphData] = field(default_factory=list)
+    glyphs: List[GlyphData] = field(default_factory=list, repr=False)
     bytes_per_glyph: int = field(default=0)
     max_offset: int = field(default=-1)
     offset_bits: int = field(default=0)
@@ -92,14 +106,14 @@ class FontData:
         self.max_offset = max(self.glyphs, key=lambda g: g.offset).offset
         if self.max_offset not in FontData.MAX_OFFSET_RANGE:
             raise EncodeError(f"Y offset of {self.max_offset} px is out of bounds, "
-                            f"valid range is {range_repr(FontData.MAX_OFFSET_RANGE)}")
+                              f"valid range is {range_repr(FontData.MAX_OFFSET_RANGE)}")
         self.offset_bits = 0 if self.max_offset == 0 else int(math.log2(self.max_offset) + 1)
 
         glyph_bit_length = self.width * self.height + self.offset_bits
         self.bytes_per_glyph = ((glyph_bit_length - 1) // 8) + 1
         if self.bytes_per_glyph not in FontData.BYTES_PER_GLYPH_RANGE:
             raise EncodeError(f"font data glyph size of {self.bytes_per_glyph} bytes is out of "
-                            f"bounds, valid range is {range_repr(FontData.BYTES_PER_GLYPH_RANGE)}")
+                              f"bounds, valid range is {range_repr(FontData.BYTES_PER_GLYPH_RANGE)}")
 
         data = bytearray()
         data.append(count)
@@ -127,30 +141,29 @@ def create_config(args: argparse.Namespace) -> Config:
     if not input_file.exists() or not input_file.is_file():
         raise EncodeError("invalid input file")
 
+    line_spacing: int = args.line_spacing + args.glyph_height
+
     output_file = args.output_file
-
-    glyph_width: int = args.glyph_width
-    glyph_height: int = args.glyph_height
-    if glyph_width not in FontData.GLYPH_WIDTH_RANGE:
-        raise EncodeError(f"glyph width out of bounds "
-                        f"(valid range is {range_repr(FontData.GLYPH_WIDTH_RANGE)})")
-    if glyph_height not in FontData.GLYPH_HEIGHT_RANGE:
-        raise EncodeError(f"glyph height out of bounds "
-                        f"(valid range is {range_repr(FontData.GLYPH_HEIGHT_RANGE)})")
-
-    line_spacing: int = args.line_spacing + glyph_height
-    if line_spacing not in FontData.LINE_SPACING_RANGE:
-        raise EncodeError(f"line spacing out of bounds "
-                        f"({args.line_spacing}+{glyph_height}={line_spacing}, "
-                        f"valid range is {range_repr(FontData.LINE_SPACING_RANGE)})")
-
     verbose = output_file != STD_IO
 
-    return Config(input_file, output_file, glyph_width, glyph_height, line_spacing, verbose)
+    return Config(input_file, output_file, args.glyph_width, args.glyph_height,
+                  line_spacing, verbose)
 
 
-def read_image(config: Config) -> FontData:
+def create_font_data(config: Config) -> FontData:
     """Read PNG image and create font data from it."""
+    if config.glyph_width not in FontData.GLYPH_WIDTH_RANGE:
+        raise EncodeError(f"glyph width out of bounds "
+                          f"(valid range is {range_repr(FontData.GLYPH_WIDTH_RANGE)})")
+    if config.glyph_height not in FontData.GLYPH_HEIGHT_RANGE:
+        raise EncodeError(f"glyph height out of bounds "
+                          f"(valid range is {range_repr(FontData.GLYPH_HEIGHT_RANGE)})")
+
+    if config.line_spacing not in FontData.LINE_SPACING_RANGE:
+        raise EncodeError(f"line spacing out of bounds "
+                          f"({config.line_spacing}+{config.glyph_height}={config.line_spacing}, "
+                          f"valid range is {range_repr(FontData.LINE_SPACING_RANGE)})")
+
     image = Image.open(config.input_file)
     width, height = image.size
 
@@ -212,7 +225,7 @@ def read_glyph(image: Image, pos: int, width: int, height: int) -> GlyphData:
 def main():
     args = parser.parse_args()
     config = create_config(args)
-    font_data = read_image(config)
+    font_data = create_font_data(config)
     data = font_data.encode()
 
     # show information on generated font

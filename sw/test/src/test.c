@@ -15,6 +15,7 @@
  */
 
 #include <test.h>
+#include <assets.h>
 
 #include <sys/main.h>
 
@@ -35,7 +36,7 @@ static bool binary;
 
 void setup(void) {
 #ifdef SIMULATION
-    FILE* file = fopen("data/flash.dat", "r");
+    FILE* file = fopen("assets.dat", "r");
     flash_load_file(file);
     fclose(file);
 #endif
@@ -81,9 +82,9 @@ void loop(void) {
             graphics_clear(DISPLAY_COLOR_BLACK);
             graphics_set_color(DISPLAY_COLOR_WHITE);
             if (binary) {
-                graphics_image_region(data_flash(0x60af), 0, 0, x, y, x + 127, y + 127);
+                graphics_image_region(data_flash(ASSET_IMG_TIGER_BIN), 0, 0, x, y, x + 127, y + 127);
             } else {
-                graphics_image_region(data_flash(0), 0, 0, x, y, x + 127, y + 127);
+                graphics_image_region(data_flash(ASSET_IMG_TIGER), 0, 0, x, y, x + 127, y + 127);
             }
         } while (display_next_page());
     }

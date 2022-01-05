@@ -21,7 +21,3 @@ ifneq ($(E),)
 	@echo Creating ELF file
 endif
 	$(E)$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
-
-
-debug:
-	@echo $(MAIN_TARGET)

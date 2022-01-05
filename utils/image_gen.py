@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
 
+#  Copyright 2022 Nicolas Maltais
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 # Usage:
 #
 #     ./image_gen.py --help
@@ -9,7 +23,7 @@ import abc
 import argparse
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Generator, Callable
@@ -32,6 +46,27 @@ class IndexGranularityMode(Enum):
 class IndexGranularity:
     mode: IndexGranularityMode
     value: int
+
+    @staticmethod
+    def from_str(s: str) -> "IndexGranularity":
+        mode: IndexGranularityMode
+        if s[-1] == 'b':
+            mode = IndexGranularityMode.MAX_SIZE
+        elif s[-1] == 'r':
+            mode = IndexGranularityMode.ROW_COUNT
+        else:
+            raise ValueError("invalid mode")
+        value = int(s[:-1])
+        if mode == IndexGranularityMode.MAX_SIZE and \
+                not (0 < value <= ImageIndex.MAX_ENTRY) or \
+                mode == IndexGranularityMode.ROW_COUNT and \
+                not (0 < value < ImageEncoder.MAX_IMAGE_SIZE):
+            raise ValueError("value out of bounds")
+
+        return IndexGranularity(mode, value)
+
+    def __repr__(self):
+        return f"{self.value}{'b' if self.mode == IndexGranularityMode.MAX_SIZE else 'r'}"
 
 
 @dataclass
@@ -60,15 +95,12 @@ def pixel_iterator(image: Image, levels: int, rect: Optional[Rect] = None,
             yield math.floor((pixel / 256) * levels)
 
 
+@dataclass
 class ImageIndex:
     granularity: int
-    entries: List[int]
+    entries: List[int] = field(default_factory=list)
 
     MAX_ENTRY = 256
-
-    def __init__(self, granularity: int):
-        self.granularity = granularity
-        self.entries = []
 
     def encode(self) -> bytes:
         data = bytearray([self.granularity])
@@ -76,6 +108,34 @@ class ImageIndex:
             if not (0 < entry <= ImageIndex.MAX_ENTRY):
                 raise ValueError("Cannot encode index, out of bounds")
             data.append(entry - 1)
+        return data
+
+
+@dataclass
+class ImageData:
+    indexed: bool
+    binary: bool
+    width: int
+    height: int
+    index: Optional[ImageIndex]
+    data: bytes
+
+    FLAG_BINARY = 1
+    FLAG_INDEXED = 2
+
+    def encode(self) -> bytes:
+        data = bytearray()
+        flags = 0
+        if self.indexed:
+            flags |= ImageData.FLAG_INDEXED
+        if self.binary:
+            flags |= ImageData.FLAG_BINARY
+        data.append(flags)
+        data.append(self.width - 1)
+        data.append(self.height - 1)
+        if self.indexed:
+            data += self.index.encode()
+        data += self.data
         return data
 
 
@@ -87,6 +147,7 @@ class ImageEncoder(abc.ABC):
     index: Optional[ImageIndex]
 
     _indexed: bool
+    _binary: bool
     _data: bytearray
     _flags: int
     _run_length: int
@@ -94,11 +155,6 @@ class ImageEncoder(abc.ABC):
     _last_data_len: int
 
     MAX_IMAGE_SIZE = 256
-
-    HEADER_SIZE = 3
-
-    FLAG_BINARY = 1
-    FLAG_INDEXED = 2
 
     DEFAULT_INDEX_GRANULARITY = IndexGranularity(IndexGranularityMode.MAX_SIZE, 64)
 
@@ -110,6 +166,7 @@ class ImageEncoder(abc.ABC):
         self.region = Rect(0, 0, image.width - 1, image.height - 1)
         self.indexed = True
         self.index_granularity = ImageEncoder.DEFAULT_INDEX_GRANULARITY
+        self._binary = False
         self._reset()
 
     def _reset(self) -> None:
@@ -119,18 +176,6 @@ class ImageEncoder(abc.ABC):
         self._last_data_len = 0
         self._run_length = 0
         self._last_color = ImageEncoder._LAST_COLOR_NONE
-        self._create_header()
-
-    def _create_header(self) -> bytes:
-        header = bytearray()
-        if self._indexed:
-            self._flags |= ImageEncoder.FLAG_INDEXED
-        else:
-            self._flags &= ~ImageEncoder.FLAG_INDEXED
-        header.append(self._flags)
-        header.append(self.region.width() - 1)
-        header.append(self.region.height() - 1)
-        return header
 
     def _iterate_pixels(self) -> None:
         def row_cb(y: int) -> None:
@@ -149,7 +194,7 @@ class ImageEncoder(abc.ABC):
 
         self._end_run_length(True)
 
-    def encode(self) -> bytes:
+    def encode(self) -> ImageData:
         self._reset()
         granularity = 0
         if self._indexed and self.index_granularity.mode == IndexGranularityMode.MAX_SIZE:
@@ -164,28 +209,23 @@ class ImageEncoder(abc.ABC):
                     break
                 granularity += 1
             if granularity == 0:
-                print("Cannot achieve specified index granularity (size too low)")
+                # cannot achieve specified index granularity (size too low)
                 granularity = 1
         else:
             granularity = self.index_granularity.value
 
         self._encode_with_granularity(granularity)
 
-        # insert header
         if len(self.index.entries) == 1:
             self._indexed = False
-        self._data[0:0] = self._create_header()
-
-        # insert index if needed
         if self._indexed:
+            self.index.entries[0] = len(self.index.entries)
             if max(self.index.entries) > ImageIndex.MAX_ENTRY:
                 raise EncodeError("cannot achieve specified index granularity (too many rows)")
 
-            idx = ImageEncoder.HEADER_SIZE
-            self.index.entries[0] = len(self.index.entries)  # first entry is length of index
-            self._data[idx:idx] = self.index.encode()
-
-        return self._data
+        return ImageData(self._indexed, self._binary,
+                         self.region.width(), self.region.height(),
+                         self.index, self._data)
 
     def _get_max_run_length(self) -> int:
         """Get the maximum run length that can be encoded by this encoder."""
@@ -226,7 +266,7 @@ class ImageEncoderBinary(ImageEncoder):
 
     def __init__(self, image: Image):
         super().__init__(image)
-        self._flags |= ImageEncoder.FLAG_BINARY
+        self._binary = True
 
     def _get_max_run_length(self) -> int:
         # - there are 6 bits to encode run length
@@ -316,9 +356,6 @@ class ImageEncoderGray(ImageEncoder):
 
     RAW_OFFSET = 1
     RLE_OFFSET = 3
-
-    def __init__(self, image: Image):
-        super().__init__(image)
 
     def _get_max_run_length(self) -> int:
         return 127 + ImageEncoderGray.RLE_OFFSET
@@ -430,30 +467,13 @@ def create_config(args: argparse.Namespace) -> Config:
         except ValueError:
             raise EncodeError("invalid region definition (bad component)")
         region = Rect(*values)
-        if region.width() <= 0 or region.height() <= 0:
-            raise EncodeError("invalid region definition (negative size)")
 
     index_granularity = ImageEncoder.DEFAULT_INDEX_GRANULARITY
     if not args.no_index:
-        ig_def = args.index_granularity
-        mode: IndexGranularityMode
-        if ig_def[-1] == 'b':
-            mode = IndexGranularityMode.MAX_SIZE
-        elif ig_def[-1] == 'r':
-            mode = IndexGranularityMode.ROW_COUNT
-        else:
-            raise EncodeError("invalid index granularity mode")
         try:
-            value = int(ig_def[:-1])
-        except ValueError:
-            raise EncodeError("invalid index granularity value")
-        if mode == IndexGranularityMode.MAX_SIZE and \
-                not (0 < value <= ImageIndex.MAX_ENTRY) or \
-                mode == IndexGranularityMode.ROW_COUNT and \
-                not (0 < value < ImageEncoder.MAX_IMAGE_SIZE):
-            raise EncodeError("index granularity value out of bounds")
-
-        index_granularity = IndexGranularity(mode, value)
+            index_granularity = IndexGranularity.from_str(args.index_granularity)
+        except ValueError as e:
+            raise EncodeError(f"invalid index granularity: {e}")
 
     verbose = output_file != STD_IO
 
@@ -473,7 +493,7 @@ parser.add_argument(
     help="Bounds of the region to encode in the format <left>,<top>,<right>,<bottom>.")
 parser.add_argument(
     "-g", "--index-granularity", action="store", type=str, dest="index_granularity",
-    default="64b",
+    default=repr(ImageEncoder.DEFAULT_INDEX_GRANULARITY),
     help="Override index granularity with different value "
          "(can be ignored if it cannot be encoded). "
          "The granularity the number of rows between each index entry. "
@@ -487,16 +507,15 @@ parser.add_argument(
     help="Force 1-bit encoding (can be used if the input image is not binary)")
 
 
-def main():
-    args = parser.parse_args()
-    config = create_config(args)
-
+def create_image_data(config: Config) -> ImageData:
     image = Image.open(config.input_file)
     if not config.region:
         config.region = Rect(0, 0, image.width - 1, image.height - 1)
+    elif config.region.width() <= 0 or config.region.height() <= 0:
+        raise EncodeError("invalid region definition (negative size)")
     elif config.region.left >= image.width or config.region.right >= image.width or \
             config.region.top >= image.height or config.region.bottom >= image.height:
-        raise EncodeError("Region exceeds image dimensions")
+        raise EncodeError("region exceeds image dimensions")
 
     if image.mode != "L":
         # convert image to grayscale if not already
@@ -521,16 +540,23 @@ def main():
     encoder.region = config.region
     encoder.index_granularity = config.index_granularity
     encoder.indexed = config.indexed
-    data = encoder.encode()
+    return encoder.encode()
+
+
+def main():
+    args = parser.parse_args()
+    config = create_config(args)
+    image_data = create_image_data(config)
+    data = image_data.encode()
 
     # print information on encoded image
     if config.verbose:
         nbit = 1 if config.binary else 4
         print(f"Image is {config.region.width()} x {config.region.height()} px, "
               f"{nbit}-bit, encoded in {len(data)} bytes")
-        if encoder._indexed:
-            print(f"Indexed every {encoder.index.granularity} rows "
-                  f"(max {max(encoder.index.entries)} bytes between entries)")
+        if image_data.indexed:
+            print(f"Indexed every {image_data.index.granularity} rows "
+                  f"(max {max(image_data.index.entries[1:])} bytes between entries)")
         else:
             print("Not indexed.")
 

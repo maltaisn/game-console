@@ -1,6 +1,7 @@
 # Development files
 dev/
 sw/.sim
+*.dat
 
 # Build files
 out/

@@ -18,6 +18,8 @@
 #ifndef SYS_DEFS_H
 #define SYS_DEFS_H
 
+#include <stdint.h>
+
 #ifdef __AVR__
 typedef __uint24 uint24_t;
 #else
