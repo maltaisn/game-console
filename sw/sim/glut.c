@@ -26,6 +26,7 @@
 
 #include <GL/glut.h>
 #include <math.h>
+#include <stdio.h>
 
 #define PI 3.141592654f
 
@@ -72,8 +73,8 @@ static void draw_led(float x, float y, float r, float g, float b, bool on) {
 
 static void draw_display(void) {
     glPushMatrix();
+    glTranslatef(50, 20, 0);
     glScalef(DISPLAY_PIXEL_SIZE, DISPLAY_PIXEL_SIZE, 1);
-    glTranslatef(50.0f / DISPLAY_PIXEL_SIZE, 20.0f / DISPLAY_PIXEL_SIZE, 0);
     display_draw();
     glPopMatrix();
 }
@@ -110,6 +111,15 @@ static void callback_display(void) {
     glutSwapBuffers();
 }
 
+static void callback_mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && x >= 50 && y >= 20 &&
+        x < 50 + DISPLAY_PIXEL_SIZE * DISPLAY_WIDTH &&
+        y < 20 + DISPLAY_PIXEL_SIZE * DISPLAY_HEIGHT) {
+        printf("Display was clicked at x = %d, y = %d\n",
+               (x - 50) / DISPLAY_PIXEL_SIZE, (y - 20) / DISPLAY_PIXEL_SIZE);
+    }
+}
+
 static void callback_time_timer(int arg) {
     glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
     time_update();
@@ -134,6 +144,7 @@ void glut_init(void) {
     glutSpecialFunc(input_on_key_down_special);
     glutSpecialUpFunc(input_on_key_up_special);
     glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
+    glutMouseFunc(callback_mouse);
 
     glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
     glutTimerFunc((unsigned int) (1000.0 / DISPLAY_FPS + 0.5), callback_redisplay_timer, 0);
