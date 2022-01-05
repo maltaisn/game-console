@@ -3,6 +3,7 @@ MCU := atmega3208
 F_CPU := 10000000
 
 SRC_DIRS += sys
+BUILD_DIR := build/gc
 
 include common.mk
 

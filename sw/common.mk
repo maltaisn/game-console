@@ -2,7 +2,7 @@
 
 include defs.mk
 
-BUILD_DIR := build
+BUILD_DIR ?= build
 SRC_DIRS += $(TARGET)/src core
 INCLUDE_DIRS += $(TARGET)/include include
 LIB_DIRS +=
@@ -33,7 +33,7 @@ else
   E := @
 endif
 
-$(BUILD_DIR)/%.o: %.c .sim
+$(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(@D)
 ifneq ($(E),)
 	@echo $(CC) $<
