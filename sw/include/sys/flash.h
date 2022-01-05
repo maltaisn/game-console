@@ -31,6 +31,6 @@ typedef uint24_t flash_t;
  * The bytes are copied to the destination buffer.
  * If reading past the end of flash, the address will be wrapped around.
  */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]);
+void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]);
 
 #endif //SYS_FLASH_H

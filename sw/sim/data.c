@@ -19,7 +19,7 @@
 #include <sys/flash.h>
 #include <sys/eeprom.h>
 
-const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[length]) {
+const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
     // not very portable but we'll assume the program memory isn't located in the range 0x000000 to
     // 0xffffff, and thus any addresses in that range must be either flash or EEPROM.
     if ((address & ~0x7fffff) == DATA_FLASH_MASK) {

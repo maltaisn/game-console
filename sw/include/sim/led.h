@@ -23,9 +23,14 @@
 #include <stdbool.h>
 
 /**
- * Returns true if status LED is currently on.
+ * Returns true if status LED is currently on and powered.
  */
 bool led_get(void);
+
+/**
+ * Set whether power is applied to the LED or not.
+ */
+void led_set_powered(bool powered);
 
 #endif //SIM_LED_H
 

@@ -35,6 +35,11 @@ void power_set_battery_status(battery_status_t status);
  */
 void power_set_battery_level(uint8_t level);
 
+/**
+ * Returns true if simulator is "sleeping".
+ */
+bool power_is_sleeping(void);
+
 #endif //SIM_POWER_H
 
 #endif //SIMULATION

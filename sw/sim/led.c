@@ -18,22 +18,24 @@
 #include <stdbool.h>
 
 static bool led_on;
+static bool led_powered;
 
 void led_set(void) {
     led_on = true;
-    // TODO update gui
 }
 
 void led_clear(void) {
     led_on = false;
-    // TODO update gui
 }
 
 void led_toggle(void) {
     led_on = !led_on;
-    // TODO update gui
 }
 
 bool led_get(void) {
-    return led_on;
+    return led_on && led_powered;
+}
+
+void led_set_powered(bool powered) {
+    led_powered = powered;
 }

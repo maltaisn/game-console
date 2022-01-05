@@ -22,6 +22,7 @@
 #include "sim/glut.h"
 #include "sim/eeprom.h"
 #include "sim/flash.h"
+#include "sim/led.h"
 
 #include <stdbool.h>
 #include <GL/glut.h>
@@ -37,15 +38,18 @@ static void* loop_thread(void* arg) {
 
 int main(int argc, char** argv) {
     // == hardware initialization (similar to sys/init.c)
+    // initialize display
+    display_init();
+    display_set_enabled(true);
+
+    // enable power
+    power_set_15v_reg_enabled(true);
+    led_set_powered(true);
+
     // check battery level on startup
     power_take_sample();
     power_wait_for_sample();
     sleep_if_low_battery();
-
-    // initialize display
-    display_init();
-    power_set_15v_reg_enabled(true);
-    display_set_enabled(true);
 
     // == simulator initialization
     // initialize memories as initially empty; they can be loaded from a file later.

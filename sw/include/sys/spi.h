@@ -24,13 +24,13 @@
  * Transmit and receive data on the SPI bus. Length must be at least 1.
  * The CS line for the selected peripheral should be driven low before and after.
  */
-void spi_transceive(uint16_t length, uint8_t data[length]);
+void spi_transceive(uint16_t length, uint8_t data[static length]);
 
 /**
  * Transmit data on the SPI bus. Length must be at least 1.
  * The CS line for the selected peripheral should be driven low before and after.
  */
-void spi_transmit(uint16_t length, const uint8_t data[length]);
+void spi_transmit(uint16_t length, const uint8_t data[static length]);
 
 /**
  * Transmit a single byte on the SPI bus.

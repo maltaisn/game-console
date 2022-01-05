@@ -40,7 +40,7 @@ static void eeprom_wait_ready(void) {
     } while (rdsr_cmd[1] & STATUS_BUSY_MASK);
 }
 
-void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[length]) {
+void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[static length]) {
     uint8_t read_cmd[3];
     read_cmd[0] = INSTRUCTION_READ;
     read_cmd[1] = address >> 8;
@@ -51,7 +51,7 @@ void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[length]) {
     spi_deselect_eeprom();
 }
 
-void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[length]) {
+void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[static length]) {
     const uint8_t wren_cmd = INSTRUCTION_WREN;
     uint8_t write_cmd[3];
     write_cmd[0] = INSTRUCTION_WRITE;

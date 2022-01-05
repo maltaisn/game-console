@@ -19,7 +19,7 @@
 #include <sys/flash.h>
 #include <sys/eeprom.h>
 
-const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[length]) {
+const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
     if (address | DATA_FLASH_MASK) {
         flash_read((flash_t) (address & ~DATA_FLASH_MASK), length, dest);
         return dest;

@@ -27,7 +27,7 @@
 
 static uint8_t flash[FLASH_SIZE];
 
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]) {
+void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
     if (address + length > FLASH_SIZE) {
         // wrap around the end
         uint16_t wrap_after = FLASH_SIZE - address;
@@ -42,7 +42,7 @@ const uint8_t* flash_at(flash_t address) {
     return &flash[address];
 }
 
-void flash_load(size_t length, const uint8_t data[length]) {
+void flash_load(size_t length, const uint8_t data[static length]) {
     if (length > FLASH_SIZE) {
         length = FLASH_SIZE;
     }

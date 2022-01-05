@@ -31,13 +31,13 @@ static clock_t start_time;
 static clock_t last_power_sample;
 
 void time_init(void) {
-    clock_t time = clock();
+    const clock_t time = clock();
     start_time = time;
     last_power_sample = time;
 }
 
 void time_update(void) {
-    clock_t time = clock();
+    const clock_t time = clock();
     input_update_state();
     sound_update();
 

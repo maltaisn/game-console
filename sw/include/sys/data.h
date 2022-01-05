@@ -41,6 +41,6 @@ typedef uint24_t data_ptr_t;
  * Returns a pointer to the read data. This can be the same as the destination buffer
  * if reading from an external location, or a pointer to the MCU internal memory space.
  */
-const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[length]);
+const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]);
 
 #endif //SYS_DATA_H

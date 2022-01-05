@@ -17,7 +17,9 @@
 
 #include <sim/power.h>
 #include <sys/power.h>
+#include <stdio.h>
 #include "sys/display.h"
+#include "sim/led.h"
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -27,6 +29,7 @@
 static battery_status_t battery_status = BATTERY_DISCHARGING;
 static uint8_t battery_percent = 100;
 static bool reg_15v_enabled;
+static bool sleeping;
 
 void power_take_sample(void) {
     // no-op
@@ -54,7 +57,12 @@ uint16_t power_get_battery_voltage(void) {
 }
 
 void sleep_if_low_battery(void) {
-    // TODO sleep
+    if (battery_percent == 0) {
+        power_set_15v_reg_enabled(false);
+        led_set_powered(false);
+        sleeping = true;
+        puts("Low battery, sleep enabled.");
+    }
 }
 
 void power_set_battery_status(battery_status_t status) {
@@ -70,6 +78,12 @@ bool power_is_15v_reg_enabled(void) {
 }
 
 void power_set_15v_reg_enabled(bool enabled) {
-    display_set_gpio(enabled ? DISPLAY_GPIO_OUTPUT_HI : DISPLAY_GPIO_OUTPUT_LO);
-    reg_15v_enabled = enabled;
+    if (!sleeping) {
+        display_set_gpio(enabled ? DISPLAY_GPIO_OUTPUT_HI : DISPLAY_GPIO_OUTPUT_LO);
+        reg_15v_enabled = enabled;
+    }
+}
+
+bool power_is_sleeping(void) {
+    return sleeping;
 }

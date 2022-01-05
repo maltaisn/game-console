@@ -34,7 +34,7 @@ const uint8_t* eeprom_at(eeprom_t address);
 /**
  * Load EEPROM content from an array.
  */
-void eeprom_load(size_t length, const uint8_t data[length]);
+void eeprom_load(size_t length, const uint8_t data[static length]);
 
 /**
  * Load EEPROM content from a file.

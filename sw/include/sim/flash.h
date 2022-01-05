@@ -33,7 +33,7 @@ const uint8_t* flash_at(flash_t address);
 /**
  * Load flash content from an array.
  */
-void flash_load(size_t length, const uint8_t data[length]);
+void flash_load(size_t length, const uint8_t data[static length]);
 
 /**
  * Load flash content from a file.

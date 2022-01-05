@@ -19,7 +19,7 @@
 
 #include <avr/io.h>
 
-void spi_transceive(uint16_t length, uint8_t data[length]) {
+void spi_transceive(uint16_t length, uint8_t data[static length]) {
     // SPI is triple-buffered is the transmit direction and double buffered in the receive direction.
     // Here we only use one buffer level in the transmit direction.
     // 1. Write the first byte to be transmitted.
@@ -39,7 +39,7 @@ void spi_transceive(uint16_t length, uint8_t data[length]) {
     data[pos] = SPI0.DATA;
 }
 
-void spi_transmit(uint16_t length, const uint8_t data[length]) {
+void spi_transmit(uint16_t length, const uint8_t data[static length]) {
     // same as transceive but not receiving.
     SPI0.DATA = *data++;
     while (--length) {

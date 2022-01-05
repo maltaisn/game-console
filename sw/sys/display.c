@@ -99,7 +99,7 @@ static void reset_display(void) {
     }
 }
 
-static void write_data(uint16_t length, const uint8_t data[length]) {
+static void write_data(uint16_t length, const uint8_t data[static length]) {
     while (length--) {
         spi_select_display();
         spi_transmit_single(*data++);

@@ -22,7 +22,7 @@
 
 #define INSTRUCTION_READ 0x03
 
-void flash_read(flash_t address, uint16_t length, uint8_t dest[length]) {
+void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
     uint8_t header[4];
     header[0] = INSTRUCTION_READ;
     header[1] = address >> 16;

@@ -27,7 +27,7 @@
 
 static uint8_t eeprom[EEPROM_SIZE];
 
-void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[length]) {
+void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[static length]) {
     if (address + length > EEPROM_SIZE) {
         // wrap around the end
         uint16_t wrap_after = EEPROM_SIZE - address;
@@ -38,7 +38,7 @@ void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[length]) {
     }
 }
 
-void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[length]) {
+void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[static length]) {
     if (address + length > EEPROM_SIZE) {
         // wrap around the end
         uint16_t wrap_after = EEPROM_SIZE - address;
@@ -53,7 +53,7 @@ const uint8_t* eeprom_at(eeprom_t address) {
     return &eeprom[address];
 }
 
-void eeprom_load(size_t length, const uint8_t data[length]) {
+void eeprom_load(size_t length, const uint8_t data[static length]) {
     if (length > EEPROM_SIZE) {
         length = EEPROM_SIZE;
     }

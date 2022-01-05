@@ -17,5 +17,5 @@
 #include <sys/reset.h>
 
 void reset_system(void) {
-    // TODO reset simulator
+    // not implemented, reset is controlled by comms system which is itself not implemented.
 }

@@ -19,12 +19,12 @@
 
 #include <memory.h>
 
-void spi_transceive(uint16_t length, uint8_t data[length]) {
+void spi_transceive(uint16_t length, uint8_t data[static length]) {
     // not implemented: receive all 0x00
     memset(data, 0x00, length);
 }
 
-void spi_transmit(uint16_t length, const uint8_t data[length]) {
+void spi_transmit(uint16_t length, const uint8_t data[static length]) {
     // not implemented.
 }
 
