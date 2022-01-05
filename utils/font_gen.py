@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
-import argparse
-import math
 # Usage:
 #
-#     ./encode.py --help
-#     ./encode.py <input_file> [output_file] -W <glyph-width> -H <glyph-height>
+#     ./font_gen.py --help
+#     ./font_gen.py <input_file> [output_file] -W <glyph-width> -H <glyph-height>
 #
 # Y offsets will be deduced from image height and data. Image must be 8-bit gray PNG
 # with only black and white colors.
 # Char ranges 0x20-0x7f, then 0xa0-0xff are located contiguously on image, with each
 # char separated by one pixel of whitespace.
+
+import argparse
+import math
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,19 +24,19 @@ STD_IO = "-"
 parser = argparse.ArgumentParser(description="Font generation utility for game console")
 parser.add_argument(
     "input_file", action="store", type=str,
-    help=f"Input PNG file. Must be 8-bit gray with only black or white colors.")
+    help="Input PNG file. Must be 8-bit gray with only black or white colors.")
 parser.add_argument(
     "output_file", action="store", type=str, default=STD_IO, nargs="?",
-    help=f"Output file. Can be set to '-' for standard output (default).")
+    help="Output file. Can be set to '-' for standard output (default).")
 parser.add_argument(
     "-W", "--width", action="store", type=int, dest="glyph_width", required=True,
-    help=f"Glyph width on input file in pixels")
+    help="Glyph width on input file in pixels")
 parser.add_argument(
     "-H", "--height", action="store", type=int, dest="glyph_height", required=True,
-    help=f"Glyph height on input file in pixels")
+    help="Glyph height on input file in pixels")
 parser.add_argument(
     "-s", "--line-spacing", action="store", type=int, dest="line_spacing", default=1,
-    help=f"Extra line spacing in pixels (added to glyph height, default is 1)")
+    help="Extra line spacing in pixels (added to glyph height, default is 1)")
 
 
 def range_repr(r: range) -> str:
@@ -58,7 +59,7 @@ class GlyphData:
         return data.to_bytes(nb_bytes, "little", signed=False)
 
 
-class FontError(Exception):
+class EncodeError(Exception):
     pass
 
 
@@ -86,18 +87,18 @@ class FontData:
     def encode(self) -> bytes:
         count = len(self.glyphs)
         if count > FontData.MAX_GLYPHS:
-            raise FontError(f"maximum {FontData.MAX_GLYPHS} glyphs allowed, got {count}.")
+            raise EncodeError(f"maximum {FontData.MAX_GLYPHS} glyphs allowed, got {count}.")
 
         self.max_offset = max(self.glyphs, key=lambda g: g.offset).offset
         if self.max_offset not in FontData.MAX_OFFSET_RANGE:
-            raise FontError(f"Y offset of {self.max_offset} px is out of bounds, "
+            raise EncodeError(f"Y offset of {self.max_offset} px is out of bounds, "
                             f"valid range is {range_repr(FontData.MAX_OFFSET_RANGE)}")
         self.offset_bits = 0 if self.max_offset == 0 else int(math.log2(self.max_offset) + 1)
 
         glyph_bit_length = self.width * self.height + self.offset_bits
         self.bytes_per_glyph = ((glyph_bit_length - 1) // 8) + 1
         if self.bytes_per_glyph not in FontData.BYTES_PER_GLYPH_RANGE:
-            raise FontError(f"font data glyph size of {self.bytes_per_glyph} bytes is out of "
+            raise EncodeError(f"font data glyph size of {self.bytes_per_glyph} bytes is out of "
                             f"bounds, valid range is {range_repr(FontData.BYTES_PER_GLYPH_RANGE)}")
 
         data = bytearray()
@@ -124,22 +125,22 @@ class Config:
 def create_config(args: argparse.Namespace) -> Config:
     input_file = Path(args.input_file)
     if not input_file.exists() or not input_file.is_file():
-        raise FontError("invalid input file")
+        raise EncodeError("invalid input file")
 
     output_file = args.output_file
 
     glyph_width: int = args.glyph_width
     glyph_height: int = args.glyph_height
     if glyph_width not in FontData.GLYPH_WIDTH_RANGE:
-        raise FontError(f"glyph width out of bounds "
+        raise EncodeError(f"glyph width out of bounds "
                         f"(valid range is {range_repr(FontData.GLYPH_WIDTH_RANGE)})")
     if glyph_height not in FontData.GLYPH_HEIGHT_RANGE:
-        raise FontError(f"glyph height out of bounds "
+        raise EncodeError(f"glyph height out of bounds "
                         f"(valid range is {range_repr(FontData.GLYPH_HEIGHT_RANGE)})")
 
     line_spacing: int = args.line_spacing + glyph_height
     if line_spacing not in FontData.LINE_SPACING_RANGE:
-        raise FontError(f"line spacing out of bounds "
+        raise EncodeError(f"line spacing out of bounds "
                         f"({args.line_spacing}+{glyph_height}={line_spacing}, "
                         f"valid range is {range_repr(FontData.LINE_SPACING_RANGE)})")
 
@@ -154,10 +155,10 @@ def read_image(config: Config) -> FontData:
     width, height = image.size
 
     if not isinstance(image.getpixel((0, 0)), int):
-        raise FontError("image is not 8-bit gray PNG")
+        raise EncodeError("image is not 8-bit gray PNG")
 
     if config.glyph_height > height:
-        raise FontError(f"glyph height is larger than image height")
+        raise EncodeError(f"glyph height is larger than image height")
 
     font_data = FontData(config.glyph_width, config.glyph_height, config.line_spacing)
     for x in range(0, width, config.glyph_width + 1):
@@ -192,18 +193,18 @@ def read_glyph(image: Image, pos: int, width: int, height: int) -> GlyphData:
         for x in range(pos, pos + width):
             pixel = image.getpixel((x, y))
             if pixel != 0 and pixel != 255:
-                raise FontError("image is not black and white")
+                raise EncodeError("image is not black and white")
             pixel_set = (pixel == 0)
             if y >= offset:
                 data = data << 1 | pixel_set
                 length += 1
             elif pixel_set:
-                raise FontError(f"glyph exceeds height at x={pos}")
+                raise EncodeError(f"glyph exceeds height at x={pos}")
 
     # check if glyph doesn't exceed width
     for y in range(0, im_height):
         if image.getpixel((pos + width, y)) == 0:
-            raise FontError(f"glyph exceeds width at x={pos}")
+            raise EncodeError(f"glyph exceeds width at x={pos}")
 
     return GlyphData(pos, data, offset)
 
@@ -240,12 +241,12 @@ def main():
             with open(config.output_file, "wb") as file:
                 file.write(data)
     except IOError as e:
-        raise FontError(f"could not write to output file: {e}") from e
+        raise EncodeError(f"could not write to output file: {e}") from e
 
 
 if __name__ == '__main__':
     try:
         main()
-    except FontError as e:
+    except EncodeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         exit(1)
