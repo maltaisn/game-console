@@ -23,6 +23,7 @@
 #include <stdbool.h>
 
 #define READ_BUFFER_SIZE 8192
+#define WRITE_BUFFER_SIZE 8192
 #define ERASE_BYTE 0xff
 
 static uint8_t eeprom[EEPROM_SIZE];
@@ -77,7 +78,7 @@ void eeprom_load_file(FILE* file) {
         }
         ptr += read;
         if (ptr >= eeprom + EEPROM_SIZE) {
-            // end of flash reached.
+            // end of EEPROM reached.
             break;
         }
     }
@@ -88,5 +89,24 @@ void eeprom_load_erased(void) {
 }
 
 void eeprom_save(FILE* file) {
-    // TODO
+    if (!file || ferror(file)) {
+        return;
+    }
+    uint8_t* ptr = eeprom;
+    while (true) {
+        size_t n = READ_BUFFER_SIZE;
+        if (ptr + n >= eeprom + EEPROM_SIZE) {
+            n = (size_t) (EEPROM_SIZE - (ptrdiff_t) ptr + eeprom);
+        }
+        size_t written = fwrite(ptr, 1, n, file);
+        if (written < READ_BUFFER_SIZE) {
+            // short count, unknown error occured.
+            break;
+        }
+        ptr += written;
+        if (ptr >= eeprom + EEPROM_SIZE) {
+            // end of EEPROM reached.
+            break;
+        }
+    }
 }
