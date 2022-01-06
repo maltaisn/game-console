@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-#include "sys/time.h"
-#include "sys/power.h"
-#include "sys/sound.h"
+#include <sys/time.h>
+#include <sys/power.h>
+#include <sys/input.h>
+
+#include <core/sound.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/atomic.h>
-#include "sys/input.h"
 
 static volatile systime_t systick;
 

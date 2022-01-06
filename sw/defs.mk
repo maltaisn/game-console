@@ -17,8 +17,8 @@ DEFINES += UART_BAUD_FAST=1000000
 # disables auto shutdown for battery overdischarge protection.
 # DEFINES += DISABLE_BAT_PROT
 
-# enables runtime graphic checks
-# DEFINES += GRAPHICS_CHECKS
+# enables runtime checks (in core/ modules)
+# DEFINES += RUNTIME_CHECKS
 
 # disables support for 1-bit or 4-bit images, to save space
 # DEFINES += GRAPHICS_NO_1BIT_IMAGE

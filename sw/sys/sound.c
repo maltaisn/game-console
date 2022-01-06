@@ -84,11 +84,11 @@ void sound_set_output_enabled(bool enabled) {
     }
 }
 
-void sound_play_note(const track_t* track, uint8_t channel) {
-    bool has_note = track->note != TRACK_NO_NOTE;
+void sound_play_note(uint8_t note, uint8_t channel) {
+    bool has_note = note != SOUND_NO_NOTE;
     TCB_t* tcb = &TCB0 + channel;
     if (has_note) {
-        tcb->CCMP = TIMER_NOTES[track->note];
+        tcb->CCMP = TIMER_NOTES[note];
         TCB_ENABLE(*tcb);
     } else {
         TCB_DISABLE(*tcb);

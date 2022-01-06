@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-#include "sys/sound.h"
+#include <core/sound.h>
+#include <core/checks.h>
 
 #define TRACK_DATA_END_MASK ((flash_t) 0x800000)
 
@@ -35,6 +36,27 @@
 #define TRACK0_ACTIVE (TRACK0_STARTED | TRACK0_PLAYING)
 #define TRACK1_ACTIVE (TRACK1_STARTED | TRACK1_PLAYING)
 #define TRACK2_ACTIVE (TRACK2_STARTED | TRACK2_PLAYING)
+
+typedef struct {
+    // Current position in note data array, in flash data space.
+    // TRACK_DATA_END_MASK is set when all data has been read for the track.
+    flash_t data;
+    // Pause duration used after note using immediate pause encoding.
+    uint8_t immediate_pause;
+    // Note being currently played (0-83).
+    uint8_t note;
+    // Time left for note currently being played, in 1/16th of a beat, -1.
+    uint16_t duration_left;
+    // Total duration of note currently being played, in 1/16th of a beat, -1.
+    // The MSB of this field indicates whether the current note is followed by the most common pause.
+    uint16_t duration_total;
+    // Number of times that the current note duration is to be repeated yet.
+    uint8_t duration_repeat;
+    // Buffer used to store upcoming sound data.
+    uint8_t buffer[TRACK_BUFFER_SIZE];
+    // Current position in buffer.
+    uint8_t buffer_pos;
+} track_t;
 
 // Sound tracks, one per channel.
 static track_t tracks[SOUND_CHANNELS_COUNT];
@@ -89,7 +111,7 @@ static void update_output_state(void) {
 static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
     if (track->duration_total & IMMEDIATE_PAUSE_MASK) {
         // note is followed by an immediate pause.
-        track->note = TRACK_NO_NOTE;
+        track->note = SOUND_NO_NOTE;
         track->duration_left = track->immediate_pause;
         track->duration_total &= ~IMMEDIATE_PAUSE_MASK;
         return;
@@ -98,6 +120,7 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
     uint8_t note = track->buffer[track->buffer_pos++];
     if (note == TRACK_END) {
         // no more notes in track, done playing.
+        track->note = SOUND_NO_NOTE;
         tracks_on &= ~track_playing_mask;
         update_output_state();
         return;
@@ -107,7 +130,7 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
         // single byte encoding for pause, no associated duration.
         // note that this doesn't update duration_total!
         track->duration_left = note - SHORT_PAUSE_OFFSET;
-        track->note = TRACK_NO_NOTE;
+        track->note = SOUND_NO_NOTE;
         return;
     }
 
@@ -162,7 +185,7 @@ static void tracks_seek_note(void) {
                     track_fill_buffer(track, j);
                 }
                 track_seek_note(track, track_active_mask & TRACKS_PLAYING_ALL);
-                sound_play_note(track, channel);
+                sound_play_note(track->note, channel);
             } else {
                 --track->duration_left;
             }
@@ -174,9 +197,17 @@ static void tracks_seek_note(void) {
 void sound_load(flash_t address) {
     uint8_t header[TRACK_HEADER_SIZE];
     uint8_t track_playing_mask = TRACK0_PLAYING;
+#ifdef RUNTIME_CHECKS
+    bool any_tracks = false;
+#endif
     for (int i = 0 ; i < SOUND_CHANNELS_COUNT ; ++i) {
         track_t* track = &tracks[i];
         flash_read(address, TRACK_HEADER_SIZE, header);
+#ifdef RUNTIME_CHECKS
+        if (header[0] >= SOUND_CHANNELS_COUNT) {
+            check_message("invalid sound data");
+        }
+#endif
         if (header[0] == i) {
             // Initialize track from header, fill buffer with first data.
             const uint16_t track_length = header[1] | header[2] << 8;
@@ -190,13 +221,26 @@ void sound_load(flash_t address) {
             // TODO not atomic
             tracks_on |= track_playing_mask;
             address += (flash_t) track_length;
+#ifdef RUNTIME_CHECKS
+            any_tracks = true;
+#endif
         }
         track_playing_mask <<= 1;
     }
     update_output_state();
+#ifdef RUNTIME_CHECKS
+    if (!any_tracks) {
+        check_message("loaded sound data has no tracks");
+    }
+#endif
 }
 
 void sound_start(uint8_t t) {
+#ifdef RUNTIME_CHECKS
+    if ((t & ~TRACKS_STARTED_ALL) != 0) {
+        check_message("invalid track start flags");
+    }
+#endif
     // TODO not atomic
     tracks_on |= t;
     update_output_state();

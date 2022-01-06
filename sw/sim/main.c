@@ -23,6 +23,7 @@
 #include "sim/eeprom.h"
 #include "sim/flash.h"
 #include "sim/led.h"
+#include "sim/sound.h"
 
 #include <stdbool.h>
 #include <GL/glut.h>
@@ -55,6 +56,8 @@ int main(int argc, char** argv) {
     eeprom_load_erased();
     flash_load_erased();
     time_init();
+    sound_init();
+    sound_open_stream();
 
     glutInit(&argc, argv);
     glut_init();

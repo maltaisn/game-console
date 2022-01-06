@@ -9,6 +9,8 @@ p.image("tiger-bin.png", index_granularity="128b")
 
 p.sound("music.mid", tempo=120, merge_midi_tracks=True)
 
-p.pack("assets.dat")
-p.create_header("include/assets.h", "src/assets.c")
+p.font("font6x9.png", glyph_width=6, glyph_height=9)
+
+p.pack("test/assets.dat")
+p.create_header("test/include/assets.h", "test/src/assets.c")
 

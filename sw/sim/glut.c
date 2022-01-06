@@ -146,6 +146,9 @@ void glut_init(void) {
     glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
     glutMouseFunc(callback_mouse);
 
+    // this gives a 4 ms timer which is not terribly accurate (should be 3.91 ms) but will
+    // work fine for the simulator purposes.
     glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
+
     glutTimerFunc((unsigned int) (1000.0 / DISPLAY_FPS + 0.5), callback_redisplay_timer, 0);
 }

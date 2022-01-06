@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,38 +15,24 @@
  * limitations under the License.
  */
 
+#ifndef CHECKS_H
+#define CHECKS_H
+
+#if defined(SIMULATION) && !defined(RUNTIME_CHECKS)
+// Always enable checks in simulation.
+#define RUNTIME_CHECKS
+#endif
+
+#ifdef RUNTIME_CHECKS
 #ifdef SIMULATION
 
-#ifndef SIM_SOUND_H
-#define SIM_SOUND_H
+#include <stdio.h>
 
-#include <stdbool.h>
-
-/**
- * Initialize sound output.
- */
-void sound_init(void);
-
-/**
- * De-initialize sound output.
- */
-void sound_terminate(void);
-
-/**
- * Open sound open stream.
- */
-void sound_open_stream(void);
-
-/**
- * Close sound open stream.
- */
-void sound_close_stream(void);
-
-/**
- * Returns true if sound output is currently enabled.
- */
-bool sound_is_output_enabled(void);
-
-#endif //SIM_SOUND_H
-
+#define check_message(str, ...) fprintf(stderr, "%s: " str "\n", __func__, ##__VA_ARGS__)
+#else
+#define check_message(str, ...) // no-op
 #endif //SIMULATION
+#endif //RUNTIME_CHECKS
+
+
+#endif //CHECKS_H

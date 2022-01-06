@@ -26,6 +26,7 @@
 #include "sim/flash.h"
 
 #include "core/graphics.h"
+#include "core/sound.h"
 #include "core/comm.h"
 
 static systime_t last_move;
@@ -33,6 +34,10 @@ static uint8_t last_state;
 
 static uint8_t x, y;
 static bool binary;
+static enum {
+    VOLUME_UP,
+    VOLUME_DOWN,
+} volume_direction;
 
 void setup(void) {
 #ifdef SIMULATION
@@ -40,12 +45,22 @@ void setup(void) {
     flash_load_file(file);
     fclose(file);
 #endif
+
+    sound_set_tempo(encode_bpm_tempo(120));
+    sound_set_volume(SOUND_VOLUME_3);
+    sound_start(TRACKS_STARTED_ALL);
+
+    graphics_set_font(data_flash(ASSET_FNT_FONT6X9));
 }
 
 void loop(void) {
     comm_receive();
 
     uint8_t curr_state = input_get_state();
+
+    if (!sound_check_tracks(TRACKS_PLAYING_ALL)) {
+        sound_load(ASSET_SOUND_MUSIC);
+    }
 
     systime_t time = time_get();
     if (time - last_move > millis_to_ticks(10)) {
@@ -74,6 +89,19 @@ void loop(void) {
         if ((curr_state & BUTTON4) && !(last_state & BUTTON4)) {
             binary = !binary;
         }
+        if ((curr_state & BUTTON0) && !(last_state & BUTTON0)) {
+            if (volume_direction == VOLUME_UP) {
+                sound_increase_volume();
+                if (sound_get_volume() == SOUND_VOLUME_3) {
+                    volume_direction = VOLUME_DOWN;
+                }
+            } else {
+                sound_decrease_volume();
+                if (sound_get_volume() == SOUND_VOLUME_OFF) {
+                    volume_direction = VOLUME_UP;
+                }
+            }
+        }
 
         last_state = curr_state;
 
@@ -82,10 +110,13 @@ void loop(void) {
             graphics_clear(DISPLAY_COLOR_BLACK);
             graphics_set_color(DISPLAY_COLOR_WHITE);
             if (binary) {
-                graphics_image_region(data_flash(ASSET_IMG_TIGER_BIN), 0, 0, x, y, x + 127, y + 127);
+                graphics_image_region(data_flash(ASSET_IMG_TIGER_BIN), 0, 0, x, y, x + 127,
+                                      y + 127);
             } else {
                 graphics_image_region(data_flash(ASSET_IMG_TIGER), 0, 0, x, y, x + 127, y + 127);
             }
+            graphics_set_color(DISPLAY_COLOR_BLACK);
+            graphics_text(10, 10, "0,1234");
         } while (display_next_page());
     }
 }

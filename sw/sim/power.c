@@ -21,6 +21,7 @@
 #include "sys/display.h"
 #include "sys/led.h"
 #include "sys/spi.h"
+#include "sim/sound.h"
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -62,6 +63,7 @@ void sleep_if_low_battery(void) {
         power_set_15v_reg_enabled(false);
         led_clear();
         spi_deselect_all();
+        sound_terminate();
 
         sleeping = true;
         puts("Low battery, sleep enabled.");

@@ -38,17 +38,6 @@
  *     } while (display_next_page());
  */
 
-#ifdef SIMULATION
-/**
- * If any drawing functions is used in such a way that drawing would happen
- * outside of the display area, RAM corruption will happen when checks are disabled.
- * There are no protections against invalid draw calls when targeting the game console,
- * only in the simulator, or if GRAPHICS_CHECKS is explicitly defined.
- * This is enables various runtime checks for other functions.
- */
-#define GRAPHICS_CHECKS
-#endif
-
 /**
  * An image is just an address to the image data in unified data space.
  *

@@ -21,10 +21,25 @@
 #include <sys/flash.h>
 #include <sys/time.h>
 
-#include <core/sound.h>
-
 #include <stdint.h>
 #include <stdbool.h>
+
+// The number of sound channels supported
+#define SOUND_CHANNELS_COUNT 3
+
+#define SOUND_PWM_MAX 24
+#define SOUND_VOLUME_INCREMENT (1 << SOUND_CHANNELS_COUNT)
+
+// Note value indicating nothing is being played
+#define SOUND_NO_NOTE 0x54
+
+typedef enum {
+    SOUND_VOLUME_OFF = 0 * SOUND_VOLUME_INCREMENT,
+    SOUND_VOLUME_0 = 1 * SOUND_VOLUME_INCREMENT,
+    SOUND_VOLUME_1 = 2 * SOUND_VOLUME_INCREMENT,
+    SOUND_VOLUME_2 = 3 * SOUND_VOLUME_INCREMENT,
+    SOUND_VOLUME_3 = 4 * SOUND_VOLUME_INCREMENT,
+} sound_volume_t;
 
 /**
  * Enable or disable buzzer output.
@@ -34,7 +49,7 @@ void sound_set_output_enabled(bool enabled);
 /**
  * Play current note of track on sound channel.
  */
-void sound_play_note(const track_t* track, uint8_t channel);
+void sound_play_note(uint8_t note, uint8_t channel);
 
 /**
  * Low-level implementation for setting volume.
