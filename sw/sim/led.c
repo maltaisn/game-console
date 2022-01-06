@@ -18,7 +18,6 @@
 #include <stdbool.h>
 
 static bool led_on;
-static bool led_powered;
 
 void led_set(void) {
     led_on = true;
@@ -33,9 +32,5 @@ void led_toggle(void) {
 }
 
 bool led_get(void) {
-    return led_on && led_powered;
-}
-
-void led_set_powered(bool powered) {
-    led_powered = powered;
+    return led_on;
 }

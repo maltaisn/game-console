@@ -19,6 +19,9 @@
 
 #include "sys/defs.h"
 #include "sys/display.h"
+#include "sys/led.h"
+#include "sys/sound.h"
+#include "sys/spi.h"
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -142,7 +145,7 @@ static uint16_t get_battery_level_avg(void) {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
         uint24_t sum = 0;
         for (uint8_t i = 0; i < BATTERY_BUFFER_SIZE; ++i) {
-            sum += battery_level_buf[i];
+            sum += (uint24_t) battery_level_buf[i];
         }
         return sum >> BATTERY_BUFFER_SIZE_LOG2;
     }
@@ -183,8 +186,15 @@ void sleep_if_low_battery(void) {
 #ifndef DISABLE_BAT_PROT
     if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
         // battery is too low, put CPU to sleep
-        // interrupts are disabled, only reset will wake up.
+        // disable everything, interrupts are disabled so device won't wake up unless reset anyway.
         power_set_15v_reg_enabled(false);
+        sound_set_output_enabled(false);
+        led_clear();
+        spi_deselect_all();
+        RTC.CTRLA = 0;
+        RTC.PITCTRLA = 0;
+        USART0.CTRLA = 0;
+
         cli();
         sleep_enable();
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);

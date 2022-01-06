@@ -19,7 +19,8 @@
 #include <sys/power.h>
 #include <stdio.h>
 #include "sys/display.h"
-#include "sim/led.h"
+#include "sys/led.h"
+#include "sys/spi.h"
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -59,7 +60,9 @@ uint16_t power_get_battery_voltage(void) {
 void sleep_if_low_battery(void) {
     if (battery_percent == 0) {
         power_set_15v_reg_enabled(false);
-        led_set_powered(false);
+        led_clear();
+        spi_deselect_all();
+
         sleeping = true;
         puts("Low battery, sleep enabled.");
     }

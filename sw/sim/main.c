@@ -44,7 +44,6 @@ int main(int argc, char** argv) {
 
     // enable power
     power_set_15v_reg_enabled(true);
-    led_set_powered(true);
 
     // check battery level on startup
     power_take_sample();
