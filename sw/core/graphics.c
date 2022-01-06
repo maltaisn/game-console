@@ -840,7 +840,6 @@ glyph_read:
                 // Pixel is set and on display.
                 graphics_pixel_fast(curr_x, curr_y);
             }
-            ++curr_x;
             --line_left;
             if (line_left == 0) {
                 // End of glyph line, either naturally or because
@@ -851,6 +850,14 @@ glyph_read:
                 if (curr_y >= PAGE_HEIGHT) {
                     return;  // out of page or display
                 }
+            } else {
+#ifdef __AVR__
+                ++curr_x;  // will overflow to -128 on AVR
+#else
+                if (__builtin_add_overflow(curr_x, 1, &curr_x)) {
+                    curr_x = INT8_MIN;
+                }
+#endif
             }
             byte <<= 1;
         }
@@ -869,8 +876,8 @@ void graphics_text(int8_t x, const int8_t y, const char* text) {
     }
     while (*text) {
         graphics_glyph(x, y, *text++);
-        int8_t next_x = (int8_t) (x + font.width + GLYPH_SPACING);
-        if (next_x < x) {
+        int8_t next_x;
+        if (__builtin_add_overflow(x, font.width + GLYPH_SPACING, &next_x)) {
             return;
         }
         x = next_x;
@@ -904,7 +911,8 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
     while (*text) {
         if (!next_wrap_pos) {
             // find the last space before text line wraps.
-            int8_t glyph_end_x = (int8_t) (x + font.glyph_size);
+            int8_t glyph_end_x;
+            bool overflow = __builtin_add_overflow(x, font.glyph_size, &glyph_end_x);
             const char* pos = text;
             while (true) {
                 if (!*pos) {
@@ -913,13 +921,13 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
                     break;
                 } else if (*pos++ == ' ') {
                     next_wrap_pos = pos;
-                } else if (glyph_end_x >= wrap_x || glyph_end_x < x) {
+                } else if (overflow || glyph_end_x >= wrap_x) {
                     // exit loop if past the wrap guide, or past the right side of display.
                     // don't exit loop if character is a space, instead skip
                     // all spaces at the end of the line.
                     break;
                 }
-                glyph_end_x = (int8_t) (glyph_end_x + glyph_spacing);
+                overflow = __builtin_add_overflow(glyph_end_x, glyph_spacing, &glyph_end_x);
             }
             if (!next_wrap_pos) {
                 // no space within text line, wrap on last character
@@ -931,8 +939,9 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
             }
         } else if (text == next_wrap_pos) {
             // wrap line
-            const int8_t new_y = (int8_t) (curr_y + font.line_spacing);
-            if (new_y < y || new_y >= display_page_yend) {
+            int8_t new_y;
+            bool overflow = __builtin_add_overflow(curr_y, font.line_spacing, &new_y);
+            if (overflow || new_y >= display_page_yend) {
                 return;  // out of page or display
             }
             curr_y = new_y;
@@ -940,7 +949,7 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
             next_wrap_pos = 0;
         } else {
             graphics_glyph(curr_x, curr_y, *text++);
-            curr_x = (int8_t) (curr_x + glyph_spacing);
+            curr_x = (int8_t) (curr_x + glyph_spacing);  // never overflows
         }
     }
 }
