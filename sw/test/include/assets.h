@@ -6,4 +6,6 @@
 #define ASSET_IMG_TIGER     0x0000
 #define ASSET_IMG_TIGER_BIN 0x60b0
 
+#define ASSET_SOUND_MUSIC   0x7168
+
 #endif

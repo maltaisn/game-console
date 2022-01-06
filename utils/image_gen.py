@@ -487,7 +487,7 @@ parser.add_argument(
     help="Input PNG file. Will be converted to 4-bit grayscale.")
 parser.add_argument(
     "output_file", action="store", type=str, default=STD_IO, nargs="?",
-    help="Output file. Can be set to '-' for standard output (default).")
+    help=f"Output file. Can be set to '{STD_IO}' for standard output (default).")
 parser.add_argument(
     "-r", "--region", action="store", type=str, dest="region",
     help="Bounds of the region to encode in the format <left>,<top>,<right>,<bottom>.")

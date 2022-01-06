@@ -20,12 +20,14 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Union, NoReturn, Tuple, Type, Dict
+from typing import List, Optional, Union, NoReturn, Tuple, Type, Dict, Set
 
 import font_gen
 import image_gen
+import sound_gen
 from font_gen import FontData
 from image_gen import ImageData, Rect, ImageEncoder, IndexGranularity
+from sound_gen import SoundData
 
 
 class PackError(Exception):
@@ -133,6 +135,37 @@ class FontObject(FileObject):
 
 
 @dataclass
+class SoundPackResult(PackResult):
+    sound_data: SoundData
+
+    def __repr__(self) -> str:
+        d = self.sound_data
+        s = super().__repr__()
+        s += f", on channels {', '.join((str(t.channel) for t in self.sound_data.tracks))}"
+        return s
+
+
+@dataclass
+class SoundObject(FileObject):
+    tempo_bpm: int
+    octave_adjust: int
+    merge_midi_tracks: bool
+    time_range: Optional[slice]
+    channels: Set[int]
+
+    def pack(self, addr: int) -> PackResult:
+        tempo_us = round(sound_gen.bpm_to_beat_us(self.tempo_bpm))
+        config = sound_gen.Config(self.file, "", tempo_us, self.octave_adjust,
+                                  self.merge_midi_tracks, self.time_range, self.channels, False)
+        try:
+            sound_data = sound_gen.create_sound_data(config)
+            data = sound_data.encode()
+        except sound_gen.EncodeError as e:
+            raise PackError(f"encoding error: {e}")
+        return SoundPackResult(data, sound_data)
+
+
+@dataclass
 class RawDataObject(DataObject):
     data: bytes
 
@@ -185,6 +218,7 @@ class PadObject(DataObject):
 TYPE_NAMES: Dict[Type[DataObject], str] = {
     ImageObject: "image",
     FontObject: "font",
+    SoundObject: "sound",
     RawFileObject: "raw file",
     RawDataObject: "raw data",
     ArrayIndexObject: "array index",
@@ -414,10 +448,21 @@ class Packer:
             force_binary
         ))
 
-    def sound(self, filename: str, group: str = "snd", *, name: Optional[str] = None) -> None:
+    def sound(self, filename: str, group: str = "sound", *, tempo: int, octave_adjust: int = 0,
+              merge_midi_tracks: bool = False, time_range: Optional[slice] = None,
+              channels: Optional[Set[int]] = None, name: Optional[str] = None) -> None:
         """Add a sound file to the data to pack. See sound_gen.py for more info on parameters."""
-        # TODO
-        raise NotImplementedError
+        self._check_not_packed()
+        self.objects.append(SoundObject(
+            self._name_or_default(name, filename),
+            self._check_group(group),
+            self._check_filename(filename),
+            tempo,
+            octave_adjust,
+            merge_midi_tracks,
+            time_range,
+            channels if channels is not None else set(range(SoundData.CHANNELS_COUNT))
+        ))
 
     def raw(self, data: Union[str, bytes], group: str = "raw", *,
             name: Optional[str] = None) -> None:
@@ -547,7 +592,7 @@ class Packer:
                     res = obj.pack(len(data))
                     pack_results.append(res)
                 except PackError as e:
-                    self._error(repr(e), obj)
+                    self._error(e.args[0], obj)
                 data += res.data
 
             # add default padding
@@ -629,7 +674,7 @@ class Packer:
             self._error("header file must have .h extension")
 
         output_path_c = Path(output_filename_src if output_filename_src else
-                           output_path_h.with_suffix(".c"))
+                             output_path_h.with_suffix(".c"))
         if output_path_c.suffix != ".c":
             self._error("source file must have .c extension")
 

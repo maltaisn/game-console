@@ -7,5 +7,4 @@ DEFINES += GAME_VERSION_MAJOR=$(GAME_VERSION_MAJOR) GAME_VERSION_MINOR=$(GAME_VE
 .PHONY: pack
 
 pack:
-	$(E)export PYTHONPATH=../../utils
-	$(E)python3 $(TARGET)/pack.py
+	$(E)export PYTHONPATH="../utils"; python3 $(TARGET)/pack.py
