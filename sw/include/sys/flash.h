@@ -18,8 +18,9 @@
 #ifndef SYS_FLASH_H
 #define SYS_FLASH_H
 
-#include "defs.h"
+#include <sys/defs.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
 
@@ -35,8 +36,12 @@ void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]);
 
 /**
  * Enable deep power-down mode on flash device.
- * The only way to exit this mode in the context of the game console is to do a power cycle.
  */
-void flash_power_down(void);
+void flash_sleep(void);
+
+/**
+ * Disable deep power-down mode on flash device.
+ */
+void flash_wakeup(void);
 
 #endif //SYS_FLASH_H

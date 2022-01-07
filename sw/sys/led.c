@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "sys/led.h"
+#include <sys/led.h>
 
 #include <avr/io.h>
 

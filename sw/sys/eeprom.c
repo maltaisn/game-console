@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "sys/eeprom.h"
-#include "sys/spi.h"
+#include <sys/eeprom.h>
+#include <sys/spi.h>
 
 #define INSTRUCTION_WREN 0x06
 #define INSTRUCTION_RDSR 0x05

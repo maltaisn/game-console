@@ -15,7 +15,6 @@
  */
 
 #include <sys/time.h>
-#include <sys/power.h>
 #include <sys/input.h>
 
 #include <core/sound.h>
@@ -29,17 +28,12 @@ static volatile systime_t systick;
 ISR(RTC_CNT_vect) {
     // called 256 times per second
     RTC.INTFLAGS = RTC_OVF_bm;
+
     systime_t time = systick + 1;
     systick = time;
+
     input_update_state();
     sound_update();
-}
-
-ISR(RTC_PIT_vect) {
-    // called every second
-    RTC.PITINTFLAGS = RTC_PI_bm;
-    power_start_sampling();
-    power_schedule_sleep_if_low_battery(true);
 }
 
 systime_t time_get() {

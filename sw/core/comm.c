@@ -17,15 +17,15 @@
 
 #ifndef DISABLE_COMMS
 
-#include "core/comm.h"
+#include <core/comm.h>
 
-#include "sys/uart.h"
-#include "sys/power.h"
-#include "sys/led.h"
-#include "sys/input.h"
-#include "sys/time.h"
-#include "sys/spi.h"
-#include "sys/reset.h"
+#include <sys/uart.h>
+#include <sys/power.h>
+#include <sys/led.h>
+#include <sys/input.h>
+#include <sys/time.h>
+#include <sys/spi.h>
+#include <sys/reset.h>
 
 #ifdef SIMULATION
 #include <stdio.h>

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "sys/spi.h"
+#include <sys/spi.h>
 
 #include <avr/io.h>
 

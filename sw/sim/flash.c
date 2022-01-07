@@ -15,8 +15,10 @@
  * limitations under the License.
  */
 
-#include "sim/flash.h"
-#include "sys/flash.h"
+#include <sim/flash.h>
+#include <sys/flash.h>
+
+#include <core/trace.h>
 
 #include <stddef.h>
 #include <memory.h>
@@ -30,6 +32,7 @@ static bool powered_down;
 
 void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
     if (powered_down) {
+        trace("flash is in power down mode");
         memset(dest, ERASE_BYTE, length);
         return;
     }
@@ -81,6 +84,10 @@ void flash_load_erased(void) {
     memset(flash, ERASE_BYTE, FLASH_SIZE);
 }
 
-void flash_power_down(void) {
+void flash_sleep(void) {
     powered_down = true;
+}
+
+void flash_wakeup(void) {
+    powered_down = false;
 }

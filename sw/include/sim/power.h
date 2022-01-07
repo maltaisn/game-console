@@ -25,6 +25,11 @@
 #include <sys/power.h>
 
 /**
+ * Called every second.
+ */
+void power_monitor_update(void);
+
+/**
  * Set current battery status.
  */
 void power_set_battery_status(battery_status_t status);
@@ -39,6 +44,12 @@ void power_set_battery_level(uint8_t level);
  * Returns true if simulator is "sleeping".
  */
 bool power_is_sleeping(void);
+
+/**
+ * Called to disable "sleep".
+ * This will continue execution after the `power_enable_sleep()` call in the game loop thread.
+ */
+void power_disable_sleep(void);
 
 #endif //SIM_POWER_H
 

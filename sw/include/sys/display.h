@@ -91,6 +91,12 @@ typedef enum {
 void display_init(void);
 
 /**
+ * Disable internal VDD regulator to put display to sleep.
+ * Re-initializing the display will turn it back on via display reset.
+ */
+void display_sleep(void);
+
+/**
  * Clear the display. Not paged and doesn't use the buffer,
  * so it shouldn't be used in a page loop.
  */
@@ -110,6 +116,16 @@ void display_set_inverted(bool inverted);
  * Set the display contrast. The default is DISPLAY_DEFAULT_CONTRAST.
  */
 void display_set_contrast(uint8_t contrast);
+
+/**
+ * Set whether screen dimming is enabled or not.
+ */
+void display_set_dimmed(bool dimmed);
+
+/**
+ * Get the display contrast.
+ */
+uint8_t display_get_contrast(void);
 
 /**
  * Set the display GPIO mode.

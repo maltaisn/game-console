@@ -16,7 +16,7 @@
  */
 
 #include <core/graphics.h>
-#include <core/checks.h>
+#include <core/trace.h>
 
 #include <sys/data.h>
 #include <sys/display.h>
@@ -109,7 +109,7 @@ const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
 void graphics_set_color(disp_color_t c) {
 #ifdef RUNTIME_CHECKS
     if (c > DISPLAY_COLOR_WHITE) {
-        check_message("invalid color");
+        trace("invalid color");
         return;
     }
 #endif
@@ -135,19 +135,19 @@ void graphics_set_font(graphics_font_t f) {
 
 #ifdef RUNTIME_CHECKS
     if (font.glyph_count > FONT_MAX_GLYPHS) {
-        check_message("font has too many glyphs");
+        trace("font has too many glyphs");
     }
     if (font.offset_bits > FONT_MAX_Y_OFFSET_BITS) {
-        check_message("font Y offset bits out of bounds");
+        trace("font Y offset bits out of bounds");
     }
     if (font.glyph_size < FONT_MIN_GLYPH_SIZE || font.glyph_size > FONT_MAX_GLYPH_SIZE) {
-        check_message("font glyph size out of bounds");
+        trace("font glyph size out of bounds");
     }
     if (font.offset_max >= (1 << font.offset_bits)) {
-        check_message("max offset not coherent with offset bits");
+        trace("max offset not coherent with offset bits");
     }
     if (font.glyph_size > FONT_MAX_LINE_SPACING) {
-        check_message("line spacing out of bounds");
+        trace("line spacing out of bounds");
     }
 #endif
 }
@@ -167,7 +167,7 @@ static void graphics_pixel_fast_color(const disp_x_t x, const disp_y_t y,
                                       const disp_color_t color) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
-        check_message("drawing outside bounds");
+        trace("drawing outside bounds");
         return;
     }
 #endif
@@ -182,7 +182,7 @@ static void graphics_pixel_fast_color(const disp_x_t x, const disp_y_t y,
 static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
-        check_message("drawing outside bounds");
+        trace("drawing outside bounds");
         return;
     }
 #endif
@@ -197,7 +197,7 @@ static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
 void graphics_pixel(const disp_x_t x, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
-        check_message("drawing outside bounds");
+        trace("drawing outside bounds");
         return;
     }
 #endif
@@ -210,7 +210,7 @@ static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y
     // preconditions: y must be in current page, 0 <= y < PAGE_HEIGHT.
 #ifdef RUNTIME_CHECKS
     if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
-        check_message("outside of bounds");
+        trace("outside of bounds");
         return;
     }
 #endif
@@ -234,7 +234,7 @@ static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y
 void graphics_hline(disp_x_t x0, disp_x_t x1, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
     if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
-        check_message("outside of bounds");
+        trace("outside of bounds");
         return;
     }
 #endif
@@ -250,7 +250,7 @@ void graphics_hline(disp_x_t x0, disp_x_t x1, const disp_y_t y) {
 void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
 #ifdef RUNTIME_CHECKS
     if (y0 >= DISPLAY_HEIGHT || y1 >= DISPLAY_HEIGHT || x >= DISPLAY_WIDTH) {
-        check_message("outside of bounds");
+        trace("outside of bounds");
         return;
     }
 #endif
@@ -282,7 +282,7 @@ void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
 #ifdef RUNTIME_CHECKS
     if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH ||
         y0 >= DISPLAY_HEIGHT || y1 >= DISPLAY_HEIGHT) {
-        check_message("outside of bounds");
+        trace("outside of bounds");
         return;
     }
 #endif
@@ -363,7 +363,7 @@ void graphics_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const ui
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT ||
         x + w > DISPLAY_WIDTH || x + h > DISPLAY_HEIGHT) {
-        check_message("drawing outside bounds");
+        trace("drawing outside bounds");
         return;
     }
 #endif
@@ -378,7 +378,7 @@ void graphics_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const ui
 void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const uint8_t h) {
 #ifdef RUNTIME_CHECKS
     if (x + w > DISPLAY_WIDTH || y + h > DISPLAY_HEIGHT) {
-        check_message("outside of bounds");
+        trace("outside of bounds");
         return;
     }
 #endif
@@ -429,7 +429,7 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT || left > image_width ||
         right > image_width || bottom < top || (bottom - top) >= PAGE_HEIGHT) {
-        check_message("out of bounds");
+        trace("out of bounds");
         return;
     }
 #endif
@@ -491,7 +491,7 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
                     // never happens in a RLE sequence, only in a raw sequence.
 #ifdef RUNTIME_CHECKS
                     if ((byte & 0x80) && pixels > 0) {
-                        check_message("decoding RLE on index bound");
+                        trace("decoding RLE on index bound");
                         return;
                     }
 #endif //RUNTIME_CHECKS
@@ -517,7 +517,7 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT || left > image_width ||
         right > image_width || bottom < top || (bottom - top) >= PAGE_HEIGHT) {
-        check_message("out of bounds");
+        trace("out of bounds");
         return;
     }
 #endif
@@ -629,7 +629,7 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
                 // never happens when within a raw or RLE sequence.
 #ifdef RUNTIME_CHECKS
                 if (sequence_length != 0 && !(state & HAS_RAW_COLOR)) {
-                    check_message("index bound in middle of sequence");
+                    trace("index bound in middle of sequence");
                     return;
                 }
 #endif //RUNTIME_CHECKS
@@ -652,7 +652,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
                                     const bool full) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
-        check_message("out of bounds");
+        trace("out of bounds");
         return;
     }
 #endif
@@ -682,16 +682,16 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 
 #ifdef RUNTIME_CHECKS
     if (x + right - left >= DISPLAY_WIDTH || y + bottom - top >= DISPLAY_HEIGHT) {
-        check_message("out of bounds");
+        trace("out of bounds");
         return;
     }
     if (left > right || top > bottom || right > width || bottom > height) {
-        check_message("region out of bounds");
+        trace("region out of bounds");
         return;
     }
 #ifndef GRAPHICS_NO_INDEXED_IMAGE
     if (index_gran == 0) {
-        check_message("index granularity == 0");
+        trace("index granularity == 0");
         return;
     }
 #endif
@@ -757,7 +757,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
             page_end += PAGE_HEIGHT;
         }
 #elif defined(RUNTIME_CHECKS)
-        check_message("decoding support for indexed images is disabled");
+        trace("decoding support for indexed images is disabled");
         return;
 #endif //GRAPHICS_NO_INDEXED_IMAGE
     } else {
@@ -773,7 +773,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         // set to zero to make sure the state of the decoder in never reset on index bound.
         index_gran = 0;
 #elif defined(RUNTIME_CHECKS)
-        check_message("decoding support for unindexed images is disabled");
+        trace("decoding support for unindexed images is disabled");
         return;
 #endif //GRAPHICS_NO_UNINDEXED_IMAGE
     }
@@ -783,13 +783,13 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 #ifndef GRAPHICS_NO_1BIT_IMAGE
         graphics_image_1bit(data, x, page_y, left, page_top, right, page_bottom, width, index_gran);
 #elif defined(RUNTIME_CHECKS)
-        check_message("decoding support for 1-bit images is disabled");
+        trace("decoding support for 1-bit images is disabled");
 #endif //GRAPHICS_NO_1BIT_IMAGE
     } else {
 #ifndef GRAPHICS_NO_4BIT_IMAGE
         graphics_image_4bit(data, x, page_y, left, page_top, right, page_bottom, width, index_gran);
 #elif defined(RUNTIME_CHECKS)
-        check_message("decoding support for 1-bit images is disabled");
+        trace("decoding support for 1-bit images is disabled");
 #endif //GRAPHICS_NO_4BIT_IMAGE
     }
 }
@@ -806,7 +806,7 @@ void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
 void graphics_glyph(int8_t x, int8_t y, char c) {
 #ifdef RUNTIME_CHECKS
     if (font.addr == 0) {
-        check_message("no font set");
+        trace("no font set");
         return;
     }
 #endif
@@ -839,7 +839,7 @@ void graphics_glyph(int8_t x, int8_t y, char c) {
         // but should probably be reported for non-blank other symbols.
 #ifdef RUNTIME_CHECKS
         if (!isspace(c) && !iscntrl(c)) {
-            check_message("unencoded character %#02x", c);
+            trace("unencoded character %#02x", c);
         }
 #endif
         return;
@@ -899,11 +899,11 @@ glyph_read:
 void graphics_text(int8_t x, const int8_t y, const char* text) {
 #ifdef RUNTIME_CHECKS
     if (font.addr == 0) {
-        check_message("no font set");
+        trace("no font set");
         return;
     }
     if (x < -128 + font.width || y < -128 + font.line_spacing) {
-        check_message("position out of bounds");
+        trace("position out of bounds");
         return;
     }
 #endif
@@ -923,15 +923,15 @@ void graphics_text(int8_t x, const int8_t y, const char* text) {
 void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, const char* text) {
 #ifdef RUNTIME_CHECKS
     if (font.addr == 0) {
-        check_message("no font set");
+        trace("no font set");
         return;
     }
     if (wrap_x > DISPLAY_WIDTH || wrap_x < x) {
-        check_message("wrap_x out of bounds");
+        trace("wrap_x out of bounds");
         return;
     }
     if (x < -128 + 2 * font.width || y < -128 + font.line_spacing) {
-        check_message("position out of bounds");
+        trace("position out of bounds");
         return;
     }
 #endif

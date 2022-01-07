@@ -19,9 +19,15 @@ DEFINES += UART_BAUD_FAST=1000000
 # DEFINES += DISPLAY_BUFFER_SIZE=2048
 
 # disables auto shutdown for battery overdischarge protection.
-# DEFINES += DISABLE_BAT_PROT
+# DEFINES += DISABLE_BATTERY_PROTECTION
 # changes the default sleep countdown on low battery (if protection enabled).
 # DEFINES += POWER_SLEEP_COUNTDOWN=<seconds>
+
+# disables sleep after inactivity period
+# DEFINES += DISABLE_INACTIVE_SLEEP
+# inactivity sleep and screen dimming countdown timer (if enabled).
+# DEFINES += POWER_INACTIVE_COUNTDOWN_SLEEP=<seconds>
+# DEFINES += POWER_INACTIVE_COUNTDOWN_DIM=<seconds>
 
 # enables runtime checks (in core/ modules)
 # DEFINES += RUNTIME_CHECKS

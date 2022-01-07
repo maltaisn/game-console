@@ -30,13 +30,17 @@ pthread_mutex_t display_mutex;
 static uint8_t disp_data[DISPLAY_SIZE];
 static uint8_t* disp_data_ptr;
 static bool disp_enabled;
+static bool disp_internal_vdd_enabled;
 static bool disp_inverted;
+static bool disp_dimmed;
 static uint8_t disp_contrast;
 static display_gpio_t disp_gpio_mode;
 
 void display_init(void) {
+    disp_internal_vdd_enabled = true;
     disp_enabled = false;
     disp_inverted = false;
+    disp_dimmed = false;
     disp_contrast = DISPLAY_DEFAULT_CONTRAST;
     disp_gpio_mode = DISPLAY_GPIO_OUTPUT_LO;
 
@@ -45,6 +49,10 @@ void display_init(void) {
     disp_data_ptr = 0;
 
     pthread_mutex_init(&display_mutex, 0);
+}
+
+void display_sleep(void) {
+    disp_internal_vdd_enabled = false;
 }
 
 void display_clear(disp_color_t color) {
@@ -61,6 +69,14 @@ void display_set_inverted(bool inverted) {
 
 void display_set_contrast(uint8_t contrast) {
     disp_contrast = contrast;
+}
+
+void display_set_dimmed(bool dimmed) {
+    disp_dimmed = dimmed;
+}
+
+uint8_t display_get_contrast(void) {
+    return disp_contrast;
 }
 
 void display_set_gpio(display_gpio_t mode) {
@@ -97,14 +113,15 @@ static float get_pixel_opacity(disp_color_t color) {
         color = DISPLAY_COLOR_WHITE - color;
     }
     float color_factor = (float) color / DISPLAY_COLOR_WHITE;
-    float contrast_factor = (float) disp_contrast / DISPLAY_MAX_CONTRAST * 0.8f + 0.2f;
+    float effective_contrast = (float) disp_contrast / (disp_dimmed ? 2.0f : 1.0f);
+    float contrast_factor = effective_contrast / DISPLAY_MAX_CONTRAST * 0.8f + 0.2f;
     if (contrast_factor > 1.0f) contrast_factor = 1.0f;
     return color_factor * contrast_factor;
 }
 
 void display_draw(void) {
-    if (!disp_enabled || disp_gpio_mode != DISPLAY_GPIO_OUTPUT_HI) {
-        // display OFF or 15V regulator is disabled, nothing shown.
+    if (!disp_enabled || !disp_internal_vdd_enabled || disp_gpio_mode != DISPLAY_GPIO_OUTPUT_HI) {
+        // display OFF, internal VDD is disabled, or 15V regulator is disabled, nothing shown.
         return;
     }
 

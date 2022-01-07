@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "sys/sound.h"
+#include <sys/sound.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>

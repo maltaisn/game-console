@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "sys/reset.h"
+#include <sys/reset.h>
 
 #include <avr/io.h>
 

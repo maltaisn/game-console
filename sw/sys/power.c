@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-#include "sys/power.h"
+#include <sys/power.h>
 
-#include "sys/defs.h"
-#include "sys/display.h"
-#include "sys/led.h"
-#include "sys/sound.h"
-#include "sys/spi.h"
+#include <sys/defs.h>
+#include <sys/display.h>
+#include <sys/led.h>
+#include <sys/sound.h>
+#include <sys/spi.h>
+#include <sys/input.h>
+#include <sys/init.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -64,6 +66,7 @@ enum {
     STATE_BATTERY_PERCENT_CACHED = 1 << 0,
     STATE_15V_ENABLED = 1 << 1,
     STATE_SLEEP_SCHEDULED = 1 << 2,
+    STATE_SLEEP_ALLOW_WAKEUP = 1 << 3,
 };
 
 static volatile uint8_t power_state;
@@ -74,6 +77,9 @@ static volatile battery_status_t battery_status;
 static volatile uint16_t battery_level_buf[BATTERY_BUFFER_SIZE];
 static volatile uint8_t battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
 static uint8_t battery_percent_cache;
+
+// sleeping
+static volatile sleep_cause_t sleep_cause;
 static uint8_t sleep_countdown;
 
 ISR(ADC0_RESRDY_vect) {
@@ -85,7 +91,7 @@ ISR(ADC0_RESRDY_vect) {
         res >>= 8;
         const uint8_t* ranges = BATTERY_STATUS_RANGES;
         battery_status_t new_status = BATTERY_UNKNOWN;
-        for (uint8_t status = BATTERY_NONE ; status <= (uint8_t) BATTERY_DISCHARGING ; ++status) {
+        for (uint8_t status = BATTERY_NONE; status <= (uint8_t) BATTERY_DISCHARGING; ++status) {
             uint8_t min = *ranges++;
             uint8_t max = *ranges++;
             if (res >= min && res <= max) {
@@ -127,6 +133,20 @@ ISR(ADC0_RESRDY_vect) {
     }
 }
 
+ISR(RTC_PIT_vect) {
+    // called every second
+    RTC.PITINTFLAGS = RTC_PI_bm;
+
+    input_update_inactivity();
+
+    if ((power_state & STATE_SLEEP_SCHEDULED) && sleep_countdown != 0) {
+        --sleep_countdown;
+    }
+
+    power_start_sampling();
+    power_schedule_sleep_if_low_battery(true);
+}
+
 void power_start_sampling(void) {
     if (sampler_state == STATE_DONE) {
         sampler_state = STATE_STATUS;
@@ -143,8 +163,7 @@ battery_status_t power_get_battery_status(void) {
     return battery_status;
 }
 
-/** "Average" battery level from measurements in buffer.
- *  If buffer is not full last measurement is repeated. */
+/** "Average" battery level from measurements in buffer. */
 static uint16_t get_battery_level_avg(void) {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
         uint24_t sum = 0;
@@ -167,7 +186,7 @@ uint8_t power_get_battery_percent(void) {
         // battery level <0%
         return 0;
     }
-    for (uint8_t i = 1 ; i < 11; ++i) {
+    for (uint8_t i = 1; i < 11; ++i) {
         uint16_t right = BATTERY_LEVEL_POINTS[i];
         if (level < right) {
             return 10 * (i - 1) + ((level - left) * 10 + 5) / (right - left);
@@ -201,44 +220,65 @@ void power_set_15v_reg_enabled(bool enabled) {
     display_set_gpio(enabled ? DISPLAY_GPIO_OUTPUT_HI : DISPLAY_GPIO_OUTPUT_LO);
 }
 
-void power_enable_sleep(void) {
-    // disable everything, interrupts are disabled so device won't wake up unless reset anyway.
-    power_set_15v_reg_enabled(false);
-    sound_set_output_enabled(false);
-    flash_power_down();
-    led_clear();
-    spi_deselect_all();  // should not be needed, but just in case.
-    RTC.CTRLA = 0;
-    RTC.PITCTRLA = 0;
-    USART0.CTRLA = 0;
-
-    cli();
-    sleep_enable();
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    sleep_cpu();
-}
-
-void power_schedule_sleep_if_low_battery(bool countdown) {
-#ifndef DISABLE_BAT_PROT
-    if (power_is_sleep_scheduled()) {
-        --sleep_countdown;
-        if (sleep_countdown) {
-            return;
-        }
-    } else if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
-        power_state |= STATE_SLEEP_SCHEDULED;
-        if (countdown) {
-            sound_set_output_enabled(false);
+void power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool countdown) {
+    if (countdown) {
+        ATOMIC_BLOCK(ATOMIC_FORCEON) {
+            uint8_t state = power_state;
+            if (state & STATE_SLEEP_SCHEDULED) {
+                // already scheduled
+                return;
+            }
+            state |= STATE_SLEEP_SCHEDULED;
+            if (allow_wakeup) {
+                state |= STATE_SLEEP_ALLOW_WAKEUP;
+            }
             sleep_countdown = POWER_SLEEP_COUNTDOWN;
-            return;
+            sleep_cause = cause;
+            power_state = state;
         }
-    } else {
         return;
     }
     power_enable_sleep();
-#endif //DISABLE_BAT_PROT
 }
 
-bool power_is_sleep_scheduled(void) {
-    return (power_state & STATE_SLEEP_SCHEDULED) != 0;
+void power_schedule_sleep_if_low_battery(bool countdown) {
+#ifndef DISABLE_BATTERY_PROTECTION
+    if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
+        power_schedule_sleep(SLEEP_CAUSE_LOW_POWER, false, countdown);
+        // prevent the screen from being dimmed in the meantime.
+        input_reset_inactivity();
+    }
+#endif
 }
+
+void power_schedule_sleep_cancel(void) {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        power_state &= ~STATE_SLEEP_SCHEDULED;
+    }
+    sleep_cause = SLEEP_CAUSE_NONE;
+}
+
+sleep_cause_t power_get_scheduled_sleep_cause(void) {
+    return sleep_cause;
+}
+
+bool power_is_sleep_due(void) {
+    return (power_state & STATE_SLEEP_SCHEDULED) && sleep_countdown == 0;
+}
+
+void power_enable_sleep(void) {
+    power_schedule_sleep_cancel();
+
+    // go to sleep
+    init_sleep();
+    if (!(power_state & STATE_SLEEP_ALLOW_WAKEUP)) {
+        cli();
+    }
+    sleep_cpu();
+
+    // --> wake-up from sleep
+    // reset power state because some time may have passed since device was put to sleep.
+    battery_status = BATTERY_UNKNOWN;
+    init_wakeup();
+}
+

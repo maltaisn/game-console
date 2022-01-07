@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "sim/eeprom.h"
-#include "sys/eeprom.h"
+#include <sim/eeprom.h>
+#include <sys/eeprom.h>
 
 #include <stddef.h>
 #include <memory.h>

@@ -22,10 +22,18 @@
 #include <stdbool.h>
 
 #ifndef POWER_SLEEP_COUNTDOWN
-#define POWER_SLEEP_COUNTDOWN 5
+#define POWER_SLEEP_COUNTDOWN 3
 #endif
 
-typedef enum battery_status {
+#ifndef POWER_INACTIVE_COUNTDOWN_SLEEP
+#define POWER_INACTIVE_COUNTDOWN_SLEEP 90
+#endif
+
+#ifndef POWER_INACTIVE_COUNTDOWN_DIM
+#define POWER_INACTIVE_COUNTDOWN_DIM 60
+#endif
+
+typedef enum {
     /** Battery status is unknown (not yet sampled or outside known values). */
     BATTERY_UNKNOWN = 0x00,
     /** Battery not connected. */
@@ -37,6 +45,15 @@ typedef enum battery_status {
     /** USB disconnected, battery is discharging. */
     BATTERY_DISCHARGING = 0x04,
 } battery_status_t;
+
+typedef enum {
+    /** No upcoming sleep. */
+    SLEEP_CAUSE_NONE,
+    /** Upcoming sleep due to inactivity. */
+    SLEEP_CAUSE_INACTIVE,
+    /** Upcoming sleep due to low battery level. */
+    SLEEP_CAUSE_LOW_POWER,
+} sleep_cause_t;
 
 /**
  * Start taking sample for battery status & battery level (if discharging).
@@ -84,24 +101,39 @@ bool power_is_15v_reg_enabled(void);
 void power_set_15v_reg_enabled(bool enabled);
 
 /**
- * Enable system sleep.
- * Interrupts are disabled so device cannot wake up from sleep until reset.
+ * Schedule sleep with a cause.
+ * When sleep is scheduled, a short countdown will start to allow the game to save its state.
+ * If the countdown is not enabled and wake up is allowed, then this must not be called within an
+ * interrupt because sleep will be enabled immediately.
  */
-void power_enable_sleep(void);
+void power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool countdown);
 
 /**
- * Schedule sleep if battery is discharging and percentage is 0%.
- * If sleep is scheduled, a short countdown will start to allow the game to save its state.
- * Calling this function again will update the countdown, until it reaches 0 and sleep is enabled.
- * If `countdown` is false and battery is low, sleep will be enabled directly.
- * This function should not be called directly by game code.
+ * If battery level is too low, schedule sleep, with countdown or not.
+ * At least one battery sample must have been taken before calling this.
  */
 void power_schedule_sleep_if_low_battery(bool countdown);
 
 /**
- * Returns true if sleep is scheduled.
- * There's a countdown on sleep to let the game save its state and display the power down UI.
+ * Cancel scheduled sleep if any.
  */
-bool power_is_sleep_scheduled(void);
+void power_schedule_sleep_cancel(void);
+
+/**
+ * Returns the scheduled sleep cause, or `SLEEP_CAUSE_NONE` if sleep has not been scheduled.
+ * There's a countdown of `POWER_DOWN_SLEEP` seconds on sleep to let the game save its state.
+ */
+sleep_cause_t power_get_scheduled_sleep_cause(void);
+
+/**
+ * Returns true if sleep countdown has expired and device is due to go to sleep.
+ */
+bool power_is_sleep_due(void);
+
+/**
+ * Enter sleep mode.
+ */
+void power_enable_sleep(void);
+
 
 #endif //SYS_POWER_H

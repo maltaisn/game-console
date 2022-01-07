@@ -18,8 +18,9 @@
 #ifndef SYS_TIME_H
 #define SYS_TIME_H
 
+#include <sys/defs.h>
+
 #include <stdint.h>
-#include "defs.h"
 
 #define SYSTICK_FREQUENCY 256
 

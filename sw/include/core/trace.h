@@ -15,24 +15,21 @@
  * limitations under the License.
  */
 
-#ifndef CHECKS_H
-#define CHECKS_H
+#ifndef TRACE_H
+#define TRACE_H
 
 #if defined(SIMULATION) && !defined(RUNTIME_CHECKS)
-// Always enable checks in simulation.
+// Always enable runtime checks in simulation.
 #define RUNTIME_CHECKS
 #endif
 
-#ifdef RUNTIME_CHECKS
 #ifdef SIMULATION
 
 #include <stdio.h>
 
-#define check_message(str, ...) fprintf(stderr, "%s: " str "\n", __func__, ##__VA_ARGS__)
+#define trace(str, ...) printf("GC %s:%d:(%s) " str "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
-#define check_message(str, ...) // no-op
+#define trace(str, ...) // no-op
 #endif //SIMULATION
-#endif //RUNTIME_CHECKS
 
-
-#endif //CHECKS_H
+#endif //TRACE_H

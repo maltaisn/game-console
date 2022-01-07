@@ -20,13 +20,10 @@
 #ifndef SIM_INPUT_H
 #define SIM_INPUT_H
 
-void input_on_key_down(unsigned char key, int x, int y);
-
-void input_on_key_up(unsigned char key, int x, int y);
-
-void input_on_key_down_special(int key, int x, int y);
-
-void input_on_key_up_special(int key, int x, int y);
+/**
+ * Initialize keyboard callbacks for input module.
+ */
+void input_init(void);
 
 #endif //SIM_INPUT_H
 

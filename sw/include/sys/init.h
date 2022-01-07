@@ -25,4 +25,16 @@
  */
 void init(void);
 
+/**
+ * Called when device is about to go to sleep.
+ * Peripherals are disabled.
+ */
+void init_sleep(void);
+
+/**
+ * Called when device is waking up from sleep.
+ * Peripherals are enabled.
+ */
+void init_wakeup(void);
+
 #endif //SYS_INIT_H

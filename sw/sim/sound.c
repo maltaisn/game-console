@@ -17,6 +17,8 @@
 #include <sys/sound.h>
 #include <sim/sound.h>
 
+#include <core/trace.h>
+
 #include <portaudio.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -97,8 +99,7 @@ void sound_play_note(uint8_t note, uint8_t channel) {
 
 static bool handle_pa_error(PaError err) {
     if (err != paNoError) {
-        fprintf(stderr, "handle_pa_error: error occurred with the portaudio stream: [%d] %s\n",
-                err, Pa_GetErrorText(err));
+        trace("error occurred with the portaudio stream: [%d] %s", err, Pa_GetErrorText(err));
         Pa_Terminate();
         stream = 0;
         return true;
@@ -174,7 +175,7 @@ void sound_open_stream(void) {
     PaStreamParameters params;
     params.device = Pa_GetDefaultOutputDevice();
     if (params.device == paNoDevice) {
-        fprintf(stderr, "sound_open_stream: no default output device.\n");
+        trace("no default output device.");
         return;
     }
     params.channelCount = 1;

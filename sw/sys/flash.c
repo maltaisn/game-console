@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-#include "sys/flash.h"
-#include "sys/spi.h"
+#include <sys/flash.h>
+#include <sys/spi.h>
 
 #include <avr/io.h>
+#include <stdbool.h>
 
 #define INSTRUCTION_READ 0x03
-#define INSTRUCTION_POWER_DOWN 0xb9
+#define INSTRUCTION_POWER_DOWN_ENABLE 0xb9
+#define INSTRUCTION_POWER_DOWN_DISABLE 0xab
 
 void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
     uint8_t header[4];
@@ -35,8 +37,14 @@ void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
     spi_deselect_flash();
 }
 
-void flash_power_down(void) {
+void flash_sleep(void) {
     spi_select_flash();
-    spi_transmit_single(INSTRUCTION_POWER_DOWN);
+    spi_transmit_single(INSTRUCTION_POWER_DOWN_ENABLE);
+    spi_deselect_flash();
+}
+
+void flash_wakeup(void) {
+    spi_select_flash();
+    spi_transmit_single(INSTRUCTION_POWER_DOWN_DISABLE);
     spi_deselect_flash();
 }

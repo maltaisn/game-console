@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "sys/uart.h"
+#include <sys/uart.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>

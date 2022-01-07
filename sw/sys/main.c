@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "sys/main.h"
+#include <sys/main.h>
 
-#include "sys/init.h"
-#include "sys/power.h"
-#include "core/comm.h"
+#include <sys/init.h>
+#include <sys/power.h>
+#include <core/comm.h>
 
 #include <stdbool.h>
 
@@ -29,6 +29,15 @@ int main(void) {
 #ifndef DISABLE_COMMS
         comm_receive();
 #endif
+        bool is_sleep_due = power_is_sleep_due();
+
         loop();
+
+        if (is_sleep_due) {
+            // if sleep was scheduled and is due, go to sleep.
+            // loop() will have been called once with power_is_sleep_due() returning true
+            // so that any special action can be taken.
+            power_enable_sleep();
+        }
     }
 }

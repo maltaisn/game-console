@@ -16,13 +16,19 @@
  */
 
 #include <sim/power.h>
+#include <sim/sound.h>
+
 #include <sys/power.h>
+#include <sys/display.h>
+#include <sys/spi.h>
+#include <sys/input.h>
+#include <sys/init.h>
+
+#include <core/trace.h>
+
 #include <stdio.h>
-#include "sys/display.h"
-#include "sys/led.h"
-#include "sys/spi.h"
-#include "sim/sound.h"
-#include "sys/sound.h"
+#include <stdatomic.h>
+#include <unistd.h>
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -33,8 +39,23 @@ static battery_status_t battery_status = BATTERY_DISCHARGING;
 static uint8_t battery_percent = 100;
 static bool reg_15v_enabled;
 static bool sleep_scheduled = false;
+static bool sleep_allow_wakeup;
+static sleep_cause_t sleep_cause;
 static uint8_t sleep_countdown;
-static bool sleeping;
+
+static volatile atomic_bool sleeping = false;
+
+void power_monitor_update(void) {
+    input_update_inactivity();
+
+    if (sleep_scheduled && sleep_countdown != 0) {
+        --sleep_countdown;
+        trace("sleep countdown = %d", sleep_countdown);
+    }
+
+    power_start_sampling();
+    power_schedule_sleep_if_low_battery(true);
+}
 
 void power_start_sampling(void) {
     // no-op
@@ -80,45 +101,71 @@ void power_set_15v_reg_enabled(bool enabled) {
     }
 }
 
+void power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool countdown) {
+    if (countdown) {
+        if (sleep_scheduled) {
+            // already scheduled
+            return;
+        }
+        trace("sleep scheduled, cause = %d, allow_wakeup = %d, countdown = %d",
+              cause, allow_wakeup, countdown);
+        sleep_scheduled = true;
+        sleep_cause = cause;
+        sleep_allow_wakeup = allow_wakeup;
+        sleep_countdown = POWER_SLEEP_COUNTDOWN;
+        return;
+    }
+    power_enable_sleep();
+}
+
+void power_schedule_sleep_if_low_battery(bool countdown) {
+#ifndef DISABLE_BATTERY_PROTECTION
+    if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
+        power_schedule_sleep(SLEEP_CAUSE_LOW_POWER, false, countdown);
+        // prevent the screen from being dimmed in the meantime.
+        input_reset_inactivity();
+    }
+#endif
+}
+
+void power_schedule_sleep_cancel(void) {
+    if (sleep_scheduled) {
+        sleep_scheduled = false;
+        sleep_cause = SLEEP_CAUSE_NONE;
+        trace("scheduled sleep cancelled");
+    }
+}
+
+sleep_cause_t power_get_scheduled_sleep_cause(void) {
+    return sleep_cause;
+}
+
+bool power_is_sleep_due(void) {
+    return sleep_scheduled && sleep_countdown == 0;
+}
+
 bool power_is_sleeping(void) {
     return sleeping;
 }
 
+void power_disable_sleep(void) {
+    sleeping = false;
+}
+
 void power_enable_sleep(void) {
-    sound_terminate();
-    power_set_15v_reg_enabled(false);
-    sound_set_output_enabled(false);
-    flash_power_down();
-    led_clear();
-    spi_deselect_all();
+    sleep_scheduled = false;
+    sleep_cause = SLEEP_CAUSE_NONE;
 
+    init_sleep();
+
+    // go to sleep
     sleeping = true;
-    puts("power_enable_sleep: sleep enabled");
-}
-
-void power_schedule_sleep_if_low_battery(bool countdown) {
-#ifndef DISABLE_BAT_PROT
-    if (sleep_scheduled) {
-        --sleep_countdown;
-        printf("power_schedule_sleep_if_low_battery: sleep countdown = %d\n", sleep_countdown);
-        if (sleep_countdown) {
-            return;
-        }
-    } else if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
-        sleep_scheduled = true;
-        if (countdown) {
-            puts("power_schedule_sleep_if_low_battery: sleep scheduled");
-            sound_set_output_enabled(false);
-            sleep_countdown = POWER_SLEEP_COUNTDOWN;
-            return;
-        }
-    } else {
-        return;
+    trace("sleep enabled");
+    while (sleeping || !sleep_allow_wakeup) {
+        sleep(1);
     }
-    power_enable_sleep();
-#endif //DISABLE_BAT_PROT
-}
 
-bool power_is_sleep_scheduled(void) {
-    return sleep_scheduled;
+    // --> wake-up from sleep
+    trace("sleep disabled");
+    init_wakeup();
 }

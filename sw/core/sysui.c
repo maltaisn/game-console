@@ -22,6 +22,7 @@ void sysui_battery_sleep(void) {
     graphics_set_font(GRAPHICS_BUILTIN_FONT);
     graphics_text(30, 42, "LOW BATTERY LEVEL");
     graphics_text(33, 81, "SHUTTING DOWN...");
+    graphics_set_color(11);
     graphics_rect(40, 52, 43, 24);
     graphics_rect(41, 53, 41, 22);
     graphics_fill_rect(84, 57, 4, 14);

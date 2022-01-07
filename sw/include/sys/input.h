@@ -44,4 +44,14 @@ uint8_t input_get_state(void);
  */
 void input_update_state(void);
 
+/**
+ * Reset inactivity countdown timer and undim screen.
+ */
+void input_reset_inactivity(void);
+
+/**
+ * Called every second to update inactivity countdown.
+ */
+void input_update_inactivity(void);
+
 #endif //SYS_INPUT_H

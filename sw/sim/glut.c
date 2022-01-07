@@ -15,14 +15,16 @@
  * limitations under the License.
  */
 
-#include "sim/glut.h"
-#include "sim/time.h"
-#include "sim/input.h"
-#include "sim/display.h"
-#include "sim/led.h"
-#include "sim/power.h"
+#include <sim/glut.h>
+#include <sim/time.h>
+#include <sim/input.h>
+#include <sim/display.h>
+#include <sim/led.h>
+#include <sim/power.h>
 
-#include "sys/time.h"
+#include <sys/time.h>
+
+#include <core/trace.h>
 
 #include <GL/glut.h>
 #include <math.h>
@@ -115,14 +117,9 @@ static void callback_mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && x >= 50 && y >= 20 &&
         x < 50 + DISPLAY_PIXEL_SIZE * DISPLAY_WIDTH &&
         y < 20 + DISPLAY_PIXEL_SIZE * DISPLAY_HEIGHT) {
-        printf("Display was clicked at x = %d, y = %d\n",
+        trace("display clicked at x = %d, y = %d",
                (x - 50) / DISPLAY_PIXEL_SIZE, (y - 20) / DISPLAY_PIXEL_SIZE);
     }
-}
-
-static void callback_time_timer(int arg) {
-    glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
-    time_update();
 }
 
 static void callback_redisplay_timer(int arg) {
@@ -138,17 +135,7 @@ void glut_init(void) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     glutDisplayFunc(callback_display);
-
-    glutKeyboardFunc(input_on_key_down);
-    glutKeyboardUpFunc(input_on_key_up);
-    glutSpecialFunc(input_on_key_down_special);
-    glutSpecialUpFunc(input_on_key_up_special);
-    glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
-    glutMouseFunc(callback_mouse);
-
-    // this gives a 4 ms timer which is not terribly accurate (should be 3.91 ms) but will
-    // work fine for the simulator purposes.
-    glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
-
     glutTimerFunc((unsigned int) (1000.0 / DISPLAY_FPS + 0.5), callback_redisplay_timer, 0);
+
+    glutMouseFunc(callback_mouse);
 }

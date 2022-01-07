@@ -14,43 +14,26 @@
  * limitations under the License.
  */
 
-#include "sim/time.h"
-#include "sys/time.h"
-
-#include "sys/power.h"
+#include <sim/time.h>
+#include <sys/time.h>
 
 #include <time.h>
-#include "sys/input.h"
-#include "core/sound.h"
-#include "sim/power.h"
-
-#define POWER_SAMPLE_PERIOD 1.0
+#include <sys/input.h>
+#include <core/sound.h>
+#include <sim/power.h>
 
 #define SYSTICK_MAX 0xffffff
 
 static clock_t start_time;
-static clock_t last_power_sample;
 
 void time_init(void) {
     const clock_t time = clock();
     start_time = time;
-    last_power_sample = time;
 }
 
 void time_update(void) {
-    if (power_is_sleeping()) {
-        return;
-    }
-
-    const clock_t time = clock();
     input_update_state();
     sound_update();
-
-    if ((double) (time - last_power_sample) / CLOCKS_PER_SEC >= POWER_SAMPLE_PERIOD) {
-        power_start_sampling();
-        power_schedule_sleep_if_low_battery(true);
-        last_power_sample = time;
-    }
 }
 
 systime_t time_get() {

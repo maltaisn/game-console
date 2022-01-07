@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-#include "sys/main.h"
-#include "sys/power.h"
-#include "sys/display.h"
+#include <sys/main.h>
+#include <sys/power.h>
+#include <sys/init.h>
 
-#include "sim/time.h"
-#include "sim/glut.h"
-#include "sim/eeprom.h"
-#include "sim/flash.h"
-#include "sim/led.h"
-#include "sim/sound.h"
-#include "sim/power.h"
+#include <sim/time.h>
+#include <sim/glut.h>
+#include <sim/eeprom.h>
+#include <sim/flash.h>
+#include <sim/sound.h>
+#include <sim/input.h>
 
-#include "core/comm.h"
+#include <core/comm.h>
 
 #include <stdbool.h>
 #include <GL/glut.h>
@@ -36,44 +35,37 @@
 
 static void* loop_thread(void* arg) {
     while (true) {
-        if (power_is_sleeping()) {
-            // sleep locks down the whole system until reset.
-            sleep(1);
-            continue;
-        }
 #ifndef DISABLE_COMMS
         comm_receive();
 #endif
+        bool is_sleep_due = power_is_sleep_due();
+
         loop();
+
+        if (is_sleep_due) {
+            // if sleep was scheduled and is due, go to sleep.
+            // loop() will have been called once with power_is_sleep_due() returning true
+            // so that any special action can be taken.
+            power_enable_sleep();
+        }
     }
     return 0;
 }
 
 int main(int argc, char** argv) {
-    // == hardware initialization (similar to sys/init.c)
-    // initialize display
-    display_init();
-    display_set_enabled(true);
-
-    // enable power
-    power_set_15v_reg_enabled(true);
-
-    // check battery level on startup
-    power_start_sampling();
-    power_wait_for_sample();
-    power_schedule_sleep_if_low_battery(false);
-
     // == simulator initialization
     // initialize memories as initially empty; they can be loaded from a file later.
     eeprom_load_erased();
     flash_load_erased();
     time_init();
     sound_init();
-    sound_open_stream();
 
     glutInit(&argc, argv);
     glut_init();
+    input_init();
 
+    // == main (equivalent to sys/main.c)
+    init();
     setup();
 
     pthread_t thread;

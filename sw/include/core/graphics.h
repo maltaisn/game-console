@@ -22,7 +22,7 @@
 #include <sys/flash.h>
 
 #include <stdint.h>
-#include "sys/data.h"
+#include <sys/data.h>
 
 /*
  * The coordinate system used by the graphics functions is Y down, X right.

@@ -16,7 +16,7 @@
  */
 
 #include <core/sound.h>
-#include <core/checks.h>
+#include <core/trace.h>
 
 #define TRACK_DATA_END_MASK ((flash_t) 0x800000)
 
@@ -205,7 +205,7 @@ void sound_load(flash_t address) {
         flash_read(address, TRACK_HEADER_SIZE, header);
 #ifdef RUNTIME_CHECKS
         if (header[0] >= SOUND_CHANNELS_COUNT) {
-            check_message("invalid sound data");
+            trace("invalid sound data");
         }
 #endif
         if (header[0] == i) {
@@ -230,7 +230,7 @@ void sound_load(flash_t address) {
     update_output_state();
 #ifdef RUNTIME_CHECKS
     if (!any_tracks) {
-        check_message("loaded sound data has no tracks");
+        trace("loaded sound data has no tracks");
     }
 #endif
 }
@@ -238,7 +238,7 @@ void sound_load(flash_t address) {
 void sound_start(uint8_t t) {
 #ifdef RUNTIME_CHECKS
     if ((t & ~TRACKS_STARTED_ALL) != 0) {
-        check_message("invalid track start flags");
+        trace("invalid track start flags");
     }
 #endif
     // TODO not atomic

@@ -59,6 +59,13 @@ uint8_t display_buffer[DISPLAY_BUFFER_SIZE];
 disp_y_t display_page_ystart;
 disp_y_t display_page_yend;
 
+enum {
+    STATE_DIMMED = 1 << 0,
+};
+
+static uint8_t display_state;
+static uint8_t display_contrast;
+
 // Initialization sequence, see datasheet and examples
 // OLED display model number is ER-OLED015-3, with a SSD1327 controller.
 // Commented out lines correspond to values set at reset and thus not required to be set.
@@ -78,7 +85,7 @@ static const uint8_t INIT_SEQUENCE[] = {
         DISPLAY_SET_PRECHARGE_VOLTAGE, 0x07,
         DISPLAY_FUNC_SEL_B, 0x02,
         DISPLAY_SET_VCOM, 0x07,
-//      DISPLAY_SET_CONTRAST, 0x7f,
+        DISPLAY_SET_CONTRAST, DISPLAY_DEFAULT_CONTRAST,
 //      DISPLAY_GPIO, 0x02,
 //      DISPLAY_SET_GRAYSCALE_DEFAULT,
 };
@@ -97,6 +104,7 @@ static void reset_display(void) {
         _delay_ms(1);
         PORTC.OUTTGL = PIN2_bm;
     }
+    display_contrast = DISPLAY_DEFAULT_CONTRAST;
 }
 
 static void write_data(uint16_t length, const uint8_t data[static length]) {
@@ -115,15 +123,26 @@ static void write_data_const(uint16_t length, uint8_t value) {
     }
 }
 
-static void write_command1(uint8_t cmd) {
+static void write_command1(uint8_t byte0) {
     set_command_mode();
-    write_data(1, &cmd);
+    write_data_const(1, byte0);
+}
+
+static void write_command2(uint8_t byte0, uint8_t byte1) {
+    set_command_mode();
+    write_data_const(1, byte0);
+    write_data_const(1, byte1);
 }
 
 void display_init(void) {
     reset_display();
     set_command_mode();
     write_data(sizeof INIT_SEQUENCE, INIT_SEQUENCE);
+}
+
+void display_sleep(void) {
+    // disable VDD regulator
+    write_command2(DISPLAY_FUNC_SEL_A, 0);
 }
 
 void display_clear(disp_color_t color) {
@@ -141,20 +160,35 @@ void display_set_inverted(bool inverted) {
     write_command1(DISPLAY_MODE_INVERTED);
 }
 
+static void display_set_contrast_internal(uint8_t contrast) {
+    write_command2(DISPLAY_SET_CONTRAST, contrast);
+}
+
 void display_set_contrast(uint8_t contrast) {
-    uint8_t command[2];
-    command[0] = DISPLAY_SET_CONTRAST;
-    command[1] = contrast;
-    set_command_mode();
-    write_data(sizeof command, command);
+    display_contrast = contrast;
+    if (display_state & STATE_DIMMED) {
+        contrast /= 2;
+    }
+    display_set_contrast_internal(contrast);
+}
+
+void display_set_dimmed(bool dimmed) {
+    uint8_t contrast = display_contrast;
+    if (dimmed) {
+        if (display_state & STATE_DIMMED) {
+            // already dimmed
+            return;
+        }
+        contrast /= 2;
+    } else if (!(display_contrast & STATE_DIMMED)) {
+        // already not dimmed.
+        return;
+    }
+    display_set_contrast(contrast);
 }
 
 void display_set_gpio(display_gpio_t mode) {
-    uint8_t command[2];
-    command[0] = DISPLAY_SET_GPIO;
-    command[1] = mode;
-    set_command_mode();
-    write_data(sizeof command, command);
+    write_command2(DISPLAY_SET_GPIO, mode);
 }
 
 void display_first_page(void) {

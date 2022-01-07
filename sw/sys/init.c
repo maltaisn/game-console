@@ -14,15 +14,24 @@
  * limitations under the License.
  */
 
-#include "sys/init.h"
-#include "sys/power.h"
-#include "sys/uart.h"
-#include "sys/sound.h"
-#include "sys/spi.h"
-#include "sys/display.h"
+#include <sys/init.h>
+#include <sys/power.h>
+#include <sys/uart.h>
+#include <sys/sound.h>
+#include <sys/spi.h>
+#include <sys/display.h>
+#include <sys/led.h>
+#include <sys/input.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
+
+#define RTC_ENABLE() (RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm)
+#define RTC_DISABLE() (RTC.CTRLA = 0)
+
+#define PIT_ENABLE() (RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm)
+#define PIT_DISABLE() (RTC.PITCTRLA = 0)
 
 static void init_registers(void) {
     // ====== CLOCK =====
@@ -31,22 +40,31 @@ static void init_registers(void) {
 
     // ====== PORT ======
     // TX, buzzer -, buzzer +, MOSI, SCK
-    VPORTA.DIR |= PIN0_bm | PIN2_bm | PIN3_bm | PIN4_bm | PIN6_bm;
+    VPORTA.DIR = PIN0_bm | PIN2_bm | PIN3_bm | PIN4_bm | PIN6_bm;
     // status LED, display SS, display reset, display D/C
-    VPORTC.DIR |= PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
+    VPORTC.DIR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
     // flash SS, eeprom SS, enable VBAT level
-    VPORTF.DIR |= PIN0_bm | PIN1_bm | PIN2_bm;
+    VPORTF.DIR = PIN0_bm | PIN1_bm | PIN2_bm;
 
     // set buzzer H-bridge inputs low
     VPORTA.OUT = PIN2_bm | PIN3_bm;
     // set all CS lines high
     spi_deselect_all();
 
+#ifndef DISABLE_INACTIVE_SLEEP
+    PORTD.PIN0CTRL = PORT_ISC_BOTHEDGES_gc;
+    PORTD.PIN1CTRL = PORT_ISC_BOTHEDGES_gc;
+    PORTD.PIN2CTRL = PORT_ISC_BOTHEDGES_gc;
+    PORTD.PIN3CTRL = PORT_ISC_BOTHEDGES_gc;
+    PORTD.PIN4CTRL = PORT_ISC_BOTHEDGES_gc;
+    PORTD.PIN5CTRL = PORT_ISC_BOTHEDGES_gc;
+#endif
+
     // ====== USART ======
 #ifndef DISABLE_COMMS
     uart_set_normal_mode();
-    USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
     USART0.CTRLA = USART_RXCIE_bm;
+    USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
     CPUINT.LVL1VEC = USART0_RXC_vect_num;
 #endif
 
@@ -84,41 +102,66 @@ static void init_registers(void) {
     RTC.PER = 0;
     RTC.INTCTRL = RTC_OVF_bm;
     RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
-    RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm;
+    //RTC.CTRLA is set is init_wakeup()
 
     // === ADC & VREF ===
     // 10-bit resolution, 64 samples accumulation, 78 kHz ADC clock,
     // use 2V5 voltage reference & enable result ready interrupt.
     VREF.CTRLA = VREF_ADC0REFSEL_2V5_gc;
-    ADC0.CTRLA = ADC_RESSEL_10BIT_gc;
     ADC0.CTRLB = ADC_SAMPNUM_ACC64_gc;
     ADC0.CTRLC = ADC_SAMPCAP_bm | ADC_REFSEL_INTREF_gc | ADC_PRESC_DIV128_gc;
     ADC0.INTCTRL = ADC_RESRDY_bm;
-    ADC0.CTRLA |= ADC_ENABLE_bm;
+    ADC0.CTRLA = ADC_RESSEL_10BIT_gc | ADC_ENABLE_bm;
+
+    // === SLEEP ===
+    sleep_enable();
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
     // enable interrupts
     sei();
 }
 
-static void init_battery_monitor(void) {
-    // PIT: interrupt every 1 s for battery sampling.
-    // note: battery monitor interrupt gets called 1 s after start so there's a check made before.
+static void init_power_monitor(void) {
+    // PIT: interrupt every 1 s for battery sampling and sleep countdown.
     while (RTC.PITSTATUS != 0);
     RTC.PITINTCTRL = RTC_PI_bm;
-    RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
+    PIT_ENABLE();
 }
 
 void init(void) {
     init_registers();
+    init_wakeup();
+}
+
+void init_sleep(void) {
+    RTC_DISABLE();
+    PIT_DISABLE();
+
+    // disable all peripherals to reduce current consumption
+    power_set_15v_reg_enabled(false);
+    display_set_enabled(false);
+    display_sleep();
+    sound_set_output_enabled(false);
+    flash_sleep();
+    led_clear();
+}
+
+void init_wakeup(void) {
+    while (RTC.STATUS != 0);
+    RTC_ENABLE();
 
     // check battery level on startup
     power_start_sampling();
     power_wait_for_sample();
     power_schedule_sleep_if_low_battery(false);
-    init_battery_monitor();
+    init_power_monitor();
 
     // initialize display
     display_init();
     power_set_15v_reg_enabled(true);
     display_set_enabled(true);
+
+    input_reset_inactivity();
+
+    flash_wakeup();
 }

@@ -30,6 +30,7 @@
 #include <core/graphics.h>
 #include <core/sound.h>
 #include <core/sysui.h>
+#include <core/trace.h>
 
 #include <stdio.h>
 
@@ -49,7 +50,6 @@ void setup(void) {
     sound_set_tempo(encode_bpm_tempo(120));
     sound_set_volume(SOUND_VOLUME_2);
     sound_start(TRACKS_STARTED_ALL);
-
 }
 
 static const char* STATUS_NAMES[] = {
@@ -66,7 +66,8 @@ static void draw(void) {
         graphics_clear(DISPLAY_COLOR_BLACK);
         graphics_set_color(DISPLAY_COLOR_WHITE);
 
-        if (power_is_sleep_scheduled()) {
+        if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
+            sound_set_output_enabled(false);
             sysui_battery_sleep();
         } else {
             if (binary) {
@@ -98,7 +99,7 @@ void loop(void) {
 
     systime_t time = time_get();
     if (time - last_move > millis_to_ticks(10)) {
-        if (!power_is_sleep_scheduled()) {
+        if (power_get_scheduled_sleep_cause() != SLEEP_CAUSE_LOW_POWER) {
             last_move = time;
 
             if (curr_state & BUTTON1) {
@@ -133,6 +134,9 @@ void loop(void) {
             }
 #endif
             last_state = curr_state;
+        }
+        if (power_is_sleep_due()) {
+            trace("sleep is due");
         }
 
         draw();
