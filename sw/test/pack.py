@@ -9,6 +9,8 @@ p.image("tiger-bin.png", index_granularity="128b")
 
 p.sound("music.mid", tempo=120, merge_midi_tracks=True)
 
+p.font("font3x5.png", glyph_width=3, glyph_height=5)
+p.font("font5x7.png", glyph_width=5, glyph_height=7)
 p.font("font6x9.png", glyph_width=6, glyph_height=9)
 
 p.pack("test/assets.dat")

@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdatomic.h>
+#include <string.h>
 
 // The sound playback in the simulator is made using PortAudio.
 // The sound_play_note callback is called by the sound module to update the state of each channel.
@@ -110,10 +111,14 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
                           const PaStreamCallbackTimeInfo* time_info,
                           PaStreamCallbackFlags status_flags,
                           void* user_data) {
-    while (atomic_flag_test_and_set(&channels_lock));
     float* out = (float*) output_buffer;
     const sound_volume_t vol = volume;
+    if (vol == SOUND_VOLUME_OFF || !output_enabled) {
+        memset(out, 0, frames_per_buffer * sizeof(float));
+        return paContinue;
+    }
 
+    while (atomic_flag_test_and_set(&channels_lock));
     for (unsigned long i = 0; i < frames_per_buffer; ++i) {
         // update the phase for all channels and count how many channels are on the
         // high side of the square wave.

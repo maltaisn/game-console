@@ -25,6 +25,7 @@
 #define STATE_TRANSMITTED 1
 #define STATE_FAST 2
 
+#ifndef DISABLE_COMMS
 static uint8_t state;
 
 static struct {
@@ -111,3 +112,4 @@ void uart_set_normal_mode(void) {
 bool uart_is_in_fast_mode(void) {
     return (state & STATE_FAST) != 0;
 }
+#endif //DISABLE_COMMS

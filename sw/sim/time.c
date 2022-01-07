@@ -22,6 +22,7 @@
 #include <time.h>
 #include "sys/input.h"
 #include "core/sound.h"
+#include "sim/power.h"
 
 #define POWER_SAMPLE_PERIOD 1.0
 
@@ -37,13 +38,17 @@ void time_init(void) {
 }
 
 void time_update(void) {
+    if (power_is_sleeping()) {
+        return;
+    }
+
     const clock_t time = clock();
     input_update_state();
     sound_update();
 
     if ((double) (time - last_power_sample) / CLOCKS_PER_SEC >= POWER_SAMPLE_PERIOD) {
-        power_take_sample();
-        sleep_if_low_battery();
+        power_start_sampling();
+        power_schedule_sleep_if_low_battery(true);
         last_power_sample = time;
     }
 }

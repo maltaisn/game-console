@@ -148,6 +148,11 @@ typedef data_ptr_t graphics_image_t;
  */
 typedef data_ptr_t graphics_font_t;
 
+// 3x5 font, 2 bytes per char, encodes 0x21-0x5a, total size 121 bytes.
+// from https://github.com/olikraus/u8g2/wiki/fntgrpx11#micro, u8g2_font_micro_tr, modified
+extern const uint8_t GRAPHICS_BUILTIN_FONT_DATA[];
+#define GRAPHICS_BUILTIN_FONT data_mcu(GRAPHICS_BUILTIN_FONT_DATA)
+
 /**
  * Set the current graphics color.
  * The default color is black.
@@ -160,7 +165,7 @@ void graphics_set_color(disp_color_t color);
 disp_color_t graphics_get_color(void);
 
 /**
- * Set the current font. The default font is a 3x5 font that encodes 0x20-0x5a
+ * Set the current font. There is no font set by default, one must be set prior to drawing text.
  */
 void graphics_set_font(graphics_font_t font);
 

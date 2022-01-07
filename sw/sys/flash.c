@@ -21,6 +21,7 @@
 #include <avr/io.h>
 
 #define INSTRUCTION_READ 0x03
+#define INSTRUCTION_POWER_DOWN 0xb9
 
 void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
     uint8_t header[4];
@@ -31,5 +32,11 @@ void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
     spi_select_flash();
     spi_transceive(4, header);
     spi_transceive(length, dest);
+    spi_deselect_flash();
+}
+
+void flash_power_down(void) {
+    spi_select_flash();
+    spi_transmit_single(INSTRUCTION_POWER_DOWN);
     spi_deselect_flash();
 }

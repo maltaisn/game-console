@@ -60,8 +60,11 @@ static const uint16_t BATTERY_LEVEL_POINTS[] = {
         47579, 49598, 50895, 52481, 53683, 54259, 54788, 55509, 56278, 56999, 58393,
 };
 
-#define STATE_BATTERY_PERCENT_CACHED (1 << 0)
-#define STATE_15V_ENABLED (1 << 1)
+enum {
+    STATE_BATTERY_PERCENT_CACHED = 1 << 0,
+    STATE_15V_ENABLED = 1 << 1,
+    STATE_SLEEP_SCHEDULED = 1 << 2,
+};
 
 static volatile uint8_t power_state;
 static volatile sampler_state_t sampler_state;
@@ -71,6 +74,7 @@ static volatile battery_status_t battery_status;
 static volatile uint16_t battery_level_buf[BATTERY_BUFFER_SIZE];
 static volatile uint8_t battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
 static uint8_t battery_percent_cache;
+static uint8_t sleep_countdown;
 
 ISR(ADC0_RESRDY_vect) {
     uint16_t res = ADC0.RES;
@@ -90,6 +94,7 @@ ISR(ADC0_RESRDY_vect) {
             }
         }
 
+        battery_status = new_status;
         if (new_status == BATTERY_DISCHARGING) {
             // start conversion for battery level.
             PORTF.OUT |= PIN6_bm;  // enable switch for reading
@@ -102,7 +107,6 @@ ISR(ADC0_RESRDY_vect) {
             battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
             sampler_state = STATE_DONE;
         }
-        battery_status = new_status;
 
     } else if (state == STATE_LEVEL) {
         PORTF.OUT &= ~PIN6_bm;
@@ -123,7 +127,7 @@ ISR(ADC0_RESRDY_vect) {
     }
 }
 
-void power_take_sample(void) {
+void power_start_sampling(void) {
     if (sampler_state == STATE_DONE) {
         sampler_state = STATE_STATUS;
         ADC0.MUXPOS = MUXPOS_CHARGE_STATUS;
@@ -182,34 +186,59 @@ uint16_t power_get_battery_voltage(void) {
     return (((uint32_t) get_battery_level_avg() * 4545) >> 16) + 1;
 }
 
-void sleep_if_low_battery(void) {
-#ifndef DISABLE_BAT_PROT
-    if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
-        // battery is too low, put CPU to sleep
-        // disable everything, interrupts are disabled so device won't wake up unless reset anyway.
-        power_set_15v_reg_enabled(false);
-        sound_set_output_enabled(false);
-        led_clear();
-        spi_deselect_all();
-        RTC.CTRLA = 0;
-        RTC.PITCTRLA = 0;
-        USART0.CTRLA = 0;
-
-        cli();
-        sleep_enable();
-        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-        sleep_cpu();
-    }
-#endif
-}
-
 bool power_is_15v_reg_enabled(void) {
     return (power_state & STATE_15V_ENABLED) != 0;
 }
 
 void power_set_15v_reg_enabled(bool enabled) {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        power_state |= STATE_15V_ENABLED;
+        if (enabled) {
+            power_state |= STATE_15V_ENABLED;
+        } else {
+            power_state &= ~STATE_15V_ENABLED;
+        }
     }
     display_set_gpio(enabled ? DISPLAY_GPIO_OUTPUT_HI : DISPLAY_GPIO_OUTPUT_LO);
+}
+
+void power_enable_sleep(void) {
+    // disable everything, interrupts are disabled so device won't wake up unless reset anyway.
+    power_set_15v_reg_enabled(false);
+    sound_set_output_enabled(false);
+    flash_power_down();
+    led_clear();
+    spi_deselect_all();  // should not be needed, but just in case.
+    RTC.CTRLA = 0;
+    RTC.PITCTRLA = 0;
+    USART0.CTRLA = 0;
+
+    cli();
+    sleep_enable();
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_cpu();
+}
+
+void power_schedule_sleep_if_low_battery(bool countdown) {
+#ifndef DISABLE_BAT_PROT
+    if (power_is_sleep_scheduled()) {
+        --sleep_countdown;
+        if (sleep_countdown) {
+            return;
+        }
+    } else if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
+        power_state |= STATE_SLEEP_SCHEDULED;
+        if (countdown) {
+            sound_set_output_enabled(false);
+            sleep_countdown = POWER_SLEEP_COUNTDOWN;
+            return;
+        }
+    } else {
+        return;
+    }
+    power_enable_sleep();
+#endif //DISABLE_BAT_PROT
+}
+
+bool power_is_sleep_scheduled(void) {
+    return (power_state & STATE_SLEEP_SCHEDULED) != 0;
 }

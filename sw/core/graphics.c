@@ -76,6 +76,21 @@ static struct {
     uint8_t height;
 } font;
 
+const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
+        0x3a, 0x02, 0x42, 0x00, 0x06, 0x0c, 0xdb, 0x00, 0xb4, 0xfa, 0xbe, 0x3e,
+        0x5f, 0x50, 0xaf, 0xe4, 0x4b, 0x00, 0x48, 0x22, 0x29, 0x28, 0x89, 0xaa,
+        0xab, 0xa0, 0x0b, 0x2c, 0x00, 0x80, 0x03, 0x6c, 0x00, 0x28, 0x25, 0xde,
+        0xf6, 0x2e, 0x59, 0xce, 0xe7, 0x9e, 0xe5, 0x92, 0xb7, 0x9e, 0xf3, 0xde,
+        0xf3, 0x92, 0xe4, 0xde, 0xf7, 0x9e, 0xf7, 0x6c, 0xd8, 0x2c, 0xd8, 0x22,
+        0x2a, 0x70, 0x1c, 0xa8, 0x88, 0x84, 0xe5, 0x46, 0x77, 0xda, 0xf7, 0x5e,
+        0xf7, 0x4e, 0xf2, 0xdc, 0xd6, 0xce, 0xf3, 0xc8, 0xf3, 0xde, 0xf2, 0xda,
+        0xb7, 0x2e, 0xe9, 0xde, 0x24, 0x5a, 0xb7, 0x4e, 0x92, 0xda, 0xbe, 0xda,
+        0xf6, 0xde, 0xf6, 0xc8, 0xf7, 0xe6, 0xf6, 0x5a, 0xf7, 0x9e, 0xf3, 0x24,
+        0xe9, 0xde, 0xb6, 0xd4, 0xb6, 0xfa, 0xb6, 0x7a, 0xbd, 0xa4, 0xb7, 0x4e,
+        0xe5
+};
+
+
 #define set_block_left(block) ((block) = ((block) & 0xf0) | color)
 #define set_block_right(block) ((block) = ((block) & 0xf) | color << 4)
 #define set_block_both(block) ((block) = (color | color << 4))
@@ -789,6 +804,13 @@ void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
 }
 
 void graphics_glyph(int8_t x, int8_t y, char c) {
+#ifdef RUNTIME_CHECKS
+    if (font.addr == 0) {
+        check_message("no font set");
+        return;
+    }
+#endif
+
     int8_t curr_x = x;
     int8_t curr_y = (int8_t) (y - display_page_ystart);
     if (curr_y >= PAGE_HEIGHT) {
@@ -825,8 +847,8 @@ void graphics_glyph(int8_t x, int8_t y, char c) {
 
     // read all glyph data
     data_ptr_t addr = font.addr + pos * font.glyph_size;
-    uint8_t data[FONT_MAX_GLYPH_SIZE];
-    data_read(addr, font.glyph_size, data);
+    uint8_t buf[FONT_MAX_GLYPH_SIZE];
+    const uint8_t* data = data_read(addr, font.glyph_size, buf);
 
     uint8_t byte_pos = font.glyph_size - 1;
     uint8_t bits = 8;
@@ -876,6 +898,10 @@ glyph_read:
 
 void graphics_text(int8_t x, const int8_t y, const char* text) {
 #ifdef RUNTIME_CHECKS
+    if (font.addr == 0) {
+        check_message("no font set");
+        return;
+    }
     if (x < -128 + font.width || y < -128 + font.line_spacing) {
         check_message("position out of bounds");
         return;
@@ -896,6 +922,10 @@ void graphics_text(int8_t x, const int8_t y, const char* text) {
 
 void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, const char* text) {
 #ifdef RUNTIME_CHECKS
+    if (font.addr == 0) {
+        check_message("no font set");
+        return;
+    }
     if (wrap_x > DISPLAY_WIDTH || wrap_x < x) {
         check_message("wrap_x out of bounds");
         return;

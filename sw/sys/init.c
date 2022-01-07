@@ -43,10 +43,12 @@ static void init_registers(void) {
     spi_deselect_all();
 
     // ====== USART ======
+#ifndef DISABLE_COMMS
     uart_set_normal_mode();
     USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
     USART0.CTRLA = USART_RXCIE_bm;
     CPUINT.LVL1VEC = USART0_RXC_vect_num;
+#endif
 
     // ====== SPI ======
     // master, 5 MHz SCK, mode 0, MSB first, buffered, no interrupts.
@@ -110,9 +112,9 @@ void init(void) {
     init_registers();
 
     // check battery level on startup
-    power_take_sample();
+    power_start_sampling();
     power_wait_for_sample();
-    sleep_if_low_battery();
+    power_schedule_sleep_if_low_battery(false);
     init_battery_monitor();
 
     // initialize display

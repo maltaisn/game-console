@@ -17,6 +17,7 @@
 #include "sys/main.h"
 
 #include "sys/init.h"
+#include "sys/power.h"
 #include "core/comm.h"
 
 #include <stdbool.h>
@@ -25,6 +26,9 @@ int main(void) {
     init();
     setup();
     while (true) {
+#ifndef DISABLE_COMMS
+        comm_receive();
+#endif
         loop();
     }
 }

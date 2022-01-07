@@ -37,6 +37,7 @@ typedef uint24_t systime_t;
 /**
  * Returns the system time value.
  * The system time is incremented every 1/256th second.
+ * Must not be called within an interrupt.
  */
 systime_t time_get();
 

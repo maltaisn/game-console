@@ -26,8 +26,13 @@
 #define ERASE_BYTE 0xff
 
 static uint8_t flash[FLASH_SIZE];
+static bool powered_down;
 
 void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
+    if (powered_down) {
+        memset(dest, ERASE_BYTE, length);
+        return;
+    }
     if (address + length > FLASH_SIZE) {
         // wrap around the end
         uint16_t wrap_after = FLASH_SIZE - address;
@@ -74,4 +79,8 @@ void flash_load_file(FILE* file) {
 
 void flash_load_erased(void) {
     memset(flash, ERASE_BYTE, FLASH_SIZE);
+}
+
+void flash_power_down(void) {
+    powered_down = true;
 }

@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#ifndef DISABLE_COMMS
+
 #include "core/comm.h"
 
 #include "sys/uart.h"
@@ -119,6 +121,10 @@ static void handle_packet_reset(void) {
     reset_system();
 }
 
+static void handle_packet_sleep(void) {
+    power_enable_sleep();
+}
+
 void comm_receive(void) {
     if (!uart_available()) return;
     if (uart_read() != PACKET_SIGNATURE) return;
@@ -147,6 +153,8 @@ void comm_receive(void) {
         handle_packet_fast_mode();
     } else if (type == PACKET_RESET) {
         handle_packet_reset();
+    } else if (type == PACKET_SLEEP) {
+        handle_packet_sleep();
     } else {
         comm_undef_packet_callback(type, length);
     }
@@ -175,3 +183,5 @@ void comm_transmit(uint8_t type, uint8_t length) {
 __attribute__((weak)) void comm_undef_packet_callback(uint8_t type, uint8_t length) {
     // undefined packets ignored by default.
 }
+
+#endif //DISABLE_COMMS

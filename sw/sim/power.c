@@ -22,6 +22,7 @@
 #include "sys/led.h"
 #include "sys/spi.h"
 #include "sim/sound.h"
+#include "sys/sound.h"
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -31,9 +32,11 @@
 static battery_status_t battery_status = BATTERY_DISCHARGING;
 static uint8_t battery_percent = 100;
 static bool reg_15v_enabled;
+static bool sleep_scheduled = false;
+static uint8_t sleep_countdown;
 static bool sleeping;
 
-void power_take_sample(void) {
+void power_start_sampling(void) {
     // no-op
 }
 
@@ -58,18 +61,6 @@ uint16_t power_get_battery_voltage(void) {
     return VBAT_MIN + (VBAT_MAX - VBAT_MIN) * battery_percent / 100;
 }
 
-void sleep_if_low_battery(void) {
-    if (battery_percent == 0) {
-        power_set_15v_reg_enabled(false);
-        led_clear();
-        spi_deselect_all();
-        sound_terminate();
-
-        sleeping = true;
-        puts("Low battery, sleep enabled.");
-    }
-}
-
 void power_set_battery_status(battery_status_t status) {
     battery_status = status;
 }
@@ -91,4 +82,43 @@ void power_set_15v_reg_enabled(bool enabled) {
 
 bool power_is_sleeping(void) {
     return sleeping;
+}
+
+void power_enable_sleep(void) {
+    sound_terminate();
+    power_set_15v_reg_enabled(false);
+    sound_set_output_enabled(false);
+    flash_power_down();
+    led_clear();
+    spi_deselect_all();
+
+    sleeping = true;
+    puts("power_enable_sleep: sleep enabled");
+}
+
+void power_schedule_sleep_if_low_battery(bool countdown) {
+#ifndef DISABLE_BAT_PROT
+    if (sleep_scheduled) {
+        --sleep_countdown;
+        printf("power_schedule_sleep_if_low_battery: sleep countdown = %d\n", sleep_countdown);
+        if (sleep_countdown) {
+            return;
+        }
+    } else if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
+        sleep_scheduled = true;
+        if (countdown) {
+            puts("power_schedule_sleep_if_low_battery: sleep scheduled");
+            sound_set_output_enabled(false);
+            sleep_countdown = POWER_SLEEP_COUNTDOWN;
+            return;
+        }
+    } else {
+        return;
+    }
+    power_enable_sleep();
+#endif //DISABLE_BAT_PROT
+}
+
+bool power_is_sleep_scheduled(void) {
+    return sleep_scheduled;
 }

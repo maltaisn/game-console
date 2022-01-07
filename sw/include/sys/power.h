@@ -21,6 +21,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef POWER_SLEEP_COUNTDOWN
+#define POWER_SLEEP_COUNTDOWN 5
+#endif
+
 typedef enum battery_status {
     /** Battery status is unknown (not yet sampled or outside known values). */
     BATTERY_UNKNOWN = 0x00,
@@ -39,7 +43,7 @@ typedef enum battery_status {
  * Sampling takes at least 110-220k cycles.
  * This gets called automatically on startup & every second by the PIT.
  */
-void power_take_sample(void);
+void power_start_sampling(void);
 
 /**
  * Wait until battery sample is ready.
@@ -54,7 +58,7 @@ battery_status_t power_get_battery_status(void);
 
 /**
  * Returns the estimated battery level.
- * Battery level must have been sampled previously with `power_take_sample()`.
+ * Battery level must have been sampled previously with `power_start_sampling()`.
  * Battery level is only available if battery is currently discharging.
  * The level is a percentage from 0 to 100. The system should shutdown at level 0.
  * Must not be called within interrupt.
@@ -75,13 +79,29 @@ bool power_is_15v_reg_enabled(void);
 
 /**
  * Enable or disable the +15V regulator for the display.
+ * Must not be called within an interrupt.
  */
 void power_set_15v_reg_enabled(bool enabled);
 
 /**
- * Enable sleep if battery percentage is 0%.
+ * Enable system sleep.
  * Interrupts are disabled so device cannot wake up from sleep until reset.
  */
-void sleep_if_low_battery(void);
+void power_enable_sleep(void);
+
+/**
+ * Schedule sleep if battery is discharging and percentage is 0%.
+ * If sleep is scheduled, a short countdown will start to allow the game to save its state.
+ * Calling this function again will update the countdown, until it reaches 0 and sleep is enabled.
+ * If `countdown` is false and battery is low, sleep will be enabled directly.
+ * This function should not be called directly by game code.
+ */
+void power_schedule_sleep_if_low_battery(bool countdown);
+
+/**
+ * Returns true if sleep is scheduled.
+ * There's a countdown on sleep to let the game save its state and display the power down UI.
+ */
+bool power_is_sleep_scheduled(void);
 
 #endif //SYS_POWER_H

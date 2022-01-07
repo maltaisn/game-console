@@ -92,6 +92,11 @@
  * RESET: trigger software reset
  * - RX payload: empty
  * - No TX packet
+ *
+ * SLEEP: trigger system sleep
+ * The only way to exit sleep is to do a power cycle!
+ * - RX payload: empty
+ * - No TX packet
  */
 
 typedef enum {
@@ -104,6 +109,7 @@ typedef enum {
     PACKET_FAST_MODE = 0x06,
     PACKET_DEBUG = 0x07,
     PACKET_RESET = 0x08,
+    PACKET_SLEEP = 0x09,
 } packet_type_t;
 
 /**

@@ -24,14 +24,26 @@
 #include "sim/flash.h"
 #include "sim/led.h"
 #include "sim/sound.h"
+#include "sim/power.h"
+
+#include "core/comm.h"
 
 #include <stdbool.h>
 #include <GL/glut.h>
 
 #include <pthread.h>
+#include <unistd.h>
 
 static void* loop_thread(void* arg) {
     while (true) {
+        if (power_is_sleeping()) {
+            // sleep locks down the whole system until reset.
+            sleep(1);
+            continue;
+        }
+#ifndef DISABLE_COMMS
+        comm_receive();
+#endif
         loop();
     }
     return 0;
@@ -47,9 +59,9 @@ int main(int argc, char** argv) {
     power_set_15v_reg_enabled(true);
 
     // check battery level on startup
-    power_take_sample();
+    power_start_sampling();
     power_wait_for_sample();
-    sleep_if_low_battery();
+    power_schedule_sleep_if_low_battery(false);
 
     // == simulator initialization
     // initialize memories as initially empty; they can be loaded from a file later.

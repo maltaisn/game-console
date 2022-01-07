@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +15,17 @@
  * limitations under the License.
  */
 
-#include <sys/uart.h>
+#include <core/graphics.h>
 
-#ifndef DISABLE_COMMS
-static bool fast_mode;
-
-void uart_write(uint8_t c) {
-    // not implemented
+void sysui_battery_sleep(void) {
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_text(30, 42, "LOW BATTERY LEVEL");
+    graphics_text(33, 81, "SHUTTING DOWN...");
+    graphics_rect(40, 52, 43, 24);
+    graphics_rect(41, 53, 41, 22);
+    graphics_fill_rect(84, 57, 4, 14);
+    graphics_fill_rect(44, 56, 7, 16);
+    graphics_set_color(DISPLAY_COLOR_BLACK);
+    graphics_fill_rect(84, 59, 2, 10);
 }
-
-uint8_t uart_read(void) {
-    // not implemented
-    return 0;
-}
-
-bool uart_available(void) {
-    return false;
-}
-
-void uart_flush(void) {
-    // not implemented
-}
-
-void uart_set_fast_mode(void) {
-    fast_mode = true;
-}
-
-void uart_set_normal_mode(void) {
-    fast_mode = false;
-}
-
-bool uart_is_in_fast_mode(void) {
-    return fast_mode;
-}
-
-#endif //DISABLE_COMMS

@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +15,12 @@
  * limitations under the License.
  */
 
-#include <sys/uart.h>
+#ifndef SYSUI_H
+#define SYSUI_H
 
-#ifndef DISABLE_COMMS
-static bool fast_mode;
+/**
+ * Draw the system UI to indicate that the battery is too low and device will go to sleep.
+ */
+void sysui_battery_sleep(void);
 
-void uart_write(uint8_t c) {
-    // not implemented
-}
-
-uint8_t uart_read(void) {
-    // not implemented
-    return 0;
-}
-
-bool uart_available(void) {
-    return false;
-}
-
-void uart_flush(void) {
-    // not implemented
-}
-
-void uart_set_fast_mode(void) {
-    fast_mode = true;
-}
-
-void uart_set_normal_mode(void) {
-    fast_mode = false;
-}
-
-bool uart_is_in_fast_mode(void) {
-    return fast_mode;
-}
-
-#endif //DISABLE_COMMS
+#endif //SYSUI_H

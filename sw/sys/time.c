@@ -27,6 +27,7 @@
 static volatile systime_t systick;
 
 ISR(RTC_CNT_vect) {
+    // called 256 times per second
     RTC.INTFLAGS = RTC_OVF_bm;
     systime_t time = systick + 1;
     systick = time;
@@ -35,9 +36,10 @@ ISR(RTC_CNT_vect) {
 }
 
 ISR(RTC_PIT_vect) {
+    // called every second
     RTC.PITINTFLAGS = RTC_PI_bm;
-    power_take_sample();
-    sleep_if_low_battery();
+    power_start_sampling();
+    power_schedule_sleep_if_low_battery(true);
 }
 
 systime_t time_get() {

@@ -8,6 +8,8 @@
 
 #define ASSET_SOUND_MUSIC   0x7168
 
-#define ASSET_FNT_FONT6X9   0x7748
+#define ASSET_FNT_FONT3X5   0x7748
+#define ASSET_FNT_FONT5X7   0x780c
+#define ASSET_FNT_FONT6X9   0x7bcc
 
 #endif
