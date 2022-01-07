@@ -348,6 +348,7 @@ class Packer:
     padding: int
     default_indexed: bool
     default_index_granularity: str
+    offset: int
 
     _packed: bool
     _mem_map: Optional[List[int]]
@@ -356,11 +357,12 @@ class Packer:
     # maximum size of resulting data file (stored in flash)
     MAX_SIZE = 1048576
 
-    def __init__(self, *, assets_directory: str = "", padding_byte: int = 0xff,
+    def __init__(self, *, assets_directory: str = "", offset: int = 0, padding_byte: int = 0xff,
                  padding: int = 0, default_indexed: bool = True,
                  default_index_granularity: str = repr(ImageEncoder.DEFAULT_INDEX_GRANULARITY)):
         self.objects = []
         self.directory = assets_directory
+        self.offset = offset
         self.padding_byte = padding_byte
         self.padding = padding
         self.default_indexed = default_indexed
@@ -511,10 +513,10 @@ class Packer:
         print(f"TOTAL SIZE: {readable_size(total_size)}")
 
         print()
-        if total_size > Packer.MAX_SIZE:
-            print(f"WARNING: size exceeds flash capacity ("
+        if self.offset + total_size > Packer.MAX_SIZE:
+            print(f"WARNING: end of data exceeds flash capacity ("
                   f"max {readable_size(Packer.MAX_SIZE)}, "
-                  f"got {readable_size(total_size)})")
+                  f"got {readable_size(total_size)} + {self.offset:#x} offset)")
 
     ArraysData = Dict[str, Tuple[List[PackResult], int]]
 
@@ -561,7 +563,7 @@ class Packer:
         self._mem_map = []
         pack_results = []
         for i, obj in enumerate(self.objects):
-            self._mem_map.append(len(data))
+            self._mem_map.append(len(data) + self.offset)
 
             if obj.group in arrays_data:
                 # object is in array, already encoded previously
