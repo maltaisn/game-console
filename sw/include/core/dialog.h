@@ -37,20 +37,16 @@
 #define DIALOG_BUTTON_ENTER BUTTON4
 #define DIALOG_BUTTON_DISMISS BUTTON0
 
+#define DIALOG_RESULT_NONE 0xff
+
+typedef uint8_t dialog_result_t;
+
 typedef enum {
     DIALOG_SELECTION_NONE = 0xff,
     DIALOG_SELECTION_POS = 0xfe,
     DIALOG_SELECTION_NEG = 0xfd,
     // values from 0 are used for selected items.
 } dialog_selection_t;
-
-typedef enum {
-    DIALOG_RESULT_NONE = 0xff,
-    DIALOG_RESULT_POS = 0xfe,
-    DIALOG_RESULT_NEG = 0xfd,
-    DIALOG_RESULT_DISMISS = 0xfc,
-    // result code is used for button items.
-} dialog_result_t;
 
 typedef enum {
     DIALOG_ITEM_BUTTON,
@@ -97,6 +93,9 @@ typedef struct {
     const char* title;
     const char* pos_btn;
     const char* neg_btn;
+    dialog_result_t pos_result;
+    dialog_result_t neg_result;
+    dialog_result_t dismiss_result;
     dialog_selection_t selection;
     uint8_t item_count;
     dialog_item_t items[DIALOG_MAX_ITEMS];
@@ -112,9 +111,18 @@ extern dialog_t dialog;
  * The dialog can be customized afterwards. Note that there cannot be a negative button without
  * a positive button. There also must be at least one selectable element, the selection can never
  * be `DIALOG_SELECTION_NONE`.
+ *
+ * If action buttons or the dismiss action are used, their result code must be set.
+ * By default, the result codes are `DIALOG_RESULT_NONE`.
+ * If dismiss action is not set, it will default to the same action as the negative action button.
  */
-void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height,
-                 graphics_font_t title_font, graphics_font_t action_font, graphics_font_t item_font);
+void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height);
+
+/**
+ * Set the fonts used by the dialog.
+ */
+void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
+                     graphics_font_t item_font);
 
 /**
  * Add a button item to the dialog. The item is added following the last one.

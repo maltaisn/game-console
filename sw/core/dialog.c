@@ -27,22 +27,27 @@ static const uint8_t ARROW_RIGHT[] = {0x01, 0x02, 0x04, 0x4d, 0x7a, 0x00};
 
 dialog_t dialog;
 
-void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height,
-                 graphics_font_t title_font, graphics_font_t action_font,
-                 graphics_font_t item_font) {
+void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height) {
     dialog.x = x;
     dialog.y = y;
     dialog.width = width;
     dialog.height = height;
-    dialog.title_font = title_font;
-    dialog.action_font = action_font;
-    dialog.item_font = item_font;
     dialog.dismissable = false;
     dialog.title = 0;
     dialog.pos_btn = 0;
     dialog.neg_btn = 0;
+    dialog.pos_result = DIALOG_RESULT_NONE;
+    dialog.neg_result = DIALOG_RESULT_NONE;
+    dialog.dismiss_result = DIALOG_RESULT_NONE;
     dialog.item_count = 0;
     dialog.selection = DIALOG_SELECTION_NONE;
+}
+
+void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
+                     graphics_font_t item_font) {
+    dialog.title_font = title_font;
+    dialog.action_font = action_font;
+    dialog.item_font = item_font;
 }
 
 static dialog_item_t* dialog_add_item(dialog_item_type_t type, const char* name) {
@@ -104,9 +109,9 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
     if (clicked) {
         if (clicked & DIALOG_BUTTON_ENTER) {
             if (dialog.selection == DIALOG_SELECTION_POS) {
-                result = DIALOG_RESULT_POS;
+                result = dialog.pos_result;
             } else if (dialog.selection == DIALOG_SELECTION_NEG) {
-                result = DIALOG_RESULT_NEG;
+                result = dialog.neg_result;
             } else if (curr_item && curr_item->type == DIALOG_ITEM_BUTTON) {
                 result = curr_item->button.result;
             } else if (curr_item) {
@@ -122,13 +127,19 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
 
         } else if (clicked & DIALOG_BUTTON_DISMISS) {
             if (dialog.dismissable) {
-                result = DIALOG_RESULT_DISMISS;
+                if (dialog.dismiss_result == DIALOG_SELECTION_NONE) {
+                    result = dialog.neg_result;
+                } else {
+                    result = dialog.dismiss_result;
+                }
             }
 
         } else if (clicked & DIALOG_BUTTON_UP) {
             if (dialog.selection >= DIALOG_SELECTION_NEG) {
                 // positive or negative button selected, go to last item.
-                dialog.selection = dialog.item_count - 1;
+                if (dialog.item_count != 0) {
+                    dialog.selection = dialog.item_count - 1;
+                }
             } else if (dialog.selection != 0) {
                 // go to previous item if not already on first.
                 --dialog.selection;
@@ -207,6 +218,10 @@ static void draw_action(disp_color_t color, disp_x_t x, disp_y_t y, uint8_t widt
     graphics_text((int8_t) (x + (width - text_width) / 2), (int8_t) (y + 2), text);
 }
 
+/**
+ * Format 0-255 number to char buffer.
+ * Returns a pointer within the buffer to start of the formatted. string
+ */
 static const char* uint8_to_str(char* buf, uint8_t n) {
     buf[3] = '\0';
     char* ptr = &buf[3];
@@ -223,16 +238,19 @@ void dialog_draw(void) {
     int8_t height = (int8_t) dialog.height;
     if (dialog.title) {
         graphics_set_font(dialog.title_font);
-        uint8_t h = graphics_text_height() + 4;
-        y += h + 1;
+        uint8_t h = graphics_text_height() + 5;
+        y += h;
         height = (int8_t) (height - h);
 
+        // title background
         graphics_set_color(11);
-        graphics_fill_rect(dialog.x, dialog.y, dialog.width, h);
+        graphics_fill_rect(dialog.x, dialog.y, dialog.width, h - 1);
+        // title text
         graphics_set_color(DISPLAY_COLOR_BLACK);
         uint8_t width = graphics_text_width(dialog.title);
         graphics_text((int8_t) (dialog.x + (dialog.width - width) / 2), (int8_t) (dialog.y + 2),
                       dialog.title);
+        // line between title frame and dialog content
         graphics_hline(dialog.x, dialog.x + dialog.width, y - 1);
     }
 
@@ -248,6 +266,7 @@ void dialog_draw(void) {
     if (dialog.pos_btn) {
         height = (int8_t) (height - action_height - 2);
 
+        // line between dialog content and action buttons
         graphics_set_color(DISPLAY_COLOR_BLACK);
         graphics_hline(dialog.x, dialog.x + dialog.width, y + height);
 
@@ -255,13 +274,16 @@ void dialog_draw(void) {
         disp_x_t pos_btn_x = dialog.x;
         uint8_t pos_btn_width = dialog.width;
         if (dialog.neg_btn) {
+            // negative button
             pos_btn_x += dialog.width / 2 + 1;
             pos_btn_width = pos_btn_width / 2 - 1;
             draw_action(11, dialog.x, btn_y, dialog.width / 2, action_height,
                         dialog.neg_btn, dialog.selection == DIALOG_SELECTION_NEG, false);
+            // line between the two buttons
             graphics_set_color(DISPLAY_COLOR_BLACK);
             graphics_vline(btn_y, btn_y + action_height, pos_btn_x - 1);
         }
+        // positive button
         draw_action(11, pos_btn_x, btn_y, pos_btn_width, action_height,
                     dialog.pos_btn, dialog.selection == DIALOG_SELECTION_POS, false);
     }
@@ -285,6 +307,7 @@ void dialog_draw(void) {
             uint8_t choice_width = graphics_text_width(choice_str);
             uint8_t arrow_right_x = dialog.x + dialog.width - 6;
             uint8_t action_x = arrow_right_x - choice_width - 3;
+            // action text (number or choice)
             draw_action(DISPLAY_COLOR_WHITE, action_x, action_y,
                         choice_width + 2, action_height, choice_str, dialog.selection == i, false);
 
@@ -309,11 +332,13 @@ void dialog_draw(void) {
         action_y += action_height + 2;
     }
 
-    // frame
+    // dialog outline
     if (height >= 2) {
+        // dialog inner outline (only draw if high enough too appear)
         graphics_set_color(DISPLAY_COLOR_WHITE);
         graphics_rect(dialog.x, y, dialog.width, height);
     }
+    // dialog outer outline
     graphics_set_color(DISPLAY_COLOR_BLACK);
     graphics_rect(dialog.x - 1, dialog.y - 1, dialog.width + 2, dialog.height + 2);
 }
