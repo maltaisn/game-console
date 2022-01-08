@@ -214,26 +214,6 @@ void graphics_rect(disp_x_t x, disp_y_t y, uint8_t w, uint8_t h);
 void graphics_fill_rect(disp_x_t x, disp_y_t y, uint8_t w, uint8_t h);
 
 /**
- * Draw a one pixel thick circle centered at (x, y) with radius r.
- */
-void graphics_circle(disp_x_t x, disp_y_t y, uint8_t r);
-
-/**
- * Draw a filled circle centered at (x, y) with radius r.
- */
-void graphics_filled_circle(disp_x_t x, disp_y_t y, uint8_t r);
-
-/**
- * Draw a one pixel thick ellipse centered at (x, y) with radii (rx, ry).
- */
-void graphics_ellipse(disp_x_t x, disp_y_t y, uint8_t rx, uint8_t ry);
-
-/**
- * Draw a filled ellipse centered at (x, y) with radii (rx, ry).
- */
-void graphics_filled_ellipse(disp_x_t x, disp_y_t y, uint8_t rx, uint8_t ry);
-
-/**
  * Draw an image from unified data space, with top left corner at position (x, y).
  * The image is encoded using one of the encodings described above.
  * 1-bit image will be drawn using current color and current color has no effect on 4-bit images.
