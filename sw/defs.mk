@@ -39,3 +39,6 @@ DEFINES += UART_BAUD_FAST=1000000
 # disables support for indexed or unindexed images, to save space
 # DEFINES += GRAPHICS_NO_INDEXED_IMAGE
 # DEFINES += GRAPHICS_NO_UNINDEXED_IMAGE
+
+# maximum item in a dialog (items are statically allocated)
+# DEFINES += DIALOG_MAX_ITEMS

@@ -276,6 +276,17 @@ void graphics_text_wrap(int8_t x, int8_t y, uint8_t wrap_x, const char* text);
 uint8_t graphics_text_width(const char* text);
 
 /**
+ * Get text height with current font. This just returns the glyph height, not taking into
+ * account the extra line spacing or maximum Y offset.
+ */
+uint8_t graphics_text_height(void);
+
+/**
+ * Get maximum text height with current font. This is the glyph height plus the maximum Y offset.
+ */
+uint8_t graphics_text_max_height(void);
+
+/**
  * Draw decimal number using the current font and color.
  * The drawn text is not wrapped.
  */

@@ -109,7 +109,7 @@ class FontPackResult(PackResult):
         total = 0
         for r in FontData.RANGES:
             if total + len(r) > glyph_count:
-                s += f"{r.start:#02x}-{r.start + (glyph_count - total + r.start):#02x}, "
+                s += f"{r.start:#02x}-{r.start + (glyph_count - total):#02x}, "
                 break
             else:
                 s += f"{r.start:#02x}-{r.stop - 1:#02x}, "

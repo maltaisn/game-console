@@ -657,11 +657,6 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
     }
 #endif
 
-    if (y >= display_page_yend || (y + (bottom - top)) < display_page_ystart) {
-        // out page page, either completely before or after.
-        return;
-    }
-
     // read image header and index header (even if not indexed)
     uint8_t header_buf[IMAGE_HEADER_SIZE + IMAGE_INDEX_HEADER_SIZE];
     const uint8_t* header = data_read(data, sizeof header_buf, header_buf);
@@ -678,6 +673,11 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
     if (full) {
         right = width;
         bottom = height;
+    }
+
+    if (y >= display_page_yend || (y + (bottom - top)) < display_page_ystart) {
+        // out page page, either completely before or after.
+        return;
     }
 
 #ifdef RUNTIME_CHECKS
@@ -858,6 +858,10 @@ void graphics_glyph(int8_t x, int8_t y, char c) {
     uint16_t first_byte = data[byte_pos];
     first_byte <<= font.offset_bits;
     curr_y = (int8_t) (curr_y + (first_byte >> 8));
+    if (curr_y >= PAGE_HEIGHT) {
+        // Y offset brought top of glyph outside of page.
+        return;
+    }
     bits -= font.offset_bits;
     uint8_t byte = first_byte & 0xff;
     // decode remaining bits in first byte
@@ -1008,6 +1012,14 @@ uint8_t graphics_text_width(const char* text) {
         }
     }
     return width - GLYPH_SPACING;
+}
+
+uint8_t graphics_text_height(void) {
+    return font.height;
+}
+
+uint8_t graphics_text_max_height(void) {
+    return font.height + font.offset_max;
 }
 
 void graphics_text_num(int8_t x, int8_t y, int32_t num) {

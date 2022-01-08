@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-#ifndef SYSUI_H
-#define SYSUI_H
+#ifndef CORE_SYSUI_H
+#define CORE_SYSUI_H
 
 /**
  * Draw the system UI to indicate that the battery is too low and device will go to sleep.
  */
 void sysui_battery_sleep(void);
 
-#endif //SYSUI_H
+#endif //CORE_SYSUI_H

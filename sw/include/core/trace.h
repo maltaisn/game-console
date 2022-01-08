@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef TRACE_H
-#define TRACE_H
+#ifndef CORE_TRACE_H
+#define CORE_TRACE_H
 
 #if defined(SIMULATION) && !defined(RUNTIME_CHECKS)
 // Always enable runtime checks in simulation.
@@ -32,4 +32,4 @@
 #define trace(str, ...) // no-op
 #endif //SIMULATION
 
-#endif //TRACE_H
+#endif //CORE_TRACE_H
