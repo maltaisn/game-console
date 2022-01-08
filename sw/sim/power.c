@@ -28,7 +28,7 @@
 
 #include <stdio.h>
 #include <stdatomic.h>
-#include <unistd.h>
+#include <time.h>
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -162,7 +162,9 @@ void power_enable_sleep(void) {
     sleeping = true;
     trace("sleep enabled");
     while (sleeping || !sleep_allow_wakeup) {
-        sleep(1);
+        // sleep thread for 100 ms, better than busy loop.
+        struct timespec remaining, request = {0, 100000000};
+        nanosleep(&request, &remaining);
     }
 
     // --> wake-up from sleep

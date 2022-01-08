@@ -59,19 +59,11 @@ static dialog_item_t* dialog_add_item(dialog_item_type_t type, const char* name)
     return item;
 }
 
-/**
- * Add a button item to the dialog. The item is added following the last one.
- * The button is centered and its text is drawn with the large font.
- */
 void dialog_add_item_button(const char* name, dialog_result_t result) {
     dialog_button_t* item = &dialog_add_item(DIALOG_ITEM_BUTTON, name)->button;
     item->result = result;
 }
 
-/**
- * Add an item with a list of choices to the dialog. The item is added following the last one.
- * The choices list is drawn with large font while the item's name is drawn with small font.
- */
 void dialog_add_item_choice(const char* name, uint8_t selection,
                             uint8_t choices_count, const char** choices) {
     dialog_choice_t* item = &dialog_add_item(DIALOG_ITEM_CHOICE, name)->choice;
@@ -80,12 +72,25 @@ void dialog_add_item_choice(const char* name, uint8_t selection,
     item->choices = choices;
 }
 
-/**
- * Handle buttons input to navigate the dialog, given the last input state.
- */
+void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
+                            uint8_t step, uint8_t value) {
+#ifdef RUNTIME_CHECKS
+    if (max < min || value < min || value > max ||
+        min % step != 0 || max % step != 0 || value % step != 0) {
+        trace("invalid number item values");
+        return;
+    }
+#endif
+    dialog_number_t* item = &dialog_add_item(DIALOG_ITEM_NUMBER, name)->number;
+    item->min = min;
+    item->max = max;
+    item->step = step;
+    item->value = value;
+}
+
 dialog_result_t dialog_handle_input(uint8_t last_state) {
     dialog_item_t* curr_item = dialog.selection >= dialog.item_count ? 0 :
-            &dialog.items[dialog.selection];
+                               &dialog.items[dialog.selection];
     dialog_result_t result = DIALOG_RESULT_NONE;
 
 #ifdef RUNTIME_CHECKS
@@ -94,7 +99,6 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
         return result;
     }
 #endif
-    trace("uh");
 
     uint8_t clicked = ~last_state & input_get_state();
     if (clicked) {
@@ -141,13 +145,21 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
             if (dialog.selection == DIALOG_SELECTION_POS && dialog.neg_btn) {
                 // there's a negative button on the left of the positive button, select it.
                 dialog.selection = DIALOG_SELECTION_NEG;
-            } else if (curr_item && curr_item->type == DIALOG_ITEM_CHOICE) {
-                // go to previous choice in item or wrap around if on first choice.
-                dialog_choice_t* choice = &curr_item->choice;
-                if (choice->selection == 0) {
-                    choice->selection = choice->choices_count - 1;
-                } else {
-                    --choice->selection;
+            } else if (curr_item) {
+                if (curr_item->type == DIALOG_ITEM_CHOICE) {
+                    // go to previous choice in item or wrap around if on first choice.
+                    dialog_choice_t* choice = &curr_item->choice;
+                    if (choice->selection == 0) {
+                        choice->selection = choice->choices_count - 1;
+                    } else {
+                        --choice->selection;
+                    }
+                } else if (curr_item->type == DIALOG_ITEM_NUMBER) {
+                    // decrement the number by the step value.
+                    dialog_number_t* number = &curr_item->number;
+                    if (number->value > number->min) {
+                        number->value -= number->step;
+                    }
                 }
             }
 
@@ -155,12 +167,20 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
             if (dialog.selection == DIALOG_SELECTION_NEG) {
                 // if there's a negative button there's necessarily a positive one too.
                 dialog.selection = DIALOG_SELECTION_POS;
-            } else if (curr_item && curr_item->type == DIALOG_ITEM_CHOICE) {
-                // go to next choice in item or wrap around if on last choice.
-                dialog_choice_t* choice = &curr_item->choice;
-                ++choice->selection;
-                if (choice->selection == choice->choices_count) {
-                    choice->selection = 0;
+            } else if (curr_item) {
+                if (curr_item->type == DIALOG_ITEM_CHOICE) {
+                    // go to next choice in item or wrap around if on last choice.
+                    dialog_choice_t* choice = &curr_item->choice;
+                    ++choice->selection;
+                    if (choice->selection == choice->choices_count) {
+                        choice->selection = 0;
+                    }
+                } else if (curr_item->type == DIALOG_ITEM_NUMBER) {
+                    // increment the number by the step value.
+                    dialog_number_t* number = &curr_item->number;
+                    if (number->value < number->max) {
+                        number->value += number->step;
+                    }
                 }
             }
         }
@@ -187,10 +207,16 @@ static void draw_action(disp_color_t color, disp_x_t x, disp_y_t y, uint8_t widt
     graphics_text((int8_t) (x + (width - text_width) / 2), (int8_t) (y + 2), text);
 }
 
-/**
- * Draw the dialog to the display.
- * This must be called in the display loop to show the dialog.
- */
+static const char* uint8_to_str(char* buf, uint8_t n) {
+    buf[3] = '\0';
+    char* ptr = &buf[3];
+    do {
+        *(--ptr) = (char) (n % 10 + '0');
+        n /= 10;
+    } while (n);
+    return ptr;
+}
+
 void dialog_draw(void) {
     // title frame & text
     disp_y_t y = dialog.y;
@@ -205,7 +231,8 @@ void dialog_draw(void) {
         graphics_fill_rect(dialog.x, dialog.y, dialog.width, h);
         graphics_set_color(DISPLAY_COLOR_BLACK);
         uint8_t width = graphics_text_width(dialog.title);
-        graphics_text((int8_t) (dialog.x + (dialog.width - width) / 2), (int8_t) (dialog.y + 2), dialog.title);
+        graphics_text((int8_t) (dialog.x + (dialog.width - width) / 2), (int8_t) (dialog.y + 2),
+                      dialog.title);
         graphics_hline(dialog.x, dialog.x + dialog.width, y - 1);
     }
 
@@ -246,8 +273,15 @@ void dialog_draw(void) {
         if (item->type == DIALOG_ITEM_BUTTON) {
             draw_action(DISPLAY_COLOR_WHITE, dialog.x + 4, action_y, dialog.width - 8,
                         action_height, item->name, dialog.selection == i, true);
-        } else if (item->type == DIALOG_ITEM_CHOICE) {
-            const char* choice_str = item->choice.choices[item->choice.selection];
+        } else {
+            const char* choice_str;
+            if (item->type == DIALOG_ITEM_NUMBER) {
+                char buf[4];
+                choice_str = uint8_to_str(buf, item->number.value);
+            } else {
+                choice_str = item->choice.choices[item->choice.selection];
+            }
+
             uint8_t choice_width = graphics_text_width(choice_str);
             uint8_t arrow_right_x = dialog.x + dialog.width - 6;
             uint8_t action_x = arrow_right_x - choice_width - 3;
@@ -269,7 +303,7 @@ void dialog_draw(void) {
     action_y = y + 3 + ((int8_t) action_height - graphics_text_height()) / 2;
     for (uint8_t i = 0; i < dialog.item_count; ++i) {
         dialog_item_t* item = &dialog.items[i];
-        if (item->type == DIALOG_ITEM_CHOICE) {
+        if (item->type != DIALOG_ITEM_BUTTON) {
             graphics_text((int8_t) (dialog.x + 3), (int8_t) action_y, item->name);
         }
         action_y += action_height + 2;

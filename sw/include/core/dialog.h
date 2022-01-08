@@ -55,7 +55,12 @@ typedef enum {
 typedef enum {
     DIALOG_ITEM_BUTTON,
     DIALOG_ITEM_CHOICE,
+    DIALOG_ITEM_NUMBER,
 } dialog_item_type_t;
+
+typedef struct {
+    dialog_result_t result;
+} dialog_button_t;
 
 typedef struct {
     uint8_t choices_count;
@@ -64,8 +69,11 @@ typedef struct {
 } dialog_choice_t;
 
 typedef struct {
-    dialog_result_t result;
-} dialog_button_t;
+    uint8_t value;
+    uint8_t min;
+    uint8_t max;
+    uint8_t step;
+} dialog_number_t;
 
 typedef struct {
     dialog_item_type_t type;
@@ -73,6 +81,7 @@ typedef struct {
     union {
         dialog_button_t button;
         dialog_choice_t choice;
+        dialog_number_t number;
     };
 } dialog_item_t;
 
@@ -115,10 +124,18 @@ void dialog_add_item_button(const char* name, dialog_result_t result);
 
 /**
  * Add an item with a list of choices to the dialog. The item is added following the last one.
- * The choices list is drawn with large font while the item's name is drawn with small font.
+ * The choices list is drawn with action font while the item's name is drawn with item font.
  */
 void dialog_add_item_choice(const char* name, uint8_t selection,
                             uint8_t choices_count, const char** choices);
+
+/**
+ * Add an item with a number picker to the dialog. The item is added following the last one.
+ * The current value is drawn with action font while the item's name is drawn with item font.
+ * The maximum and minimum modulo the step should be zero.
+ */
+void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
+                            uint8_t step, uint8_t value);
 
 /**
  * Handle buttons input to navigate the dialog, given the last input state.

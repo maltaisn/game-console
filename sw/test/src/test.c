@@ -55,6 +55,7 @@ void setup(void) {
     dialog_add_item_button("Main menu", 3);
     static const char* GAME_MODES[] = {"Easy", "Normal", "Hard"};
     dialog_add_item_choice("GAME", 1, 3, GAME_MODES);
+    dialog_add_item_number("CONTRAST", 0, 100, 10, 70);
 }
 
 static void draw(void) {

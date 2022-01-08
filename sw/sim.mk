@@ -10,7 +10,7 @@ LIBS += glut pthread portaudio m
 
 DEFINES += SIMULATION
 
-CFLAGS += -std=c11 -g3 -O0 -fshort-enums -fpack-struct
+CFLAGS += -std=gnu11 -g3 -O0 -fshort-enums -fpack-struct
 CFLAGS += ${shell pkg-config --cflags glu}
 LDFLAGS += ${shell pkg-config --libs glu}
 
