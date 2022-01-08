@@ -50,6 +50,10 @@ class DataObject(abc.ABC):
     def pack(self, addr: int) -> PackResult:
         raise NotImplementedError
 
+    def is_in_unified_data_space(self) -> bool:
+        """Whether the object address should be given in unified data space."""
+        return False
+
 
 @dataclass
 class FileObject(DataObject, abc.ABC):
@@ -95,6 +99,9 @@ class ImageObject(FileObject):
             raise PackError(f"encoding error: {e}")
         return ImagePackResult(data, image_data)
 
+    def is_in_unified_data_space(self) -> bool:
+        return True
+
 
 @dataclass
 class FontPackResult(PackResult):
@@ -132,6 +139,9 @@ class FontObject(FileObject):
         except font_gen.EncodeError as e:
             raise PackError(f"encoding error: {e}")
         return FontPackResult(data, font_data)
+
+    def is_in_unified_data_space(self) -> bool:
+        return True
 
 
 @dataclass
@@ -249,6 +259,7 @@ class CodeGenerator:
         name: str
         value: int
         is_hex: bool
+        unified_space: bool
 
     @dataclass
     class Array:
@@ -263,8 +274,9 @@ class CodeGenerator:
     def __init__(self):
         self._elements = []
 
-    def add_define(self, name: str, value: int, is_hex: bool = False) -> None:
-        self._elements.append(CodeGenerator.Define(name, value, is_hex))
+    def add_define(self, name: str, value: int, is_hex: bool = False,
+                   unified_space: bool = False) -> None:
+        self._elements.append(CodeGenerator.Define(name, value, is_hex, unified_space))
 
     def add_array(self, name: str, type_width: int, values: List[int]) -> None:
         self._elements.append(CodeGenerator.Array(name, type_width, values))
@@ -278,9 +290,10 @@ class CodeGenerator:
             "#ifndef ASSETS_H",
             "#define ASSETS_H",
             "",
+            "#include <sys/data.h>",
         ]
         if any((isinstance(e, CodeGenerator.Array) for e in self._elements)):
-            lines += ["#include <sys/defs.h>", ""]
+            lines += ["#include <sys/defs.h>"]
 
         max_hex_value = max((e.value for e in self._elements
                              if isinstance(e, CodeGenerator.Define) and e.is_hex))
@@ -295,6 +308,8 @@ class CodeGenerator:
                     value = f"{e.value}"
                 if e.value > 0xffff:
                     value += "L"
+                if e.unified_space:
+                    value = f"data_flash({value})"
                 lines.append(f"#define {e.name.ljust(name_width)} {value}")
             elif isinstance(e, CodeGenerator.Array):
                 lines.append(f"extern const uint{e.type_width}_t {e.name}[];")
@@ -421,7 +436,7 @@ class Packer:
         """Used to indicate that a group should create an array of the specified type."""
         self._array_types[group] = array_type
 
-    def font(self, filename: str, group: str = "fnt", *, glyph_width: int, glyph_height: int,
+    def font(self, filename: str, group: str = "font", *, glyph_width: int, glyph_height: int,
              extra_line_spacing: int = 1, name: Optional[str] = None) -> None:
         """Add a font file to the data to pack. See font_gen.py for more info on parameters."""
         self._check_not_packed()
@@ -434,7 +449,7 @@ class Packer:
             glyph_height + extra_line_spacing
         ))
 
-    def image(self, filename: str, group: str = "img", *,
+    def image(self, filename: str, group: str = "image", *,
               region: Optional[Tuple[int, int, int, int]] = None, indexed: bool = None,
               index_granularity: Optional[str] = None, force_binary: bool = False,
               name: Optional[str] = None) -> None:
@@ -701,7 +716,8 @@ class Packer:
                     if name in all_names:
                         self._error(f"duplicate name in header '{name}'", obj)
                     all_names.add(name)
-                    gen.add_define(name, self._mem_map[i], is_hex=True)
+                    gen.add_define(name, self._mem_map[i], is_hex=True,
+                                   unified_space=obj.is_in_unified_data_space())
 
         try:
             gen.write_header(output_path_h)

@@ -2,17 +2,19 @@
 #ifndef ASSETS_H
 #define ASSETS_H
 
+#include <sys/data.h>
 
-#define ASSET_IMG_TIGER128  0x0000
 
-#define ASSET_SOUND_MUSIC0  0x1978
-#define ASSET_SOUND_MUSIC1  0x1f58
-#define ASSET_SOUND_MUSIC2  0x209c
-#define ASSET_SOUND_EFFECT0 0x2348
+#define ASSET_IMAGE_TIGER128 data_flash(0x0000)
 
-#define ASSET_FNT_FONT3X5   0x2358
-#define ASSET_FNT_FONT5X7   0x241c
-#define ASSET_FNT_FONT6X9   0x27dc
-#define ASSET_FNT_FONT7X7   0x2890
+#define ASSET_SOUND_MUSIC0   0x1978
+#define ASSET_SOUND_MUSIC1   0x1f58
+#define ASSET_SOUND_MUSIC2   0x209c
+#define ASSET_SOUND_EFFECT0  0x2348
+
+#define ASSET_FONT_FONT3X5   data_flash(0x2358)
+#define ASSET_FONT_FONT5X7   data_flash(0x241c)
+#define ASSET_FONT_FONT6X9   data_flash(0x27dc)
+#define ASSET_FONT_FONT7X7   data_flash(0x2890)
 
 #endif

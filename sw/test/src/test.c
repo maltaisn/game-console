@@ -44,8 +44,8 @@ void setup(void) {
     fclose(file);
 #endif
 
-    dialog_init(10, 20, 108, 88, data_flash(ASSET_FNT_FONT7X7),
-                data_flash(ASSET_FNT_FONT5X7), data_flash(ASSET_FNT_FONT3X5));
+    dialog_init(10, 20, 108, 88);
+    dialog_set_font(ASSET_FONT_FONT7X7, ASSET_FONT_FONT5X7, ASSET_FONT_FONT3X5);
     dialog.dismissable = true;
     dialog.title = "GAME OPTIONS";
     dialog.pos_btn = "OK";
@@ -65,7 +65,7 @@ static void draw(void) {
         return;
     }
 
-    graphics_image(data_flash(ASSET_IMG_TIGER128), 0, 0);
+    graphics_image(ASSET_IMAGE_TIGER128, 0, 0);
 
     if (dialog_shown) {
         dialog_draw();
