@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-#include <sys/input.h>
-
 #include <core/dialog.h>
 #include <core/trace.h>
 
@@ -91,7 +89,7 @@ void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
     if (!dialog_add_item_check()) {
         return;
     }
-    if (max < min || value < min || value > max) {
+    if (max < min || value < min || value > max || mul == 0) {
         trace("invalid number item values");
         return;
     }
@@ -106,7 +104,7 @@ void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
     ++dialog.item_count;
 }
 
-dialog_result_t dialog_handle_input(uint8_t last_state) {
+dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
     dialog_item_t* curr_item = dialog.selection >= dialog.item_count ? 0 :
                                &dialog.items[dialog.selection];
     dialog_result_t result = DIALOG_RESULT_NONE;
@@ -118,7 +116,7 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
     }
 #endif
 
-    uint8_t clicked = ~last_state & input_get_state();
+    uint8_t clicked = ~last_state & curr_state;
     if (clicked) {
         if (clicked & DIALOG_BUTTON_ENTER) {
             if (dialog.selection == DIALOG_SELECTION_POS) {

@@ -41,6 +41,12 @@
 uint8_t input_get_state(void);
 
 /**
+ * Returns the immediate input state, without debouncing.
+ * A 1 bit indicates that the button is pressed.
+ */
+uint8_t input_get_state_immediate(void);
+
+/**
  * Update current input state.
  * This is called on systick update.
  */

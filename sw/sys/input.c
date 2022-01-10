@@ -53,6 +53,10 @@ uint8_t input_get_state(void) {
     return state;
 }
 
+uint8_t input_get_state_immediate(void) {
+    return VPORTD.IN;
+}
+
 void input_update_state(void) {
     // 2 levels debouncing: new value is most common value among last two and new.
     // this is probably overkill since the buttons don't even bounce...

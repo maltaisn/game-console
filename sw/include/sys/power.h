@@ -26,11 +26,11 @@
 #endif
 
 #ifndef POWER_INACTIVE_COUNTDOWN_SLEEP
-#define POWER_INACTIVE_COUNTDOWN_SLEEP 90
+#define POWER_INACTIVE_COUNTDOWN_SLEEP 15
 #endif
 
 #ifndef POWER_INACTIVE_COUNTDOWN_DIM
-#define POWER_INACTIVE_COUNTDOWN_DIM 60
+#define POWER_INACTIVE_COUNTDOWN_DIM 10
 #endif
 
 typedef enum {
@@ -134,6 +134,24 @@ bool power_is_sleep_due(void);
  * Enter sleep mode.
  */
 void power_enable_sleep(void);
+
+/**
+ * Function called right before CPU is put to sleep.
+ * Default implementation is weakly linked and does nothing.
+ */
+void power_callback_sleep(void);
+
+/**
+ * Function called right after CPU wakes up from sleep.
+ * Default implementation is weakly linked and does nothing.
+ */
+void power_callback_wakeup(void);
+
+/**
+ * Function called when sleep is scheduled.
+ * Default implementation is weakly linked and does nothing.
+ */
+void power_callback_sleep_scheduled(void);
 
 
 #endif //SYS_POWER_H

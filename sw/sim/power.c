@@ -113,6 +113,7 @@ void power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool countdown
         sleep_cause = cause;
         sleep_allow_wakeup = allow_wakeup;
         sleep_countdown = POWER_SLEEP_COUNTDOWN;
+        power_callback_sleep_scheduled();
         return;
     }
     power_enable_sleep();
@@ -153,6 +154,8 @@ void power_disable_sleep(void) {
 }
 
 void power_enable_sleep(void) {
+    power_callback_sleep();
+
     sleep_scheduled = false;
     sleep_cause = SLEEP_CAUSE_NONE;
 
@@ -170,4 +173,17 @@ void power_enable_sleep(void) {
     // --> wake-up from sleep
     trace("sleep disabled");
     init_wakeup();
+    power_callback_wakeup();
+}
+
+void __attribute__((weak)) power_callback_sleep(void) {
+    // do nothing
+}
+
+void __attribute__((weak)) power_callback_wakeup(void) {
+    // do nothing
+}
+
+void __attribute__((weak)) power_callback_sleep_scheduled(void) {
+    // do nothing
 }

@@ -72,25 +72,32 @@ static uint8_t get_key_state_mask(unsigned int key) {
         default:
             return 0;
     }
+    return mask;
+}
+
+static void on_input_change(void) {
     reset_inactive_countdown();
     power_disable_sleep();
-    return mask;
 }
 
 static void input_on_key_down(unsigned char key, int x, int y) {
     state |= get_key_state_mask(key);
+    on_input_change();
 }
 
 static void input_on_key_up(unsigned char key, int x, int y) {
     state &= ~get_key_state_mask(key);
+    on_input_change();
 }
 
 static void input_on_key_down_special(int key, int x, int y) {
     state |= get_key_state_mask(key | SPECIAL_MASK);
+    on_input_change();
 }
 
 static void input_on_key_up_special(int key, int x, int y) {
     state &= ~get_key_state_mask(key | SPECIAL_MASK);
+    on_input_change();
 }
 
 void input_init(void) {
@@ -102,6 +109,11 @@ void input_init(void) {
 }
 
 uint8_t input_get_state(void) {
+    return state;
+}
+
+uint8_t input_get_state_immediate(void) {
+    // no debouncing; immediate is same as debounced.
     return state;
 }
 

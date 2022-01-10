@@ -235,6 +235,7 @@ void power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool countdown
             sleep_countdown = POWER_SLEEP_COUNTDOWN;
             sleep_cause = cause;
             power_state = state;
+            power_callback_sleep_scheduled();
         }
         return;
     }
@@ -267,6 +268,7 @@ bool power_is_sleep_due(void) {
 }
 
 void power_enable_sleep(void) {
+    power_callback_sleep();
     power_schedule_sleep_cancel();
 
     // go to sleep
@@ -280,5 +282,17 @@ void power_enable_sleep(void) {
     // reset power state because some time may have passed since device was put to sleep.
     battery_status = BATTERY_UNKNOWN;
     init_wakeup();
+    power_callback_wakeup();
 }
 
+void __attribute__((weak)) power_callback_sleep(void) {
+    // do nothing
+}
+
+void __attribute__((weak)) power_callback_wakeup(void) {
+    // do nothing
+}
+
+void __attribute__((weak)) power_callback_sleep_scheduled(void) {
+    // do nothing
+}

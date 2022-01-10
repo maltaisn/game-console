@@ -145,17 +145,15 @@ void dialog_add_item_choice(const char* name, uint8_t selection,
 /**
  * Add an item with a number picker to the dialog. The item is added following the last one.
  * The current value is drawn with action font while the item's name is drawn with item font.
- * The maximum and minimum modulo the step should be zero.
  */
-void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
-                            uint8_t step, uint8_t value);
+void dialog_add_item_number(const char* name, uint8_t min, uint8_t max, uint8_t mul, uint8_t value);
 
 /**
- * Handle buttons input to navigate the dialog, given the last input state.
+ * Handle buttons input to navigate the dialog, given the last and current input state.
  * If a button item or action button is clicked, its result code is returned.
  * Otherwise, `DIALOG_RESULT
  */
-dialog_result_t dialog_handle_input(uint8_t last_state);
+dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state);
 
 /**
  * Draw the dialog to the display.
