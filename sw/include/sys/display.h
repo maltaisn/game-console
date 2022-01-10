@@ -63,14 +63,6 @@ typedef disp_coord_t disp_y_t;
 /** Display "color" (grayscale level). */
 typedef uint8_t disp_color_t;
 
-/**
- * The display buffer used to write data for one page at a time
- * before it is sent to the display.
- * The data in the buffer is in row-major order and only contains complete rows.
- * The first page is the topmost page and the first row of a page is the topmost row.
- */
-extern uint8_t display_buffer[DISPLAY_BUFFER_SIZE];
-
 /** First Y coordinate for current page (inclusive). */
 extern disp_y_t display_page_ystart;
 /** Last Y coordinate for current page (exclusive) */
@@ -144,5 +136,15 @@ void display_first_page(void);
  * If on the last page, this returns false, otherwise it returns true.
  */
 bool display_next_page(void);
+
+/**
+ * The display buffer used to write data for one page at a time before it is sent to the display.
+ * The data in the buffer is in row-major order and only contains complete rows.
+ * The first page is the topmost page and the first row of a page is the topmost row.
+ * This functions returns a pointer to the display buffer at a page coordinate.
+ * If X is odd, this returns a pointer to the pixel on the left, since there are two pixels per byte.
+ * Page coordinate have the same x as display coordinates but a different y.
+ */
+uint8_t* display_buffer(disp_x_t x, disp_y_t y);
 
 #endif //SYS_DISPLAY_H

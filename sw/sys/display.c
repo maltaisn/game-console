@@ -55,9 +55,10 @@
 
 #define FUNC_SEL_A_EXTERNAL_VDD 0x01
 
-uint8_t display_buffer[DISPLAY_BUFFER_SIZE];
 disp_y_t display_page_ystart;
 disp_y_t display_page_yend;
+
+static uint8_t buffer[DISPLAY_BUFFER_SIZE];
 
 enum {
     STATE_DIMMED = 1 << 0,
@@ -200,8 +201,12 @@ void display_first_page(void) {
 
 bool display_next_page(void) {
     set_data_mode();
-    write_data(DISPLAY_BUFFER_SIZE, display_buffer);
+    write_data(DISPLAY_BUFFER_SIZE, buffer);
     display_page_ystart += PAGE_HEIGHT;
     display_page_yend += PAGE_HEIGHT;
     return display_page_ystart < DISPLAY_HEIGHT;
+}
+
+uint8_t* display_buffer(disp_x_t x, disp_y_t y) {
+    return &buffer[y * DISPLAY_NUM_COLS + x / 2];
 }

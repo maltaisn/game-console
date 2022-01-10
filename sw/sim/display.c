@@ -17,13 +17,24 @@
 #include <sys/display.h>
 #include <sim/display.h>
 
+#include <core/trace.h>
+
 #include <memory.h>
 #include <GL/glut.h>
 #include <stdio.h>
 
-uint8_t display_buffer[DISPLAY_BUFFER_SIZE];
+#define GUARD_SIZE 8192
+
 disp_y_t display_page_ystart;
 disp_y_t display_page_yend;
+
+static struct {
+    uint8_t guard0[GUARD_SIZE];
+    uint8_t buffer[DISPLAY_BUFFER_SIZE];
+    uint8_t guard1[GUARD_SIZE];
+} disp_buffer;
+
+static uint8_t guard_byte;
 
 pthread_mutex_t display_mutex;
 
@@ -88,6 +99,10 @@ void display_first_page(void) {
     display_page_yend = PAGE_HEIGHT;
     disp_data_ptr = disp_data;
     pthread_mutex_lock(&display_mutex);
+
+    // initialize guards (the guard byte changes every time)
+    memset(&disp_buffer.guard0, guard_byte, GUARD_SIZE);
+    memset(&disp_buffer.guard1, guard_byte, GUARD_SIZE);
 }
 
 bool display_next_page(void) {
@@ -95,7 +110,7 @@ bool display_next_page(void) {
         puts("Next page called before first page");
         return false;
     }
-    memcpy(disp_data_ptr, display_buffer, DISPLAY_BUFFER_SIZE);
+    memcpy(disp_data_ptr, disp_buffer.buffer, DISPLAY_BUFFER_SIZE);
     display_page_ystart += PAGE_HEIGHT;
     display_page_yend += PAGE_HEIGHT;
     disp_data_ptr += DISPLAY_BUFFER_SIZE;
@@ -103,9 +118,27 @@ bool display_next_page(void) {
     bool has_next_page = display_page_ystart < DISPLAY_HEIGHT;
     if (!has_next_page) {
         disp_data_ptr = 0;
+
+        // check guards
+        for (size_t i = 0; i < GUARD_SIZE; ++i) {
+            if (disp_buffer.guard0[i] != guard_byte) {
+                trace("guard before display buffer smashed at pos %zu", i);
+                break;
+            }
+            if (disp_buffer.guard1[i] != guard_byte) {
+                trace("guard after display buffer smashed at pos %zu", i);
+                break;
+            }
+        }
+        ++guard_byte;
+
         pthread_mutex_unlock(&display_mutex);
     }
     return has_next_page;
+}
+
+uint8_t* display_buffer(disp_x_t x, disp_y_t y) {
+    return &disp_buffer.buffer[y * DISPLAY_NUM_COLS + x / 2];
 }
 
 static float get_pixel_opacity(disp_color_t color) {

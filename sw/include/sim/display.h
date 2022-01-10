@@ -34,7 +34,7 @@
 // maximum contrast after which there's no difference
 #define DISPLAY_MAX_CONTRAST 0x7f
 // gap in percent between pixels
-#define DISPLAY_PIXEL_GAP 0.2f
+#define DISPLAY_PIXEL_GAP 0.0f
 
 // mutex used to synchronize access to display data buffer (for full display).
 // display data is updated from a different thread than the one that draws the display,

@@ -158,20 +158,22 @@ graphics_font_t graphics_get_font(void) {
 
 void graphics_clear(disp_color_t c) {
     c = c | c << 4;
+    uint8_t* buffer = display_buffer(0, 0);
     for (uint16_t i = DISPLAY_BUFFER_SIZE; i-- > 0;) {
-        display_buffer[i] = c;
+        buffer[i] = c;
     }
 }
 
 static void graphics_pixel_fast_color(const disp_x_t x, const disp_y_t y,
                                       const disp_color_t color) {
+    // note: color parameter shadows global color, that's correct.
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
         trace("drawing outside bounds");
         return;
     }
 #endif
-    uint8_t* buffer = &display_buffer[y * DISPLAY_NUM_COLS + x / 2];
+    uint8_t* buffer = display_buffer(x, y);
     if (x & 1) {
         set_block_right(*buffer);
     } else {
@@ -186,7 +188,7 @@ static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
         return;
     }
 #endif
-    uint8_t* buffer = &display_buffer[y * DISPLAY_NUM_COLS + x / 2];
+    uint8_t* buffer = display_buffer(x, y);
     if (x & 1) {
         set_block_right(*buffer);
     } else {
@@ -214,7 +216,7 @@ static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y
         return;
     }
 #endif
-    uint8_t* buffer = &display_buffer[y * DISPLAY_NUM_COLS + x0 / 2];
+    uint8_t* buffer = display_buffer(x0, y);
     if (x0 & 1) {
         // handle half block at the start
         set_block_right(*buffer);
@@ -262,7 +264,7 @@ void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
     }
     y0 = y0 <= display_page_ystart ? 0 : y0 - display_page_ystart;
     y1 = y1 >= display_page_yend ? PAGE_HEIGHT - 1 : y1 - display_page_ystart;
-    uint8_t* buffer = &display_buffer[y0 * DISPLAY_NUM_COLS + x / 2];
+    uint8_t* buffer = display_buffer(x, y0);
     if (x & 1) {
         // on the right side of blocks
         for (uint8_t y = y0; y <= y1; ++y) {
