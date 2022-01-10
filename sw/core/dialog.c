@@ -50,47 +50,60 @@ void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
     dialog.item_font = item_font;
 }
 
-static dialog_item_t* dialog_add_item(dialog_item_type_t type, const char* name) {
+static bool dialog_add_item_check(void) {
 #ifdef RUNTIME_CHECKS
     if (dialog.item_count == DIALOG_MAX_ITEMS) {
         trace("dialog already reached maximum number of items.");
-        return 0;
+        return false;
     }
 #endif
-    dialog_item_t* item = &dialog.items[dialog.item_count];
-    item->type = type;
-    item->name = name;
-    ++dialog.item_count;
-    return item;
+    return true;
 }
 
 void dialog_add_item_button(const char* name, dialog_result_t result) {
-    dialog_button_t* item = &dialog_add_item(DIALOG_ITEM_BUTTON, name)->button;
-    item->result = result;
+    if (!dialog_add_item_check()) {
+        return;
+    }
+    dialog_item_t* item = &dialog.items[dialog.item_count];
+    item->type = DIALOG_ITEM_BUTTON;
+    item->name = name;
+    item->button.result = result;
+    ++dialog.item_count;
 }
 
 void dialog_add_item_choice(const char* name, uint8_t selection,
                             uint8_t choices_count, const char** choices) {
-    dialog_choice_t* item = &dialog_add_item(DIALOG_ITEM_CHOICE, name)->choice;
-    item->choices_count = choices_count;
-    item->selection = selection;
-    item->choices = choices;
+    if (!dialog_add_item_check()) {
+        return;
+    }
+    dialog_item_t* item = &dialog.items[dialog.item_count];
+    item->type = DIALOG_ITEM_CHOICE;
+    item->name = name;
+    item->choice.choices_count = choices_count;
+    item->choice.selection = selection;
+    item->choice.choices = choices;
+    ++dialog.item_count;
 }
 
 void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
-                            uint8_t step, uint8_t value) {
+                            uint8_t mul, uint8_t value) {
 #ifdef RUNTIME_CHECKS
-    if (max < min || value < min || value > max ||
-        min % step != 0 || max % step != 0 || value % step != 0) {
+    if (!dialog_add_item_check()) {
+        return;
+    }
+    if (max < min || value < min || value > max) {
         trace("invalid number item values");
         return;
     }
 #endif
-    dialog_number_t* item = &dialog_add_item(DIALOG_ITEM_NUMBER, name)->number;
-    item->min = min;
-    item->max = max;
-    item->step = step;
-    item->value = value;
+    dialog_item_t* item = &dialog.items[dialog.item_count];
+    item->type = DIALOG_ITEM_NUMBER;
+    item->name = name;
+    item->number.value = value;
+    item->number.min = min;
+    item->number.max = max;
+    item->number.mul = mul;
+    ++dialog.item_count;
 }
 
 dialog_result_t dialog_handle_input(uint8_t last_state) {
@@ -166,10 +179,10 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
                         --choice->selection;
                     }
                 } else if (curr_item->type == DIALOG_ITEM_NUMBER) {
-                    // decrement the number by the step value.
+                    // decrement the number by one.
                     dialog_number_t* number = &curr_item->number;
                     if (number->value > number->min) {
-                        number->value -= number->step;
+                        --number->value;
                     }
                 }
             }
@@ -187,10 +200,10 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
                         choice->selection = 0;
                     }
                 } else if (curr_item->type == DIALOG_ITEM_NUMBER) {
-                    // increment the number by the step value.
+                    // increment the number by one.
                     dialog_number_t* number = &curr_item->number;
                     if (number->value < number->max) {
-                        number->value += number->step;
+                        ++number->value;
                     }
                 }
             }
@@ -299,7 +312,7 @@ void dialog_draw(void) {
             const char* choice_str;
             if (item->type == DIALOG_ITEM_NUMBER) {
                 char buf[4];
-                choice_str = uint8_to_str(buf, item->number.value);
+                choice_str = uint8_to_str(buf, item->number.value * item->number.mul);
             } else {
                 choice_str = item->choice.choices[item->choice.selection];
             }

@@ -68,7 +68,7 @@ typedef struct {
     uint8_t value;
     uint8_t min;
     uint8_t max;
-    uint8_t step;
+    uint8_t mul;
 } dialog_number_t;
 
 typedef struct {

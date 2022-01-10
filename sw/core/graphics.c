@@ -364,7 +364,7 @@ void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
 void graphics_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const uint8_t h) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT ||
-        x + w > DISPLAY_WIDTH || x + h > DISPLAY_HEIGHT) {
+        x + w > DISPLAY_WIDTH || y + h > DISPLAY_HEIGHT) {
         trace("drawing outside bounds");
         return;
     }
