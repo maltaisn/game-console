@@ -18,6 +18,8 @@
 #ifndef TETRIS_UI_H
 #define TETRIS_UI_H
 
+#include <game.h>
+
 void open_main_menu_dialog(void);
 
 void open_pause_dialog(void);
@@ -26,10 +28,16 @@ void open_options_dialog(void);
 
 void open_extra_options_dialog(void);
 
+void open_controls_dialog(game_state_t result);
+
 void open_leaderboard_dialog(void);
 
 void open_high_score_dialog(void);
 
 void open_game_over_dialog(void);
+
+void draw_leaderboard_overlay(void);
+
+void draw_controls_overlay(void);
 
 #endif //TETRIS_UI_H

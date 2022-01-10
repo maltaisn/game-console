@@ -127,7 +127,7 @@ dialog_result_t dialog_handle_input(uint8_t last_state) {
 
         } else if (clicked & DIALOG_BUTTON_DISMISS) {
             if (dialog.dismissable) {
-                if (dialog.dismiss_result == DIALOG_SELECTION_NONE) {
+                if (dialog.dismiss_result == DIALOG_RESULT_NONE) {
                     result = dialog.neg_result;
                 } else {
                     result = dialog.dismiss_result;

@@ -18,6 +18,7 @@
 #include <render.h>
 #include <game.h>
 #include <tetris.h>
+#include <ui.h>
 #include <assets.h>
 
 #include <sys/power.h>
@@ -104,8 +105,11 @@ void draw(void) {
 
     if (game.dialog_shown) {
         dialog_draw();
-
-        // TODO write high scores if on leader board
+        if (game.state == GAME_STATE_LEADERBOARD) {
+            draw_leaderboard_overlay();
+        } else if (game.state == GAME_STATE_CONTROLS || game.state == GAME_STATE_CONTROLS_PLAY) {
+            draw_controls_overlay();
+        }
     }
 }
 

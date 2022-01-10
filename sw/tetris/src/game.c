@@ -113,6 +113,10 @@ game_state_t main_loop(void) {
             open_options_dialog();
         } else if (s == GAME_STATE_OPTIONS_EXTRA) {
             open_extra_options_dialog();
+        } else if (s == GAME_STATE_CONTROLS) {
+            open_controls_dialog(RESULT_OPEN_MAIN_MENU);
+        } else if (s == GAME_STATE_CONTROLS_PLAY) {
+            open_controls_dialog(RESULT_PAUSE_GAME);
         } else { // s == GAME_STATE_LEADERBOARD
             open_leaderboard_dialog();
         }
@@ -151,11 +155,21 @@ game_state_t handle_dialog_input(void) {
         resume_game();
         return GAME_STATE_PLAY;
 
+    } else if (res == RESULT_PAUSE_GAME) {
+        open_pause_dialog();
+        return GAME_STATE_PAUSE;
+
     } else if (res == RESULT_OPEN_OPTIONS) {
         return GAME_STATE_OPTIONS;
 
     } else if (res == RESULT_OPEN_OPTIONS_EXTRA) {
         return GAME_STATE_OPTIONS_EXTRA;
+
+    } else if (res == RESULT_OPEN_CONTROLS) {
+        return GAME_STATE_CONTROLS;
+
+    } else if (res == RESULT_OPEN_CONTROLS_PLAY) {
+        return GAME_STATE_CONTROLS_PLAY;
 
     } else if (res == RESULT_OPEN_LEADERBOARD) {
         return GAME_STATE_LEADERBOARD;
