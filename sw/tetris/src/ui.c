@@ -68,10 +68,10 @@ void open_options_dialog(void) {
     const bool music_enabled = (game.options.features & GAME_FEATURE_MUSIC) != 0;
     const bool sound_enabled = (game.options.features & GAME_FEATURE_SOUND_EFFECTS) != 0;
 
-    dialog_add_item_number("SOUND VOLUME", 0, 4, 1, game.options.volume >> SOUND_CHANNELS_COUNT);
+    dialog_add_item_number("SOUND VOLUME", 0, 4, 1, game.options.volume);
     dialog_add_item_choice("GAME MUSIC", music_enabled, 2, CHOICES_ON_OFF);
     dialog_add_item_choice("SOUND EFFECTS", sound_enabled, 2, CHOICES_ON_OFF);
-    dialog_add_item_number("DISPLAY CONTRAST", 0, 100, 10, game.options.contrast * 10);
+    dialog_add_item_number("DISPLAY CONTRAST", 0, 10, 1, game.options.contrast);
     dialog_add_item_number("PREVIEW PIECES", 0, 5, 1, tetris.options.preview_pieces);
     dialog_add_item_button("MORE OPTIONS", RESULT_OPEN_OPTIONS_EXTRA);
 }
@@ -162,12 +162,12 @@ void draw_controls_overlay(void) {
     for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
         // control name text
         graphics_set_color(DISPLAY_COLOR_WHITE);
-        graphics_text(15, (int8_t) y, CONTROL_NAMES[i]);
+        graphics_text(30, (int8_t) y, CONTROL_NAMES[i]);
 
         // illustrate the 6 buttons with the one used by the control highlighted.
         uint8_t buttons = CONTROL_BUTTONS[i];
         uint8_t mask = BUTTON0;
-        disp_x_t button_x = 102;
+        disp_x_t button_x = 15;
         for (uint8_t j = 0; j < 3; ++j) {
             disp_y_t button_y = y;
             for (uint8_t k = 0; k < 2; ++k) {

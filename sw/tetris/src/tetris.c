@@ -18,6 +18,8 @@
 
 #include <core/random.h>
 
+#include <string.h>
+
 #define MAX_WALL_KICKS 5
 
 // piece data is encoded using 4 bytes per piece, per rotation.
@@ -135,9 +137,9 @@ void tetris_init(void) {
 
     tetris.drop_delay = 0;
     tetris.lock_delay = 0;
-    tetris.entry_delay = ENTRY_DELAY;
-    tetris.lock_moves = 0;
+    tetris.entry_delay = 0;
     tetris.level_drop_delay = LEVELS_DROP_DELAY[tetris.level];
+    tetris.lock_moves = 0;
 
     tetris.score = 0;
     tetris.lines = 0;
@@ -148,9 +150,10 @@ void tetris_init(void) {
     tetris.last_lines_cleared = 0;
     tetris.last_tspin = TETRIS_TSPIN_NONE;
 
+    tetris.bag_pos = PIECES_COUNT;
     tetris.hold_piece = TETRIS_PIECE_NONE;
+
     tetris_shuffle_bag();
-    tetris.bag_pos = PIECES_COUNT - 1;
 }
 
 void tetris_update(void) {
@@ -455,30 +458,29 @@ void tetris_hold_or_swap_piece(void) {
 }
 
 void tetris_shuffle_bag(void) {
+    tetris_piece* bag = &tetris.piece_bag[PIECES_COUNT];
     for (uint8_t i = 0; i < PIECES_COUNT; ++i) {
-        tetris.piece_bag[i] = i;
+        bag[i] = i;
     }
     for (uint8_t i = PIECES_COUNT - 1; i > 0; --i) {
         uint8_t pos = random8() % i;
-        tetris_piece temp = tetris.piece_bag[pos];
-        tetris.piece_bag[pos] = tetris.piece_bag[i];
-        tetris.piece_bag[i] = temp;
+        tetris_piece temp = bag[pos];
+        bag[pos] = bag[i];
+        bag[i] = temp;
     }
 }
 
 void tetris_next_piece(void) {
     // get next piece in bag
-    ++tetris.bag_pos;
     if (tetris.bag_pos == PIECES_COUNT) {
         // end of current set of pieces, move next set and shuffle a new one in its place.
-        for (uint8_t i = 0; i < PIECES_COUNT; ++i) {
-            tetris.piece_bag[i] = tetris.piece_bag[i + PIECES_COUNT];
-        }
+        memcpy(&tetris.piece_bag[0], &tetris.piece_bag[PIECES_COUNT],
+               PIECES_COUNT * sizeof(tetris_piece));
         tetris_shuffle_bag();
         tetris.bag_pos = 0;
     }
 
-    tetris_spawn_piece(tetris.piece_bag[tetris.bag_pos]);
+    tetris_spawn_piece(tetris.piece_bag[tetris.bag_pos++]);
 }
 
 void tetris_spawn_piece(tetris_piece piece) {

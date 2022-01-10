@@ -78,7 +78,7 @@ enum {
 
 typedef struct {
     uint8_t features;
-    sound_volume_t volume;
+    sound_volume_t volume; // 0-4
     uint8_t contrast;  // 0-10
 } game_options_t;
 

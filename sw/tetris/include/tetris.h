@@ -124,7 +124,7 @@ typedef struct {
     uint8_t lock_moves;
 
     uint32_t score;
-    uint24_t lines;
+    uint16_t lines;
     uint16_t level;
 
     uint32_t last_points;

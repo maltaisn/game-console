@@ -59,14 +59,17 @@ void setup(void) {
     // default options
     game.options = (game_options_t) {
         .features = GAME_FEATURE_MUSIC | GAME_FEATURE_SOUND_EFFECTS,
-        .volume = SOUND_VOLUME_2,
-        .contrast = 7,
+        .volume = SOUND_VOLUME_2 >> SOUND_CHANNELS_COUNT,
+        .contrast = 6,
     };
     tetris.options = (tetris_options_t) {
         .features = TETRIS_FEATURE_HOLD | TETRIS_FEATURE_GHOST |
                 TETRIS_FEATURE_WALL_KICKS | TETRIS_FEATURE_TSPINS,
         .preview_pieces = 5,
     };
+
+    sound_set_volume(game.options.volume << SOUND_CHANNELS_COUNT);
+    display_set_contrast(game.options.contrast * 20);
 }
 
 void loop(void) {
@@ -132,7 +135,7 @@ game_state_t game_loop(void) {
     }
 
     tetris_update();
-    if (tetris.flags & GAME_STATE_GAME_OVER) {
+    if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
         // TODO check highscore and show dialog
         return GAME_STATE_GAME_OVER;
     }
@@ -264,6 +267,7 @@ game_state_t handle_game_input(void) {
 void start_game(void) {
     random_seed(time_get());
     tetris_init();
+    tetris_next_piece();
     resume_game();
 }
 
@@ -280,11 +284,44 @@ void save_highscore(void) {
 }
 
 void save_options(void) {
-    // TODO
+    uint8_t features = 0;
+    if (dialog.items[1].choice.selection) {
+        features |= GAME_FEATURE_MUSIC;
+    }
+    if (dialog.items[2].choice.selection) {
+        features |= GAME_FEATURE_SOUND_EFFECTS;
+    }
+
+    uint8_t volume = dialog.items[0].number.value;
+    uint8_t contrast = dialog.items[3].number.value;
+    uint8_t preview_pieces = dialog.items[4].number.value;
+
+    game.options = (game_options_t) {
+        .features = features,
+        .volume = volume,
+        .contrast = contrast,
+    };
+    tetris.options.preview_pieces = preview_pieces;
+
+    sound_set_volume(volume << SOUND_CHANNELS_COUNT);
+    display_set_contrast(contrast * 20);
 }
 
 void save_extra_options(void) {
-    // TODO
+    uint8_t features = 000000000;
+    if (dialog.items[0].choice.selection) {
+        features |= TETRIS_FEATURE_GHOST;
+    }
+    if (dialog.items[1].choice.selection) {
+        features |= TETRIS_FEATURE_HOLD;
+    }
+    if (dialog.items[2].choice.selection) {
+        features |= TETRIS_FEATURE_WALL_KICKS;
+    }
+    if (dialog.items[3].choice.selection) {
+        features |= TETRIS_FEATURE_TSPINS;
+    }
+    tetris.options.features = features;
 }
 
 void on_sleep_scheduled(void) {
