@@ -4,10 +4,12 @@ from packer import Packer, ArrayType
 
 tempo = 120
 
-p = Packer(assets_directory="tetris/assets", padding=4)
+p = Packer(assets_directory="tetris/assets")
 
 # images
-# TODO
+p.set_array_type("tile", ArrayType.REGULAR)
+for piece in ["i", "j", "l", "o", "s", "t", "z", "ghost"]:
+    p.image(f"tile-{piece}.png", "tile")
 
 # fonts
 p.font("font5x7.png", "font", name="5x7", glyph_width=5, glyph_height=7)

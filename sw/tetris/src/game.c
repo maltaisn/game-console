@@ -16,6 +16,9 @@
 
 #include <game.h>
 #include <assets.h>
+#include <tetris.h>
+#include <ui.h>
+#include <render.h>
 
 #include <sys/main.h>
 #include <sys/input.h>
@@ -25,9 +28,9 @@
 
 #include <core/graphics.h>
 #include <core/sound.h>
-#include <core/sysui.h>
 #include <core/trace.h>
 #include <core/dialog.h>
+#include <core/random.h>
 
 #include <sim/flash.h>
 
@@ -38,21 +41,9 @@ static systime_t last_tick_time;
 
 static sleep_cause_t last_sleep_cause;
 static uint8_t last_input_state;
-
-static const char* CHOICES_ON_OFF[] = {"OFF", "ON"};
-
-// all dialog result codes
-enum {
-    RESULT_NEW_GAME,
-    RESULT_RESUME_GAME,
-    RESULT_OPEN_OPTIONS,
-    RESULT_OPEN_OPTIONS_EXTRA,
-    RESULT_OPEN_LEADERBOARD,
-    RESULT_OPEN_MAIN_MENU,
-    RESULT_SAVE_OPTIONS,
-    RESULT_SAVE_OPTIONS_EXTRA,
-    RESULT_SAVE_HIGHSCORE,
-};
+// number of game ticks that buttons has been held.
+static uint8_t click_processed;
+static uint8_t button_hold_time[BUTTONS_COUNT];
 
 void setup(void) {
 #ifdef SIMULATION
@@ -62,13 +53,27 @@ void setup(void) {
 #endif
 
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
+
+    // TODO load options
+
+    // default options
+    game.options = (game_options_t) {
+        .features = GAME_FEATURE_MUSIC | GAME_FEATURE_SOUND_EFFECTS,
+        .volume = SOUND_VOLUME_2,
+        .contrast = 7,
+    };
+    tetris.options = (tetris_options_t) {
+        .features = TETRIS_FEATURE_HOLD | TETRIS_FEATURE_GHOST |
+                TETRIS_FEATURE_WALL_KICKS | TETRIS_FEATURE_TSPINS,
+        .preview_pieces = 5,
+    };
 }
 
 void loop(void) {
     systime_t time;
     do {
         time = time_get();
-    } while (last_tick_time - time < millis_to_ticks(GAME_TICK));
+    } while (time - last_tick_time < GAME_TICK);
     last_tick_time = time;
 
     // sleep detection
@@ -95,6 +100,7 @@ game_state_t main_loop(void) {
     if (s == GAME_STATE_PLAY) {
         return game_loop();
     } else if (!game.dialog_shown) {
+        // all other states show a dialog, and it wasn't initialized yet.
         if (s == GAME_STATE_MAIN_MENU) {
             open_main_menu_dialog();
         } else if (s == GAME_STATE_PAUSE) {
@@ -121,7 +127,11 @@ game_state_t game_loop(void) {
         return new_state;
     }
 
-    // TODO
+    tetris_update();
+    if (tetris.flags & GAME_STATE_GAME_OVER) {
+        // TODO check highscore and show dialog
+        return GAME_STATE_GAME_OVER;
+    }
 
     return GAME_STATE_PLAY;
 }
@@ -138,6 +148,7 @@ game_state_t handle_dialog_input(void) {
         return GAME_STATE_PLAY;
 
     } else if (res == RESULT_RESUME_GAME) {
+        resume_game();
         return GAME_STATE_PLAY;
 
     } else if (res == RESULT_OPEN_OPTIONS) {
@@ -163,17 +174,91 @@ game_state_t handle_dialog_input(void) {
 }
 
 game_state_t handle_game_input(void) {
-    // TODO
-    // temp
-    uint8_t clicked = ~last_input_state & input_get_state();
-    if (clicked & BUTTON0) {
-        return GAME_STATE_PAUSE;
+    // update buttons hold time
+    // use hold time to determine which buttons were recently clicked.
+    uint8_t curr_state = input_get_state();
+    uint8_t mask = BUTTON0;
+    uint8_t clicked = 0;
+    uint8_t pressed_count = 0;
+    uint8_t last_hold_time = 0;
+    for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
+        uint8_t hold_time = button_hold_time[i];
+        if (curr_state & mask) {
+            // button still held
+            if (hold_time != UINT8_MAX) {
+                ++hold_time;
+            }
+            if (!(click_processed & mask)) {
+                last_hold_time = hold_time;
+                clicked |= mask;
+            }
+            ++pressed_count;
+        } else {
+            // button released
+            hold_time = 0;
+            click_processed &= ~mask;
+        }
+        button_hold_time[i] = hold_time;
+        mask <<= 1;
     }
+
+    if (pressed_count == 1 && last_hold_time <= BUTTON_COMBINATION_DELAY) {
+        // Single button pressed, wait minimum time for other button to be pressed and
+        // create a two buttons combination. After that delay, treat as single button click.
+        return GAME_STATE_PLAY;
+    }
+
+    if (clicked) {
+        // process the click action
+        if ((clicked & BUTTON_PAUSE) == BUTTON_PAUSE) {
+            click_processed |= BUTTON_PAUSE;
+            return GAME_STATE_PAUSE;
+
+        } else if ((clicked & BUTTON_HARD_DROP) == BUTTON_HARD_DROP) {
+            tetris_hard_drop();
+            click_processed |= BUTTON_HARD_DROP;
+
+        } else if ((clicked & BUTTON_LEFT) == BUTTON_LEFT) {
+            tetris_move_left();
+            click_processed |= BUTTON_LEFT;
+
+        } else if ((clicked & BUTTON_RIGHT) == BUTTON_RIGHT) {
+            tetris_move_right();
+            click_processed |= BUTTON_RIGHT;
+
+        } else if ((clicked & BUTTON_DOWN) == BUTTON_DOWN) {
+            tetris_move_down(true);
+            click_processed |= BUTTON_DOWN;
+
+        } else if ((clicked & BUTTON_ROT_CW) == BUTTON_ROT_CW) {
+            tetris_rotate_piece(TETRIS_DIR_CW);
+            click_processed |= BUTTON_ROT_CW;
+
+        } else if ((clicked & BUTTON_ROT_CCW) == BUTTON_ROT_CCW) {
+            tetris_rotate_piece(TETRIS_DIR_CCW);
+            click_processed |= BUTTON_ROT_CCW;
+
+        } else if ((clicked & BUTTON_HOLD) == BUTTON_HOLD) {
+            tetris_hold_or_swap_piece();
+            click_processed |= BUTTON_HOLD;
+        }
+    }
+
     return GAME_STATE_PLAY;
 }
 
 void start_game(void) {
-    // TODO
+    random_seed(time_get());
+    tetris_init();
+    resume_game();
+}
+
+void resume_game(void) {
+    // reset input state
+    click_processed = BUTTONS_ALL;
+    for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
+        button_hold_time[i] = 0;
+    }
 }
 
 void save_highscore(void) {
@@ -186,117 +271,6 @@ void save_options(void) {
 
 void save_extra_options(void) {
     // TODO
-}
-
-void open_main_menu_dialog(void) {
-    if (game.dialog_shown) {
-        return;
-    }
-    game.dialog_shown = true;
-    dialog_init(16, 68, 96, 44);
-    dialog_add_item_button("NEW GAME", RESULT_NEW_GAME);
-    dialog_add_item_button("OPTIONS", RESULT_OPEN_OPTIONS);
-    dialog_add_item_button("LEADERBOARD", RESULT_OPEN_LEADERBOARD);
-    dialog.selection = 0;
-}
-
-void open_pause_dialog(void) {
-    dialog_init(16, 36, 96, 55);
-    dialog.title = "GAME OVER";
-    dialog.dismiss_result = RESULT_RESUME_GAME;
-    dialog_add_item_button("RESUME", RESULT_RESUME_GAME);
-    dialog_add_item_button("NEW GAME", RESULT_NEW_GAME);
-    dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
-    dialog.dismissable = true;
-    dialog.selection = 0;
-}
-
-void open_options_dialog(void) {
-    dialog_init(10, 10, 108, 108);
-    dialog.title = "GAME OPTIONS";
-    dialog.pos_btn = "OK";
-    dialog.neg_btn = "Cancel";
-    dialog.pos_result = RESULT_SAVE_OPTIONS;
-    dialog.neg_result = RESULT_OPEN_MAIN_MENU;
-    // TODO use initial value from options
-    dialog_add_item_choice("GHOST PIECE", 0, 2, CHOICES_ON_OFF);
-    dialog_add_item_choice("HOLD PIECE", 0, 2, CHOICES_ON_OFF);
-    dialog_add_item_choice("WALL KICKS", 0, 2, CHOICES_ON_OFF);
-    dialog_add_item_choice("T-SPIN BONUS", 0, 2, CHOICES_ON_OFF);
-    dialog_add_item_number("PREVIEW PIECES", 0, 5, 1, 0);
-    dialog_add_item_button("MORE OPTIONS", RESULT_OPEN_OPTIONS_EXTRA);
-    dialog.dismissable = true;
-    dialog.selection = 0;
-}
-
-void __attribute__((noinline)) open_extra_options_dialog(void) {
-    dialog_init(10, 51, 108, 67);
-    dialog.title = "EXTRA OPTIONS";
-    dialog.pos_btn = "OK";
-    dialog.neg_btn = "Cancel";
-    dialog.pos_result = RESULT_SAVE_OPTIONS_EXTRA;
-    dialog.neg_result = RESULT_OPEN_OPTIONS;
-    // TODO use initial value from options
-    dialog_add_item_number("MUSIC VOLUME", 0, 4, 1, 0);
-    dialog_add_item_choice("SOUND EFFECTS", 0, 2, CHOICES_ON_OFF);
-    dialog_add_item_number("DISPLAY CONTRAST", 0, 100, 10, 70);
-    dialog.dismissable = true;
-    dialog.selection = 0;
-}
-
-void open_leaderboard_dialog(void) {
-    dialog_init(10, 10, 108, 108);
-    dialog.title = "LEADERBOARD";
-    dialog.pos_btn = "OK";
-    dialog.pos_result = RESULT_OPEN_MAIN_MENU;
-    dialog.dismiss_result = RESULT_OPEN_MAIN_MENU;
-    dialog.dismissable = true;
-    dialog.selection = DIALOG_SELECTION_POS;
-}
-
-void open_high_score_dialog(void) {
-    dialog_init(10, 39, 108, 50);
-    dialog.title = "NEW HIGHSCORE";
-    dialog.pos_btn = "OK";
-    dialog.pos_result = RESULT_SAVE_HIGHSCORE;
-    // TODO text item type
-//    dialog.selection = 0;
-    dialog.selection = DIALOG_SELECTION_POS;
-}
-
-void open_game_over_dialog(void) {
-    dialog_init(16, 43, 96, 42);
-    dialog.title = "GAME OVER";
-    dialog_add_item_button("PLAY AGAIN", RESULT_NEW_GAME);
-    dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
-    dialog.selection = 0;
-}
-
-void draw(void) {
-    if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
-        // low power sleep scheduled, show low battery UI before sleeping.
-        sysui_battery_sleep();
-        return;
-    }
-
-    graphics_clear(DISPLAY_COLOR_BLACK);
-
-    if (game.state < GAME_STATE_PLAY) {
-        // TODO draw main menu image
-    } else {
-        draw_game();
-    }
-
-    if (game.dialog_shown) {
-        dialog_draw();
-    }
-}
-
-void draw_game(void) {
-    // TODO draw game state
-    graphics_set_color(DISPLAY_COLOR_WHITE);
-    graphics_set_font(ASSET_FONT_7X7);
-    graphics_text_wrap(10, 10, 118, "TETRIS NOT IMPLEMENTED");
 }
 
 void on_sleep_scheduled(void) {

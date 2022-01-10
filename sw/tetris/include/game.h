@@ -14,15 +14,31 @@
  * limitations under the License.
  */
 
-#ifndef TETRIS_H
-#define TETRIS_H
+#ifndef TETRIS_GAME_H
+#define TETRIS_GAME_H
 
-// display frames per second
+#include <sys/input.h>
+#include <sys/sound.h>
+
 #include <stdbool.h>
 
+// display frames per second
 #define DISPLAY_FPS 5
-// game tick in milliseconds, on which a state update is made and input is read.
-#define GAME_TICK 50
+
+// Keybindings, can be a single button or two buttons
+#define BUTTON_LEFT      (BUTTON1)
+#define BUTTON_RIGHT     (BUTTON5)
+#define BUTTON_DOWN      (BUTTON3)
+#define BUTTON_ROT_CW    (BUTTON4)
+#define BUTTON_ROT_CCW   (BUTTON0)
+#define BUTTON_HOLD      (BUTTON2)
+#define BUTTON_HARD_DROP (BUTTON1 | BUTTON5)
+#define BUTTON_PAUSE     (BUTTON0 | BUTTON4)
+
+// If a single button is pressed, wait for this delay in game ticks for a
+// second button click to create a two-buttons combination.
+// This does introduce a XX ms delay between click and action.
+#define BUTTON_COMBINATION_DELAY 2
 
 typedef enum {
     // states with art background
@@ -37,7 +53,32 @@ typedef enum {
     GAME_STATE_HIGH_SCORE,
 } game_state_t;
 
+// all dialog result codes
+enum {
+    RESULT_NEW_GAME,
+    RESULT_RESUME_GAME,
+    RESULT_OPEN_OPTIONS,
+    RESULT_OPEN_OPTIONS_EXTRA,
+    RESULT_OPEN_LEADERBOARD,
+    RESULT_OPEN_MAIN_MENU,
+    RESULT_SAVE_OPTIONS,
+    RESULT_SAVE_OPTIONS_EXTRA,
+    RESULT_SAVE_HIGHSCORE,
+};
+
+enum {
+    GAME_FEATURE_MUSIC = 1 << 0,
+    GAME_FEATURE_SOUND_EFFECTS = 1 << 1,
+};
+
 typedef struct {
+    uint8_t features;
+    sound_volume_t volume;
+    uint8_t contrast;  // 0-10
+} game_options_t;
+
+typedef struct {
+    game_options_t options;
     game_state_t state;
     bool dialog_shown;
 } game_t;
@@ -54,30 +95,14 @@ game_state_t handle_game_input(void);
 
 void start_game(void);
 
+void resume_game(void);
+
 void save_highscore(void);
 
 void save_options(void);
 
 void save_extra_options(void);
 
-void open_main_menu_dialog(void);
-
-void open_pause_dialog(void);
-
-void open_options_dialog(void);
-
-void open_extra_options_dialog(void);
-
-void open_leaderboard_dialog(void);
-
-void open_high_score_dialog(void);
-
-void open_game_over_dialog(void);
-
-void draw(void);
-
-void draw_game(void);
-
 void on_sleep_scheduled(void);
 
-#endif //TETRIS_H
+#endif //TETRIS_GAME_H
