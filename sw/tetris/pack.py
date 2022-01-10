@@ -7,7 +7,7 @@ tempo = 120
 p = Packer(assets_directory="tetris/assets")
 
 # images
-p.set_array_type("tile", ArrayType.REGULAR)
+p.set_array_options("tile", ArrayType.REGULAR)
 for piece in ["i", "j", "l", "o", "s", "t", "z", "ghost"]:
     p.image(f"tile-{piece}.png", "tile")
 

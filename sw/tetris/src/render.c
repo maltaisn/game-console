@@ -32,8 +32,6 @@
 #define TILE_WIDTH 6
 #define TILE_HEIGHT 6
 
-#define tile_asset(piece) (ASSET_TILE + (piece) * ASSET_TILE_OFFSET)
-
 /**
  * Draw a centered piece in a 24x12 rectangle with the top left corner at (x, y).
  */
@@ -58,7 +56,7 @@ static void draw_centered_piece_at(disp_x_t x, disp_y_t y, tetris_piece piece) {
         uint8_t block = piece_data[i];
         disp_x_t px = x + (block >> 4) * TILE_WIDTH;
         disp_y_t py = y + (PIECE_GRID_SIZE - (block & 0xf) - 1) * TILE_HEIGHT;
-        graphics_image(tile_asset(piece), px, py);
+        graphics_image(ASSET_TILE(piece), px, py);
     }
 }
 
@@ -141,13 +139,13 @@ static void draw_game(void) {
             block_y -= TILE_HEIGHT;
             piece = *grid_ptr++;
             if (piece != TETRIS_PIECE_NONE) {
-                graphics_image(tile_asset(piece), block_x, block_y);
+                graphics_image(ASSET_TILE(piece), block_x, block_y);
             }
         }
         // row 21 (only partly shown)
         piece = *grid_ptr++;
         if (piece != TETRIS_PIECE_NONE) {
-            graphics_image_region(tile_asset(piece), block_x, 0, 0, 4, TILE_WIDTH - 1, 5);
+            graphics_image_region(ASSET_TILE(piece), block_x, 0, 0, 4, TILE_WIDTH - 1, 5);
         }
         block_x += TILE_WIDTH;
     }

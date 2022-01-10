@@ -236,7 +236,6 @@ TYPE_NAMES: Dict[Type[DataObject], str] = {
     PadObject: "(pad)",
 }
 
-
 class ArrayType(Enum):
     # no array, treat as separate objects (default)
     NONE = 0
@@ -250,6 +249,11 @@ class ArrayType(Enum):
     # array with unevenly spaced elements (index address + multiple addresses stored in flash)
     INDEXED_ABS_FLASH = 4
 
+@dataclass
+class ArrayOptions:
+    array_type: ArrayType
+    generate_macro: bool
+
 
 class CodeGenerator:
     """Basic C code generator for generating assets header and source."""
@@ -260,6 +264,12 @@ class CodeGenerator:
         value: int
         is_hex: bool
         unified_space: bool
+
+    @dataclass
+    class Macro:
+        name: str
+        args: List[str]
+        value: int
 
     @dataclass
     class Array:
@@ -277,6 +287,9 @@ class CodeGenerator:
     def add_define(self, name: str, value: int, is_hex: bool = False,
                    unified_space: bool = False) -> None:
         self._elements.append(CodeGenerator.Define(name, value, is_hex, unified_space))
+
+    def add_macro(self, name: str, args: List[str], value: str) -> None:
+        self._elements.append(CodeGenerator.Macro(name, args, value))
 
     def add_array(self, name: str, type_width: int, values: List[int]) -> None:
         self._elements.append(CodeGenerator.Array(name, type_width, values))
@@ -311,6 +324,8 @@ class CodeGenerator:
                 if e.unified_space:
                     value = f"data_flash({value})"
                 lines.append(f"#define {e.name.ljust(name_width)} {value}")
+            elif isinstance(e, CodeGenerator.Macro):
+                lines.append(f"#define {e.name}({', '.join(e.args)}) {e.value}")
             elif isinstance(e, CodeGenerator.Array):
                 lines.append(f"extern const uint{e.type_width}_t {e.name}[];")
             else:
@@ -367,7 +382,7 @@ class Packer:
 
     _packed: bool
     _mem_map: Optional[List[int]]
-    _array_types: Dict[str, ArrayType]
+    _array_options: Dict[str, ArrayOptions]
 
     # maximum size of resulting data file (stored in flash)
     MAX_SIZE = 1048576
@@ -384,7 +399,7 @@ class Packer:
         self.default_index_granularity = default_index_granularity
         self._packed = False
         self._mem_map = None
-        self._array_types = {}
+        self._array_options = {}
         if self.padding <= 0:
             self._error("padding must be greater than 0")
 
@@ -434,9 +449,10 @@ class Packer:
         name = re.sub(r"[-_ .]+", "_", group)
         return group
 
-    def set_array_type(self, group: str, array_type: ArrayType) -> None:
+    def set_array_options(self, group: str, array_type: ArrayType,
+                          generate_macro: bool = True) -> None:
         """Used to indicate that a group should create an array of the specified type."""
-        self._array_types[group] = array_type
+        self._array_options[group] = ArrayOptions(array_type, generate_macro)
 
     def font(self, filename: str, group: str = "font", *, glyph_width: int, glyph_height: int,
              extra_line_spacing: int = 1, name: Optional[str] = None) -> None:
@@ -542,7 +558,7 @@ class Packer:
         do the alignment. It's not necessary for other array types but having everything the same
         simplifies the process."""
         arrays_data: Packer.ArraysData = {}
-        for group, array_type in self._array_types.items():
+        for group, array_type in self._array_options.items():
             if array_type == ArrayType.NONE:
                 continue
 
@@ -584,7 +600,7 @@ class Packer:
 
             if obj.group in arrays_data:
                 # object is in array, already encoded previously
-                array_type = self._array_types[obj.group]
+                array_type = self._array_options[obj.group]
                 res = arrays_data[obj.group][0][0]
 
                 data += res.data
@@ -643,35 +659,49 @@ class Packer:
             self._error(f"could not write output file: {e}")
 
     def _create_header_array_definition(self, prefix: str,
-                                        array_type: ArrayType, gen: CodeGenerator,
+                                        options: ArrayOptions, gen: CodeGenerator,
                                         objects: List[Tuple[int, DataObject]]) -> None:
         """Create definition and source for an array containing a list of objects."""
         if len(objects) == 1:
             self._error("cannot create array with single object", objects[0][1])
 
-        group = objects[0][1].group
+        first_obj = objects[0][1]
+        group = first_obj.group
+        unified_space = first_obj.is_in_unified_data_space()
         name = f"{prefix.upper()}_{group.upper()}"
         elements_addr = [self._mem_map[i] for i, _ in objects]
 
+        array_type = options.array_type
         if array_type == ArrayType.REGULAR:
-            gen.add_define(name, elements_addr[0], is_hex=True,
-                           unified_space=objects[0][1].is_in_unified_data_space())
+            gen.add_define(f"{name}_ADDR", elements_addr[0], is_hex=True,
+                           unified_space=unified_space)
             gen.add_define(f"{name}_OFFSET", elements_addr[1] - elements_addr[0])
             gen.add_define(f"{name}_SIZE", len(objects))
+            if options.generate_macro:
+                value = f"({name}_ADDR + (n) * {name}_OFFSET)"
+                if unified_space:
+                    value = "data_flash" + value
+                gen.add_macro(f"{name}", ["n"], value)
 
         elif array_type == ArrayType.INDEXED_ABS or array_type == ArrayType.INDEXED_REL:
             array_name = name
             if array_type == ArrayType.INDEXED_REL:
                 start_addr = elements_addr[0]
-                gen.add_define(name, start_addr, is_hex=True,
-                               unified_space=objects[0][1].is_in_unified_data_space())
                 elements_addr = [(addr - start_addr) for addr in elements_addr]
+                gen.add_define(f"{name}_ADDR", start_addr, is_hex=True,
+                               unified_space=unified_space)
                 array_name += "_OFFSET"
 
             gen.add_define(f"{name}_SIZE", len(objects))
 
             type_width = int((math.log2(elements_addr[-1]) // 8 + 1) * 8)
             gen.add_array(array_name, type_width, elements_addr)
+
+            if array_type == ArrayType.INDEXED_REL and options.generate_macro:
+                value = f"({name}_ADDR + {name}_OFFSET[n])"
+                if unified_space:
+                    value = "data_flash" + value
+                gen.add_macro(f"{name}", ["n"], value)
 
         elif array_type == ArrayType.INDEXED_ABS_FLASH:
             # find index object and put its address and the number of bytes per flash address
@@ -712,8 +742,8 @@ class Packer:
             if group is None or group.startswith("."):
                 continue  # space object
             gen.add_separator()
-            if self._array_types.get(group, ArrayType.NONE) != ArrayType.NONE:
-                self._create_header_array_definition(prefix, self._array_types[group], gen, objects)
+            if self._array_options.get(group, ArrayType.NONE) != ArrayType.NONE:
+                self._create_header_array_definition(prefix, self._array_options[group], gen, objects)
             else:
                 for i, obj in objects:
                     name = f"{prefix.upper()}_{group.upper()}_{obj.name.upper()}"
