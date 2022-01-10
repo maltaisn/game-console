@@ -325,6 +325,9 @@ void save_extra_options(void) {
 }
 
 void on_sleep_scheduled(void) {
+    if (game.state == GAME_STATE_PLAY) {
+        game.state = GAME_STATE_PAUSE;
+    }
     if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
         sound_set_output_enabled(false);
     }

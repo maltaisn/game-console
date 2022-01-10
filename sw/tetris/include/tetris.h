@@ -127,7 +127,7 @@ typedef struct {
     uint16_t lines;
     uint16_t level;
 
-    uint32_t last_points;
+    uint24_t last_points;
     uint8_t combo_count;
     uint8_t last_lines_cleared;
     tetris_tspin last_tspin;

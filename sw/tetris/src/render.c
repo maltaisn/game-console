@@ -77,6 +77,47 @@ static void format_number_pad(uint32_t n, uint8_t len, char buf[static len]) {
     } while (len);
 }
 
+static void write_last_clear_info(char buf[static 16]) {
+    if (tetris.last_points > 0) {
+        // <Perfect | Line> clear x<lines>
+        int8_t info_y = 101;
+        if (tetris.last_lines_cleared > 0) {
+            memcpy(buf + 10, " X ", 10);
+            char* line_clear_buf;
+            if (tetris.flags & TETRIS_FLAG_LAST_PERFECT) {
+                line_clear_buf = buf + 3;
+                memcpy(line_clear_buf, "PERFECT", 7);
+            } else {
+                line_clear_buf = buf;
+                memcpy(line_clear_buf, "LINE CLEAR", 10);
+            }
+            buf[12] = (char) ('0' + tetris.last_lines_cleared);
+            graphics_text(66, info_y, line_clear_buf);
+            info_y += 6;
+        }
+
+        // [Mini] T-spin
+        if (tetris.last_tspin != TETRIS_TSPIN_NONE) {
+            graphics_text(66, info_y, tetris.last_tspin == TETRIS_TSPIN_PROPER ?
+                                      "T-SPIN" : "MINI T-SPIN");
+            info_y += 6;
+        }
+
+        // Combo x<count>
+        if (tetris.combo_count > 1) {
+            char* combo_buf = format_number(tetris.combo_count, 3, buf) - 7;
+            memcpy(combo_buf, "COMBO X", 7);
+            graphics_text(66, info_y, combo_buf);
+            info_y += 6;
+        }
+
+        // +<points>
+        char* pts_buf = format_number(tetris.last_points, 7, buf) - 1;
+        pts_buf[0] = '+';
+        graphics_text(66, info_y, pts_buf);
+    }
+}
+
 static void draw_game(void) {
     char buf[16];
     uint8_t preview_pieces = tetris.options.preview_pieces;
@@ -183,6 +224,9 @@ static void draw_game(void) {
     if (hold_piece) {
         graphics_text(66, (int8_t) (hold_piece_y - 7), "HOLD");
     }
+
+    // Last clear info
+    write_last_clear_info(buf);
 }
 
 void draw(void) {
