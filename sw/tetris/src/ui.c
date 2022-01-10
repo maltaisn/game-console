@@ -71,7 +71,7 @@ void open_options_dialog(void) {
     dialog_add_item_number("SOUND VOLUME", 0, 4, 1, game.options.volume);
     dialog_add_item_choice("GAME MUSIC", music_enabled, 2, CHOICES_ON_OFF);
     dialog_add_item_choice("SOUND EFFECTS", sound_enabled, 2, CHOICES_ON_OFF);
-    dialog_add_item_number("DISPLAY CONTRAST", 0, 10, 1, game.options.contrast);
+    dialog_add_item_number("DISPLAY CONTRAST", 0, 10, 10, game.options.contrast);
     dialog_add_item_number("PREVIEW PIECES", 0, 5, 1, tetris.options.preview_pieces);
     dialog_add_item_button("MORE OPTIONS", RESULT_OPEN_OPTIONS_EXTRA);
 }

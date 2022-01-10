@@ -39,8 +39,9 @@ game_t game;
 static systime_t last_draw_time;
 static systime_t last_tick_time;
 
-static sleep_cause_t last_sleep_cause;
 static uint8_t last_input_state;
+// mask indicating buttons which should be considered not pressed until released.
+static uint8_t input_wait_released;
 // number of game ticks that buttons has been held.
 static uint8_t click_processed;
 // time since buttons was pressed, in game ticks.
@@ -81,12 +82,6 @@ void loop(void) {
         time = time_get();
     } while (time - last_tick_time < GAME_TICK);
     last_tick_time = time;
-
-    // sleep detection
-    if (power_get_scheduled_sleep_cause() != last_sleep_cause) {
-        last_sleep_cause = power_get_scheduled_sleep_cause();
-        on_sleep_scheduled();
-    }
 
     game.state = main_loop();
 
@@ -147,8 +142,17 @@ game_state_t game_loop(void) {
     return GAME_STATE_PLAY;
 }
 
+static uint8_t preprocess_input_state() {
+    uint8_t state = input_get_state();
+    // if any button was released, update wait mask.
+    input_wait_released &= state;
+    // consider any buttons on wait mask as not pressed.
+    state &= ~input_wait_released;
+    return state;
+}
+
 game_state_t handle_dialog_input(void) {
-    dialog_result_t res = dialog_handle_input(last_input_state);
+    dialog_result_t res = dialog_handle_input(last_input_state, preprocess_input_state());
     if (res == DIALOG_RESULT_NONE) {
         return game.state;
     }
@@ -197,7 +201,7 @@ game_state_t handle_dialog_input(void) {
 game_state_t handle_game_input(void) {
     // update buttons hold time
     // use hold time to determine which buttons were recently clicked.
-    uint8_t curr_state = input_get_state();
+    uint8_t curr_state = preprocess_input_state();
     uint8_t mask = BUTTON0;
     uint8_t clicked = 0;        // clicked buttons (pressed and click wasn't processed)
     uint8_t das_triggered = 0;  // DAS triggered on this frame
@@ -234,7 +238,6 @@ game_state_t handle_game_input(void) {
                 }
             }
             ++pressed_count;
-
         } else {
             // button released
             hold_time = 0;
@@ -305,11 +308,8 @@ void start_game(void) {
 }
 
 void resume_game(void) {
-    // reset input state
+    input_wait_released = input_get_state();
     click_processed = BUTTONS_ALL;
-    for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
-        button_hold_time[i] = 0;
-    }
 }
 
 void save_highscore(void) {
@@ -357,11 +357,18 @@ void save_extra_options(void) {
     tetris.options.features = features;
 }
 
-void on_sleep_scheduled(void) {
+void power_callback_sleep_scheduled(void) {
+    sleep_cause_t cause = power_get_scheduled_sleep_cause();
+
     if (game.state == GAME_STATE_PLAY) {
         game.state = GAME_STATE_PAUSE;
     }
-    if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
+    if (cause == SLEEP_CAUSE_LOW_POWER) {
         sound_set_output_enabled(false);
     }
+}
+
+void power_callback_wakeup(void) {
+    // ignore whatever button was used to wake up.
+    input_wait_released = input_get_state_immediate();
 }

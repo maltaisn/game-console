@@ -115,6 +115,4 @@ void save_options(void);
 
 void save_extra_options(void);
 
-void on_sleep_scheduled(void);
-
 #endif //TETRIS_GAME_H
