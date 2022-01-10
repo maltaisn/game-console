@@ -373,7 +373,7 @@ class Packer:
     MAX_SIZE = 1048576
 
     def __init__(self, *, assets_directory: str = "", offset: int = 0, padding_byte: int = 0xff,
-                 padding: int = 0, default_indexed: bool = True,
+                 padding: int = 1, default_indexed: bool = True,
                  default_index_granularity: str = repr(ImageEncoder.DEFAULT_INDEX_GRANULARITY)):
         self.objects = []
         self.directory = assets_directory
@@ -385,6 +385,8 @@ class Packer:
         self._packed = False
         self._mem_map = None
         self._array_types = {}
+        if self.padding <= 0:
+            self._error("padding must be greater than 0")
 
     def _error(self, message: str, obj: Union[int, DataObject, None] = None) -> NoReturn:
         """Used to report an error when processing a particular object."""
@@ -652,7 +654,8 @@ class Packer:
         elements_addr = [self._mem_map[i] for i, _ in objects]
 
         if array_type == ArrayType.REGULAR:
-            gen.add_define(name, elements_addr[0], is_hex=True)
+            gen.add_define(name, elements_addr[0], is_hex=True,
+                           unified_space=objects[0][1].is_in_unified_data_space())
             gen.add_define(f"{name}_OFFSET", elements_addr[1] - elements_addr[0])
             gen.add_define(f"{name}_SIZE", len(objects))
 
@@ -660,7 +663,8 @@ class Packer:
             array_name = name
             if array_type == ArrayType.INDEXED_REL:
                 start_addr = elements_addr[0]
-                gen.add_define(name, start_addr, is_hex=True)
+                gen.add_define(name, start_addr, is_hex=True,
+                               unified_space=objects[0][1].is_in_unified_data_space())
                 elements_addr = [(addr - start_addr) for addr in elements_addr]
                 array_name += "_OFFSET"
 

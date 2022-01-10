@@ -42,9 +42,9 @@
 typedef uint8_t dialog_result_t;
 
 typedef enum {
-    DIALOG_SELECTION_NONE = 0xff,
-    DIALOG_SELECTION_POS = 0xfe,
-    DIALOG_SELECTION_NEG = 0xfd,
+    DIALOG_SELECTION_POS = 0xff,
+    DIALOG_SELECTION_NEG = 0xfe,
+    DIALOG_SELECTION_NONE = 0xfd,
     // values from 0 are used for selected items.
 } dialog_selection_t;
 
@@ -117,6 +117,11 @@ extern dialog_t dialog;
  * If dismiss action is not set, it will default to the same action as the negative action button.
  */
 void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height);
+
+#define dialog_init_centered(w, h) (dialog_init((DISPLAY_WIDTH - (w)) / 2, \
+                                    (DISPLAY_HEIGHT - (h)) / 2, (w), (h)))
+#define dialog_init_hcentered(y, w, h) (dialog_init((DISPLAY_WIDTH - (w)) / 2, y, (w), (h)))
+#define dialog_init_vcentered(x, w, h) (dialog_init(x, (DISPLAY_HEIGHT - (h)) / 2, (w), (h)))
 
 /**
  * Set the fonts used by the dialog.

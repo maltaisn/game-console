@@ -39,7 +39,7 @@ static uint8_t update_register;
 static uint8_t inactive_countdown;
 
 ISR(PORTD_PORT_vect) {
-    VPORTD.INTFLAGS = 0x3f;
+    VPORTD.INTFLAGS = BUTTONS_ALL;
     if (inactive_countdown <= INACTIVITY_COUNTDOWN_DIM) {
         // screen was dimmed, reset contrast.
         display_set_dimmed(false);
@@ -57,7 +57,7 @@ void input_update_state(void) {
     // 2 levels debouncing: new value is most common value among last two and new.
     // this is probably overkill since the buttons don't even bounce...
     if (update_register == 0) {
-        const uint8_t port = VPORTD.IN & 0x3f;
+        const uint8_t port = VPORTD.IN & BUTTONS_ALL;
         state = (state0 & port) | (state1 & port) | (state0 & state1);
         state1 = state0;
         state0 = port;

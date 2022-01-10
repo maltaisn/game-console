@@ -32,6 +32,8 @@
 #define BUTTON4 (1 << 4)  // SW6
 #define BUTTON5 (1 << 5)  // SW7
 
+#define BUTTONS_ALL (BUTTON0 | BUTTON1 | BUTTON2 | BUTTON3 | BUTTON4 | BUTTON5)
+
 /**
  * Returns a bitfield indicating the current (debounced) state of input.
  * A 1 bit indicates that the button is pressed.

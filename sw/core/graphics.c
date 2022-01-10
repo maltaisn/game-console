@@ -257,11 +257,11 @@ void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
     if (y0 > y1) {
         swap(uint8_t, y0, y1);
     }
-    if (y1 < display_page_ystart) {
+    if (y1 < display_page_ystart || y0 >= display_page_yend) {
         return;  // completely out of page
     }
     y0 = y0 <= display_page_ystart ? 0 : y0 - display_page_ystart;
-    y1 = y1 >= display_page_yend ? PAGE_HEIGHT : y1 - display_page_ystart;
+    y1 = y1 >= display_page_yend ? PAGE_HEIGHT - 1 : y1 - display_page_ystart;
     uint8_t* buffer = &display_buffer[y0 * DISPLAY_NUM_COLS + x / 2];
     if (x & 1) {
         // on the right side of blocks

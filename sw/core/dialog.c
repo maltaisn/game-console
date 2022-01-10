@@ -264,7 +264,7 @@ void dialog_draw(void) {
     graphics_set_font(dialog.action_font);
     uint8_t action_height = graphics_text_height() + 4;
     if (dialog.pos_btn) {
-        height = (int8_t) (height - action_height - 2);
+        height = (int8_t) (height - action_height - 1);
 
         // line between dialog content and action buttons
         graphics_set_color(DISPLAY_COLOR_BLACK);

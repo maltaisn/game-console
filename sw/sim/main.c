@@ -49,8 +49,8 @@ static void* loop_thread(void* arg) {
             power_enable_sleep();
         }
 
-        // 5 ms sleep (fixes responsiveness issues with keyboard input)
-        struct timespec remaining, request = {0, 5000000};
+        // 1 ms sleep (fixes responsiveness issues with keyboard input)
+        struct timespec remaining, request = {0, 1000000};
         nanosleep(&request, &remaining);
     }
     return 0;
