@@ -23,7 +23,8 @@
 #include <stdbool.h>
 
 // display frames per second
-#define DISPLAY_FPS 5
+//#define DISPLAY_FPS 8
+#define DISPLAY_FPS 24  // for debugging
 
 // Keybindings, can be a single button or two buttons
 #define BUTTON_LEFT      (BUTTON1)
@@ -35,9 +36,15 @@
 #define BUTTON_HARD_DROP (BUTTON1 | BUTTON5)
 #define BUTTON_PAUSE     (BUTTON0 | BUTTON4)
 
+
+// Buttons for which delayed auto-shift is enabled.
+#define DAS_MASK         (BUTTON1 | BUTTON3 | BUTTON5)
+// Disallowed DAS mask (if all bits in mask are set, all DAS are disabled)
+#define DAS_DISALLOWED (BUTTON_LEFT | BUTTON_RIGHT)
+
 // If a single button is pressed, wait for this delay in game ticks for a
 // second button click to create a two-buttons combination.
-// This does introduce a XX ms delay between click and action.
+// This does introduce a 50 ms delay between click and action.
 #define BUTTON_COMBINATION_DELAY 2
 
 typedef enum {

@@ -152,6 +152,7 @@ void tetris_init(void) {
 
     tetris.bag_pos = PIECES_COUNT;
     tetris.hold_piece = TETRIS_PIECE_NONE;
+    tetris.curr_piece = TETRIS_PIECE_NONE;
 
     tetris_shuffle_bag();
 }
@@ -302,6 +303,10 @@ bool tetris_try_move(void) {
 }
 
 void tetris_move_left(void) {
+    if (tetris.curr_piece == TETRIS_PIECE_NONE) {
+        return;
+    }
+
     tetris_remove_piece();
     --tetris.curr_piece_x;
     if (!tetris_try_move()) {
@@ -313,6 +318,10 @@ void tetris_move_left(void) {
 }
 
 void tetris_move_right(void) {
+    if (tetris.curr_piece == TETRIS_PIECE_NONE) {
+        return;
+    }
+
     tetris_remove_piece();
     ++tetris.curr_piece_x;
     if (!tetris_try_move()) {
@@ -324,6 +333,10 @@ void tetris_move_right(void) {
 }
 
 void tetris_move_down(bool is_soft_drop) {
+    if (tetris.curr_piece == TETRIS_PIECE_NONE) {
+        return;
+    }
+
     tetris_remove_piece();
     --tetris.curr_piece_y;
     if (!tetris_try_move()) {
@@ -338,6 +351,10 @@ void tetris_move_down(bool is_soft_drop) {
 }
 
 void tetris_hard_drop(void) {
+    if (tetris.curr_piece == TETRIS_PIECE_NONE) {
+        return;
+    }
+
     // move piece down until it can't be placed, at which point bottom is reached.
     uint8_t cells_dropped = 0;
     tetris_remove_piece();
@@ -390,9 +407,14 @@ void tetris_lock_piece(void) {
 
     // spawn next piece after delay
     tetris.entry_delay = ENTRY_DELAY;
+    tetris.curr_piece = TETRIS_PIECE_NONE;
 }
 
 void tetris_rotate_piece(tetris_rot_dir direction) {
+    if (tetris.curr_piece == TETRIS_PIECE_NONE) {
+        return;
+    }
+
     tetris_remove_piece();
 
     const tetris_rot old_rot = tetris.curr_piece_rot;
@@ -437,6 +459,10 @@ void tetris_rotate_piece(tetris_rot_dir direction) {
 }
 
 void tetris_hold_or_swap_piece(void) {
+    if (tetris.curr_piece == TETRIS_PIECE_NONE) {
+        return;
+    }
+
     if (!(tetris.options.features & TETRIS_FEATURE_HOLD) ||
         tetris.flags & TETRIS_FLAG_PIECE_SWAPPED) {
         // cannot swap piece twice, already swapped or option disabled.

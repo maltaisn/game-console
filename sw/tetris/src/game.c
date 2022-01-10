@@ -43,7 +43,10 @@ static sleep_cause_t last_sleep_cause;
 static uint8_t last_input_state;
 // number of game ticks that buttons has been held.
 static uint8_t click_processed;
+// time since buttons was pressed, in game ticks.
 static uint8_t button_hold_time[BUTTONS_COUNT];
+// mask indicating for which buttons DAS is currently enabled.
+static uint8_t delayed_auto_shift;
 
 void setup(void) {
 #ifdef SIMULATION
@@ -89,7 +92,7 @@ void loop(void) {
 
     last_input_state = input_get_state();
 
-    if (last_draw_time - time > millis_to_ticks(1000.0 / DISPLAY_FPS)) {
+    if (time - last_draw_time > millis_to_ticks(1000.0 / DISPLAY_FPS)) {
         last_draw_time = time;
         display_first_page();
         do {
@@ -135,6 +138,7 @@ game_state_t game_loop(void) {
     }
 
     tetris_update();
+
     if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
         // TODO check highscore and show dialog
         return GAME_STATE_GAME_OVER;
@@ -195,37 +199,60 @@ game_state_t handle_game_input(void) {
     // use hold time to determine which buttons were recently clicked.
     uint8_t curr_state = input_get_state();
     uint8_t mask = BUTTON0;
-    uint8_t clicked = 0;
-    uint8_t pressed_count = 0;
+    uint8_t clicked = 0;        // clicked buttons (pressed and click wasn't processed)
+    uint8_t das_triggered = 0;  // DAS triggered on this frame
+    uint8_t pressed_count = 0;  // number of pressed buttons
     uint8_t last_hold_time = 0;
     for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
         uint8_t hold_time = button_hold_time[i];
         if (curr_state & mask) {
-            // button still held
+            // button pressed or held
             if (hold_time != UINT8_MAX) {
                 ++hold_time;
-            }
-            if (!(click_processed & mask)) {
-                last_hold_time = hold_time;
-                clicked |= mask;
+
+                // delayed auto shift: enable if button is pressed long enough, then
+                // holding button will result in a repeated click at a fixed interval.
+                if (delayed_auto_shift & mask) {
+                    // DAS enabled for that button, trigger it if auto repeat delay passed.
+                    if (hold_time >= DELAYED_AUTO_SHIFT + AUTO_REPEAT_RATE) {
+                        hold_time = DELAYED_AUTO_SHIFT;
+                        das_triggered |= mask;
+                    }
+                } else if (hold_time >= DELAYED_AUTO_SHIFT && (DAS_MASK & mask)) {
+                    delayed_auto_shift |= mask;
+                    if ((delayed_auto_shift & DAS_DISALLOWED) == DAS_DISALLOWED) {
+                        // disallowed combination of active DAS, disable them all.
+                        delayed_auto_shift = 0;
+                    } else {
+                        das_triggered |= mask;
+                        hold_time = DELAYED_AUTO_SHIFT;
+                    }
+                } else if (!(click_processed & mask)) {
+                    // button is pressed and click wasn't processed yet: trigger a click.
+                    last_hold_time = hold_time;
+                    clicked |= mask;
+                }
             }
             ++pressed_count;
+
         } else {
             // button released
             hold_time = 0;
             click_processed &= ~mask;
+            delayed_auto_shift &= ~mask;
         }
         button_hold_time[i] = hold_time;
         mask <<= 1;
     }
 
-    if (pressed_count == 1 && last_hold_time <= BUTTON_COMBINATION_DELAY) {
+    if (!das_triggered && pressed_count == 1 && last_hold_time <= BUTTON_COMBINATION_DELAY) {
         // Single button pressed, wait minimum time for other button to be pressed and
         // create a two buttons combination. After that delay, treat as single button click.
         return GAME_STATE_PLAY;
     }
 
-    if (clicked) {
+    uint8_t clicked_or_das = clicked | das_triggered;
+    if (clicked_or_das) {
         // process the click action
         if ((clicked & BUTTON_PAUSE) == BUTTON_PAUSE) {
             click_processed |= BUTTON_PAUSE;
@@ -235,15 +262,21 @@ game_state_t handle_game_input(void) {
             tetris_hard_drop();
             click_processed |= BUTTON_HARD_DROP;
 
-        } else if ((clicked & BUTTON_LEFT) == BUTTON_LEFT) {
-            tetris_move_left();
+        } else if ((clicked_or_das & BUTTON_LEFT) == BUTTON_LEFT) {
+            // if DAS is enabled for right button, don't move left, it looks weird.
+            if (!(delayed_auto_shift & BUTTON_RIGHT)) {
+                tetris_move_left();
+            }
             click_processed |= BUTTON_LEFT;
 
-        } else if ((clicked & BUTTON_RIGHT) == BUTTON_RIGHT) {
-            tetris_move_right();
+        } else if ((clicked_or_das & BUTTON_RIGHT) == BUTTON_RIGHT) {
+            // if DAS is enabled for left button, don't move right, it looks weird.
+            if (!(delayed_auto_shift & BUTTON_LEFT)) {
+                tetris_move_right();
+            }
             click_processed |= BUTTON_RIGHT;
 
-        } else if ((clicked & BUTTON_DOWN) == BUTTON_DOWN) {
+        } else if ((clicked_or_das & BUTTON_DOWN) == BUTTON_DOWN) {
             tetris_move_down(true);
             click_processed |= BUTTON_DOWN;
 

@@ -28,9 +28,9 @@
 #define GAME_TICK 4
 
 // Various game delays, in game ticks.
-#define DELAYED_AUTO_SHIFT 10
-#define AUTO_REPEAT_RATE 2
-#define ENTRY_DELAY 6
+#define DELAYED_AUTO_SHIFT 12
+#define AUTO_REPEAT_RATE 4
+#define ENTRY_DELAY 10
 
 #define LOCK_DELAY 32
 #define LOCK_MOVES 15
