@@ -276,10 +276,4 @@ uint8_t graphics_text_height(void);
  */
 uint8_t graphics_text_max_height(void);
 
-/**
- * Draw decimal number using the current font and color.
- * The drawn text is not wrapped.
- */
-void graphics_text_num(int8_t x, int8_t y, int32_t num);
-
 #endif //CORE_GRAPHICS_H

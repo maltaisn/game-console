@@ -129,7 +129,6 @@ static void draw_game(void) {
     graphics_set_font(ASSET_FONT_7X7);
     graphics_text(65, 2, buf);
 
-
     // game area frame
     graphics_set_color(4);
     graphics_vline(0, 127, 0);
@@ -193,7 +192,7 @@ static void draw_game(void) {
 
     // last clear bonus info
     graphics_set_font(GRAPHICS_BUILTIN_FONT);
-    // TODO
+    write_last_clear_info(buf);
 
     // level
     char* level_buf = format_number(tetris.level, 3, buf) - 6;
@@ -224,9 +223,6 @@ static void draw_game(void) {
     if (hold_piece) {
         graphics_text(66, (int8_t) (hold_piece_y - 7), "HOLD");
     }
-
-    // Last clear info
-    write_last_clear_info(buf);
 }
 
 void draw(void) {
@@ -254,4 +250,73 @@ void draw(void) {
     }
 }
 
+#define CONTROLS_COUNT 8
 
+static const char* CONTROL_NAMES[CONTROLS_COUNT] = {
+        "Pause",
+        "Move left",
+        "Move right",
+        "Rotate left",
+        "Rotate right",
+        "Soft drop",
+        "Hard drop",
+        "Hold/swap",
+};
+static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
+        BUTTON_PAUSE,
+        BUTTON_LEFT,
+        BUTTON_RIGHT,
+        BUTTON_ROT_CCW,
+        BUTTON_ROT_CW,
+        BUTTON_DOWN,
+        BUTTON_HARD_DROP,
+        BUTTON_HOLD,
+};
+
+void draw_controls_overlay(void) {
+    graphics_set_font(ASSET_FONT_5X7);
+    disp_y_t y = 25;
+    for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
+        // control name text
+        graphics_set_color(DISPLAY_COLOR_WHITE);
+        graphics_text(30, (int8_t) y, CONTROL_NAMES[i]);
+
+        // illustrate the 6 buttons with the one used by the control highlighted.
+        uint8_t buttons = CONTROL_BUTTONS[i];
+        uint8_t mask = BUTTON0;
+        disp_x_t button_x = 15;
+        for (uint8_t j = 0; j < 3; ++j) {
+            disp_y_t button_y = y;
+            for (uint8_t k = 0; k < 2; ++k) {
+                graphics_set_color(buttons & mask ? DISPLAY_COLOR_WHITE : 6);
+                graphics_fill_rect(button_x, button_y, 3, 3);
+                button_y += 4;
+                mask <<= 1;
+            }
+            button_x += 4;
+        }
+        y += 10;
+    }
+}
+
+void draw_leaderboard_overlay(void) {
+    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    disp_y_t y = 25;
+    for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
+        graphics_text(13, (int8_t) y, game.leaderboard.entries[i].name);
+        y += 8;
+    }
+
+    char score_buf[9];
+    graphics_set_font(ASSET_FONT_5X7);
+    graphics_set_color(13);
+    y = 24;
+    for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
+        const char* buf = format_number(game.leaderboard.entries[i].score, 9, score_buf);
+        // right align number
+        uint8_t x = 68 + (buf - score_buf) * (graphics_glyph_width() + GRAPHICS_GLYPH_SPACING);
+        graphics_text((int8_t) x, (int8_t) y, buf);
+        y += 8;
+    }
+}

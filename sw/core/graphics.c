@@ -1025,21 +1025,3 @@ uint8_t graphics_text_height(void) {
 uint8_t graphics_text_max_height(void) {
     return font.height + font.offset_max;
 }
-
-void graphics_text_num(int8_t x, int8_t y, int32_t num) {
-    char buf[12];  // -2147483648\0
-    buf[11] = '\0';
-    char* ptr = &buf[11];
-    bool negative = num < 0;
-    if (negative) {
-        num = -num;
-    }
-    do {
-        *(--ptr) = (char) (num % 10 + '0');
-        num /= 10;
-    } while (num);
-    if (negative) {
-        *(--ptr) = '-';
-    }
-    graphics_text(x, y, ptr);
-}

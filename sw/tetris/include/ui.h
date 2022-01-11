@@ -36,8 +36,4 @@ void open_high_score_dialog(void);
 
 void open_game_over_dialog(void);
 
-void draw_leaderboard_overlay(void);
-
-void draw_controls_overlay(void);
-
 #endif //TETRIS_UI_H

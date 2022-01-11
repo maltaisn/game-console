@@ -107,7 +107,7 @@ void open_controls_dialog(game_state_t result) {
 }
 
 void open_leaderboard_dialog(void) {
-    dialog_init_centered(108, 108);
+    dialog_init_centered(108, 109);
     dialog.title = "LEADERBOARD";
     init_empty_dialog(RESULT_OPEN_MAIN_MENU);
 }
@@ -120,7 +120,7 @@ void open_high_score_dialog(void) {
     dialog.selection = 0;
     dialog.cursor_pos = 0;
 
-    dialog_add_item_text("ENTER YOUR NAME:", 10, text_field_buffer);
+    dialog_add_item_text("ENTER YOUR NAME:", HIGHSCORE_NAME_MAX_LENGTH, text_field_buffer);
 }
 
 void open_game_over_dialog(void) {
@@ -132,55 +132,3 @@ void open_game_over_dialog(void) {
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
 }
 
-void draw_leaderboard_overlay(void) {
-    // TODO
-}
-
-#define CONTROLS_COUNT 8
-
-static const char* CONTROL_NAMES[CONTROLS_COUNT] = {
-        "Pause",
-        "Move left",
-        "Move right",
-        "Rotate left",
-        "Rotate right",
-        "Soft drop",
-        "Hard drop",
-        "Hold/swap",
-};
-static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
-        BUTTON_PAUSE,
-        BUTTON_LEFT,
-        BUTTON_RIGHT,
-        BUTTON_ROT_CCW,
-        BUTTON_ROT_CW,
-        BUTTON_DOWN,
-        BUTTON_HARD_DROP,
-        BUTTON_HOLD,
-};
-
-void draw_controls_overlay(void) {
-    graphics_set_font(ASSET_FONT_5X7);
-    disp_y_t y = 25;
-    for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
-        // control name text
-        graphics_set_color(DISPLAY_COLOR_WHITE);
-        graphics_text(30, (int8_t) y, CONTROL_NAMES[i]);
-
-        // illustrate the 6 buttons with the one used by the control highlighted.
-        uint8_t buttons = CONTROL_BUTTONS[i];
-        uint8_t mask = BUTTON0;
-        disp_x_t button_x = 15;
-        for (uint8_t j = 0; j < 3; ++j) {
-            disp_y_t button_y = y;
-            for (uint8_t k = 0; k < 2; ++k) {
-                graphics_set_color(buttons & mask ? DISPLAY_COLOR_WHITE : 6);
-                graphics_fill_rect(button_x, button_y, 3, 3);
-                button_y += 4;
-                mask <<= 1;
-            }
-            button_x += 4;
-        }
-        y += 10;
-    }
-}

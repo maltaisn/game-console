@@ -47,6 +47,9 @@
 // This does introduce a 50 ms delay between click and action.
 #define BUTTON_COMBINATION_DELAY 2
 
+#define HIGHSCORE_NAME_MAX_LENGTH 12
+#define LEADERBOARD_MAX_SIZE 10
+
 typedef enum {
     // states with art background
     GAME_STATE_MAIN_MENU,
@@ -90,8 +93,20 @@ typedef struct {
 } game_options_t;
 
 typedef struct {
+    uint32_t score;
+    char name[HIGHSCORE_NAME_MAX_LENGTH + 1];
+} game_highscore_t;
+
+typedef struct {
+    uint8_t size;
+    game_highscore_t entries[LEADERBOARD_MAX_SIZE];
+} game_leaderboard_t;
+
+typedef struct {
     game_options_t options;
     game_state_t state;
+    uint8_t new_highscore_pos;
+    game_leaderboard_t leaderboard;
     bool dialog_shown;
 } game_t;
 
@@ -114,5 +129,11 @@ game_state_t save_highscore(void);
 void save_options(void);
 
 void save_extra_options(void);
+
+void set_default_options(void);
+
+void load_from_eeprom(void);
+
+void save_to_eeprom(void);
 
 #endif //TETRIS_GAME_H

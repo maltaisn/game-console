@@ -33,6 +33,7 @@
 #include <core/random.h>
 
 #include <sim/flash.h>
+#include <string.h>
 
 game_t game;
 
@@ -58,19 +59,8 @@ void setup(void) {
 
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
 
-    // TODO load options
-
-    // default options
-    game.options = (game_options_t) {
-        .features = GAME_FEATURE_MUSIC | GAME_FEATURE_SOUND_EFFECTS,
-        .volume = SOUND_VOLUME_2 >> SOUND_CHANNELS_COUNT,
-        .contrast = 6,
-    };
-    tetris.options = (tetris_options_t) {
-        .features = TETRIS_FEATURE_HOLD | TETRIS_FEATURE_GHOST |
-                TETRIS_FEATURE_WALL_KICKS | TETRIS_FEATURE_TSPINS,
-        .preview_pieces = 5,
-    };
+    set_default_options();
+    load_from_eeprom();
 
     sound_set_volume(game.options.volume << SOUND_CHANNELS_COUNT);
     display_set_contrast(game.options.contrast * 20);
@@ -135,7 +125,28 @@ game_state_t game_loop(void) {
     tetris_update();
 
     if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
-        // TODO check highscore and show dialog
+        // check if new high score achieved and find its position.
+        int8_t pos = -1;
+        int8_t end = (int8_t) game.leaderboard.size;
+        if (end < LEADERBOARD_MAX_SIZE) {
+            ++end;
+        }
+        for (int8_t i = 0; i < end; ++i) {
+            if (i == game.leaderboard.size || game.leaderboard.entries[i].score < tetris.score) {
+                pos = i;
+                break;
+            }
+        }
+        if (pos != -1) {
+            // shift existing high scores and insert new one
+            for (uint8_t i = game.leaderboard.size; i > pos; --i) {
+                game.leaderboard.entries[i] = game.leaderboard.entries[i - 1];
+            }
+            game.leaderboard.size = end;
+            game.leaderboard.entries[pos] = (game_highscore_t) {tetris.score, "(UNNAMED)"};
+            game.new_highscore_pos = pos;
+            save_to_eeprom();
+        }
         return GAME_STATE_HIGH_SCORE;
     }
 
@@ -320,10 +331,11 @@ game_state_t save_highscore(void) {
         // name is empty, don't hide dialog.
         return GAME_STATE_HIGH_SCORE;
     }
-    // TODO save highscore
-    trace("entered name = '%s'", name);
 
-    return GAME_STATE_GAME_OVER;
+    strcpy(game.leaderboard.entries[game.new_highscore_pos].name, dialog.items[0].text.text);
+    save_to_eeprom();
+
+    return GAME_STATE_LEADERBOARD;
 }
 
 void save_options(void) {
@@ -351,7 +363,7 @@ void save_options(void) {
 }
 
 void save_extra_options(void) {
-    uint8_t features = 000000000;
+    uint8_t features = 0;
     if (dialog.items[0].choice.selection) {
         features |= TETRIS_FEATURE_GHOST;
     }
@@ -365,6 +377,27 @@ void save_extra_options(void) {
         features |= TETRIS_FEATURE_TSPINS;
     }
     tetris.options.features = features;
+}
+
+void set_default_options(void) {
+    game.options = (game_options_t) {
+            .features = GAME_FEATURE_MUSIC | GAME_FEATURE_SOUND_EFFECTS,
+            .volume = SOUND_VOLUME_2 >> SOUND_CHANNELS_COUNT,
+            .contrast = 6,
+    };
+    tetris.options = (tetris_options_t) {
+            .features = TETRIS_FEATURE_HOLD | TETRIS_FEATURE_GHOST |
+                        TETRIS_FEATURE_WALL_KICKS | TETRIS_FEATURE_TSPINS,
+            .preview_pieces = 5,
+    };
+}
+
+void load_from_eeprom(void) {
+    // TODO
+}
+
+void save_to_eeprom(void) {
+    // TODO
 }
 
 void power_callback_sleep_scheduled(void) {

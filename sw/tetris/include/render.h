@@ -20,4 +20,8 @@
 
 void draw(void);
 
+void draw_leaderboard_overlay(void);
+
+void draw_controls_overlay(void);
+
 #endif //TETRIS_RENDER_H
