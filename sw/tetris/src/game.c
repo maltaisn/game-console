@@ -33,6 +33,8 @@
 #include <core/random.h>
 
 #include <sim/flash.h>
+#include <sim/eeprom.h>
+
 #include <string.h>
 
 game_t game;
@@ -50,20 +52,27 @@ static uint8_t button_hold_time[BUTTONS_COUNT];
 // mask indicating for which buttons DAS is currently enabled.
 static uint8_t delayed_auto_shift;
 
+const game_header_t GAME_HEADER = (game_header_t) {0xa5, GAME_VERSION_MAJOR, GAME_VERSION_MINOR};
+
 void setup(void) {
 #ifdef SIMULATION
-    FILE* file = fopen("assets.dat", "r");
-    flash_load_file(file);
-    fclose(file);
+    FILE* flash = fopen("assets.dat", "r");
+    flash_load_file(flash);
+    fclose(flash);
+
+    FILE* eeprom = fopen("eeprom.dat", "r");
+    if (eeprom) {
+        eeprom_load_file(eeprom);
+        fclose(eeprom);
+    }
 #endif
 
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
 
-    set_default_options();
     load_from_eeprom();
 
     sound_set_volume(game.options.volume << SOUND_CHANNELS_COUNT);
-    display_set_contrast(game.options.contrast * 20);
+    update_display_contrast(game.options.contrast);
 }
 
 void loop(void) {
@@ -164,6 +173,11 @@ static uint8_t preprocess_input_state() {
 
 game_state_t handle_dialog_input(void) {
     dialog_result_t res = dialog_handle_input(last_input_state, preprocess_input_state());
+
+    if (game.state == GAME_STATE_OPTIONS) {
+        update_display_contrast(dialog.items[3].number.value);
+    }
+
     if (res == DIALOG_RESULT_NONE) {
         return game.state;
     }
@@ -202,6 +216,11 @@ game_state_t handle_dialog_input(void) {
 
     } else if (res == RESULT_SAVE_OPTIONS) {
         save_options();
+        return GAME_STATE_MAIN_MENU;
+
+    } else if (res == RESULT_CANCEL_OPTIONS) {
+        // restore old contrast
+        update_display_contrast(game.options.contrast);
         return GAME_STATE_MAIN_MENU;
 
     } else if (res == RESULT_SAVE_HIGHSCORE) {
@@ -338,6 +357,10 @@ game_state_t save_highscore(void) {
     return GAME_STATE_LEADERBOARD;
 }
 
+void update_display_contrast(uint8_t value) {
+    display_set_contrast(value * 20);
+}
+
 void save_options(void) {
     uint8_t features = 0;
     if (dialog.items[1].choice.selection) {
@@ -352,14 +375,16 @@ void save_options(void) {
     uint8_t preview_pieces = dialog.items[4].number.value;
 
     game.options = (game_options_t) {
-        .features = features,
-        .volume = volume,
-        .contrast = contrast,
+            .features = features,
+            .volume = volume,
+            .contrast = contrast,
     };
     tetris.options.preview_pieces = preview_pieces;
 
     sound_set_volume(volume << SOUND_CHANNELS_COUNT);
-    display_set_contrast(contrast * 20);
+    update_display_contrast(contrast);
+
+    save_to_eeprom();
 }
 
 void save_extra_options(void) {
@@ -377,6 +402,8 @@ void save_extra_options(void) {
         features |= TETRIS_FEATURE_TSPINS;
     }
     tetris.options.features = features;
+
+    save_to_eeprom();
 }
 
 void set_default_options(void) {
@@ -390,14 +417,59 @@ void set_default_options(void) {
                         TETRIS_FEATURE_WALL_KICKS | TETRIS_FEATURE_TSPINS,
             .preview_pieces = 5,
     };
+    game.leaderboard.size = 0;
 }
 
 void load_from_eeprom(void) {
-    // TODO
+    // use display buffer as temporary memory to write data
+    // TODO use section attribute to share buffer and decouple from display
+    uint8_t* buf = display_buffer(0, 0);
+    eeprom_read(0, sizeof GAME_HEADER + sizeof game.options +
+                   sizeof tetris.options + sizeof game.leaderboard, buf);
+
+    // read header and check version & signature first
+    if (memcmp(buf, &GAME_HEADER, sizeof GAME_HEADER) != 0) {
+        // header differs, can't load data from eeprom
+        set_default_options();
+        return;
+    }
+    buf += sizeof GAME_HEADER;
+
+    memcpy(&game.options, buf, sizeof game.options);
+    buf += sizeof game.options;
+    memcpy(&tetris.options, buf, sizeof tetris.options);
+    buf += sizeof tetris.options;
+
+    memcpy(&game.leaderboard, buf, sizeof game.leaderboard);
 }
 
 void save_to_eeprom(void) {
-    // TODO
+    // use display buffer as temporary memory to write data
+    // TODO use section attribute to share buffer and decouple from display
+    uint8_t* buf = display_buffer(0, 0);
+    uint8_t* buf_start = buf;
+
+    // header
+    memcpy(buf, &GAME_HEADER, sizeof GAME_HEADER);
+    buf += sizeof GAME_HEADER;
+
+    // options
+    memcpy(buf, &game.options, sizeof game.options);
+    buf += sizeof game.options;
+    memcpy(buf, &tetris.options, sizeof tetris.options);
+    buf += sizeof tetris.options;
+
+    // leaderboard
+    memcpy(buf, &game.leaderboard, sizeof game.leaderboard);
+    buf += sizeof game.leaderboard;
+
+    eeprom_write(0, buf - buf_start, buf_start);
+
+#ifdef SIMULATION
+    FILE* eeprom = fopen("eeprom.dat", "w");
+    eeprom_save(eeprom);
+    fclose(eeprom);
+#endif
 }
 
 void power_callback_sleep_scheduled(void) {

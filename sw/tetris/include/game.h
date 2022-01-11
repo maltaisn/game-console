@@ -77,6 +77,7 @@ enum {
     RESULT_OPEN_LEADERBOARD,
     RESULT_OPEN_MAIN_MENU,
     RESULT_SAVE_OPTIONS,
+    RESULT_CANCEL_OPTIONS,
     RESULT_SAVE_OPTIONS_EXTRA,
     RESULT_SAVE_HIGHSCORE,
 };
@@ -85,6 +86,14 @@ enum {
     GAME_FEATURE_MUSIC = 1 << 0,
     GAME_FEATURE_SOUND_EFFECTS = 1 << 1,
 };
+
+typedef struct {
+    uint8_t signature;
+    uint8_t version_major;
+    uint8_t version_minor;
+} game_header_t;
+
+extern const game_header_t GAME_HEADER;
 
 typedef struct {
     uint8_t features;
@@ -125,6 +134,8 @@ void start_game(void);
 void resume_game(void);
 
 game_state_t save_highscore(void);
+
+void update_display_contrast(uint8_t value);
 
 void save_options(void);
 

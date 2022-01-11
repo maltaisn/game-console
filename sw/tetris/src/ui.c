@@ -64,7 +64,7 @@ void open_options_dialog(void) {
     dialog.pos_btn = "OK";
     dialog.neg_btn = "Cancel";
     dialog.pos_result = RESULT_SAVE_OPTIONS;
-    dialog.neg_result = RESULT_OPEN_MAIN_MENU;
+    dialog.neg_result = RESULT_CANCEL_OPTIONS;
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = 0;
 

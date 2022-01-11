@@ -68,16 +68,18 @@ void flash_load_file(FILE* file) {
             n = (size_t) (FLASH_SIZE - (ptrdiff_t) ptr + flash);
         }
         size_t read = fread(ptr, 1, n, file);
+        ptr += read;
         if (read < READ_BUFFER_SIZE) {
             // end of file reached, short count.
             break;
         }
-        ptr += read;
         if (ptr >= flash + FLASH_SIZE) {
             // end of flash reached.
             break;
         }
     }
+    // erase the rest of memory
+    memset(ptr, ERASE_BYTE, FLASH_SIZE - (ptr - flash));
 }
 
 void flash_load_erased(void) {

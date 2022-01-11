@@ -72,16 +72,18 @@ void eeprom_load_file(FILE* file) {
             n = (size_t) (EEPROM_SIZE - (ptrdiff_t) ptr + eeprom);
         }
         size_t read = fread(ptr, 1, n, file);
+        ptr += read;
         if (read < READ_BUFFER_SIZE) {
             // end of file reached, short count.
             break;
         }
-        ptr += read;
         if (ptr >= eeprom + EEPROM_SIZE) {
             // end of EEPROM reached.
             break;
         }
     }
+    // erase the rest of memory
+    memset(ptr, ERASE_BYTE, EEPROM_SIZE - (ptr - eeprom));
 }
 
 void eeprom_load_erased(void) {
@@ -92,11 +94,19 @@ void eeprom_save(FILE* file) {
     if (!file || ferror(file)) {
         return;
     }
+
+    size_t write_size = 0;
+    for (size_t i = 0; i < EEPROM_SIZE; ++i) {
+        if (eeprom[i] != ERASE_BYTE) {
+            write_size = i + 1;
+        }
+    }
+
     uint8_t* ptr = eeprom;
     while (true) {
         size_t n = READ_BUFFER_SIZE;
-        if (ptr + n >= eeprom + EEPROM_SIZE) {
-            n = (size_t) (EEPROM_SIZE - (ptrdiff_t) ptr + eeprom);
+        if (ptr + n >= eeprom + write_size) {
+            n = (size_t) (write_size - (ptrdiff_t) ptr + eeprom);
         }
         size_t written = fwrite(ptr, 1, n, file);
         if (written < READ_BUFFER_SIZE) {

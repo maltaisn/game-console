@@ -166,6 +166,9 @@ static void display_set_contrast_internal(uint8_t contrast) {
 }
 
 void display_set_contrast(uint8_t contrast) {
+    if (contrast == display_contrast) {
+        return;
+    }
     display_contrast = contrast;
     if (display_state & STATE_DIMMED) {
         contrast /= 2;

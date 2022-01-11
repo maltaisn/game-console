@@ -106,6 +106,7 @@ void display_set_inverted(bool inverted);
 
 /**
  * Set the display contrast. The default is DISPLAY_DEFAULT_CONTRAST.
+ * Nothing is done if contrast is already at set value.
  */
 void display_set_contrast(uint8_t contrast);
 
