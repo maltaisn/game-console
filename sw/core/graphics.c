@@ -46,8 +46,6 @@
 #define FONT_MAX_GLYPH_SIZE 33
 #define FONT_MAX_LINE_SPACING 15
 
-#define GLYPH_SPACING 1
-
 #define IMAGE_HEADER_SIZE 3
 #ifndef GRAPHICS_NO_INDEXED_IMAGE
 #define IMAGE_INDEX_HEADER_SIZE 2
@@ -919,7 +917,7 @@ void graphics_text(int8_t x, const int8_t y, const char* text) {
     while (*text) {
         graphics_glyph(x, y, *text++);
         int8_t next_x;
-        if (__builtin_add_overflow(x, font.width + GLYPH_SPACING, &next_x)) {
+        if (__builtin_add_overflow(x, font.width + GRAPHICS_GLYPH_SPACING, &next_x)) {
             return;
         }
         x = next_x;
@@ -951,7 +949,7 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
         // text width less than glyph width, no text can be drawn.
         return;
     }
-    const uint8_t glyph_spacing = font.width + GLYPH_SPACING;
+    const uint8_t glyph_spacing = font.width + GRAPHICS_GLYPH_SPACING;
 
     const char* next_wrap_pos = 0;
     while (*text) {
@@ -1005,15 +1003,19 @@ uint8_t graphics_text_width(const char* text) {
         return 0;
     }
     uint8_t width = 0;
-    const uint8_t glyph_spacing = font.width + GLYPH_SPACING;
+    const uint8_t glyph_spacing = font.width + GRAPHICS_GLYPH_SPACING;
     while (*text++) {
         width += glyph_spacing;
-        if (width >= DISPLAY_WIDTH + GLYPH_SPACING) {
+        if (width >= DISPLAY_WIDTH + GRAPHICS_GLYPH_SPACING) {
             // text width greater or equal to display width
             return DISPLAY_WIDTH;
         }
     }
-    return width - GLYPH_SPACING;
+    return width - GRAPHICS_GLYPH_SPACING;
+}
+
+uint8_t graphics_glyph_width(void) {
+    return font.width;
 }
 
 uint8_t graphics_text_height(void) {

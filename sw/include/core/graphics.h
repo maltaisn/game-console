@@ -24,6 +24,11 @@
 #include <stdint.h>
 #include <sys/data.h>
 
+/**
+ * Spacing in pixels between every glyph when text is drawn.
+ */
+#define GRAPHICS_GLYPH_SPACING 1
+
 /*
  * The coordinate system used by the graphics functions is Y down, X right.
  * The top left corner corresponds to the (0,0) coordinates.
@@ -254,6 +259,11 @@ void graphics_text_wrap(int8_t x, int8_t y, uint8_t wrap_x, const char* text);
  * If text size exceeds display width, DISPLAY_WIDTH is returned.
  */
 uint8_t graphics_text_width(const char* text);
+
+/**
+ * Returns the glyph width for the current font.
+ */
+uint8_t graphics_glyph_width(void);
 
 /**
  * Get text height with current font. This just returns the glyph height, not taking into

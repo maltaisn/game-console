@@ -6,6 +6,8 @@ tempo = 120
 
 p = Packer(assets_directory="tetris/assets")
 
+p.sound("music.mid", tempo=tempo, channels={0, 1}, merge_midi_tracks=True)
+
 # images
 p.set_array_options("tile", ArrayType.REGULAR)
 for piece in ["i", "j", "l", "o", "s", "t", "z", "ghost"]:

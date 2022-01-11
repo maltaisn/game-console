@@ -21,14 +21,17 @@
 #include <assets.h>
 
 #include <core/dialog.h>
+#include <string.h>
 
 static const char* CHOICES_ON_OFF[] = {"OFF", "ON"};
+
+static char text_field_buffer[11];
 
 static void init_empty_dialog(game_state_t result) {
     dialog.pos_btn = "OK";
     dialog.pos_result = result;
     dialog.dismiss_result = result;
-    dialog.dismissable = true;
+    dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = DIALOG_SELECTION_POS;
 }
 
@@ -46,7 +49,7 @@ void open_pause_dialog(void) {
     dialog_init_centered(96, 68);
     dialog.title = "GAME PAUSED";
     dialog.dismiss_result = RESULT_RESUME_GAME;
-    dialog.dismissable = true;
+    dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = 0;
 
     dialog_add_item_button("RESUME", RESULT_RESUME_GAME);
@@ -62,7 +65,7 @@ void open_options_dialog(void) {
     dialog.neg_btn = "Cancel";
     dialog.pos_result = RESULT_SAVE_OPTIONS;
     dialog.neg_result = RESULT_OPEN_MAIN_MENU;
-    dialog.dismissable = true;
+    dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = 0;
 
     const bool music_enabled = (game.options.features & GAME_FEATURE_MUSIC) != 0;
@@ -83,7 +86,7 @@ void open_extra_options_dialog(void) {
     dialog.neg_btn = "Cancel";
     dialog.pos_result = RESULT_SAVE_OPTIONS_EXTRA;
     dialog.neg_result = RESULT_OPEN_OPTIONS;
-    dialog.dismissable = true;
+    dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = 0;
 
     const bool feature_ghost = (tetris.options.features & TETRIS_FEATURE_GHOST) != 0;
@@ -110,14 +113,14 @@ void open_leaderboard_dialog(void) {
 }
 
 void open_high_score_dialog(void) {
-    dialog_init_centered(108, 50);
+    dialog_init_centered(108, 52);
     dialog.title = "NEW HIGHSCORE";
     dialog.pos_btn = "OK";
     dialog.pos_result = RESULT_SAVE_HIGHSCORE;
-    dialog.selection = DIALOG_SELECTION_POS;
+    dialog.selection = 0;
+    dialog.cursor_pos = 0;
 
-    // TODO text item type
-//    dialog.selection = 0;
+    dialog_add_item_text("ENTER YOUR NAME:", 10, text_field_buffer);
 }
 
 void open_game_over_dialog(void) {

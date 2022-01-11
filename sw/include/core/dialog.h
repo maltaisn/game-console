@@ -52,6 +52,7 @@ typedef enum {
     DIALOG_ITEM_BUTTON,
     DIALOG_ITEM_CHOICE,
     DIALOG_ITEM_NUMBER,
+    DIALOG_ITEM_TEXT,
 } dialog_item_type_t;
 
 typedef struct {
@@ -72,30 +73,49 @@ typedef struct {
 } dialog_number_t;
 
 typedef struct {
+    uint8_t length;
+    uint8_t max_length;
+    char* text;
+} dialog_text_t;
+
+typedef struct {
     dialog_item_type_t type;
     const char* name;
     union {
         dialog_button_t button;
         dialog_choice_t choice;
         dialog_number_t number;
+        dialog_text_t text;
     };
 } dialog_item_t;
 
+enum {
+    // if set, dialog can be dismissed and returns dismiss result.
+    DIALOG_FLAG_DISMISSABLE = 1 << 0,
+};
+
 typedef struct {
+    uint8_t flags;
+
     disp_x_t x;
     disp_y_t y;
     uint8_t width;
     uint8_t height;
+
     graphics_font_t title_font;
     graphics_font_t action_font;
     graphics_font_t item_font;
-    bool dismissable;
+
     const char* title;
     const char* pos_btn;
     const char* neg_btn;
+
     dialog_result_t pos_result;
     dialog_result_t neg_result;
     dialog_result_t dismiss_result;
+
+    uint8_t cursor_pos;
+
     dialog_selection_t selection;
     uint8_t item_count;
     dialog_item_t items[DIALOG_MAX_ITEMS];
@@ -147,6 +167,12 @@ void dialog_add_item_choice(const char* name, uint8_t selection,
  * The current value is drawn with action font while the item's name is drawn with item font.
  */
 void dialog_add_item_number(const char* name, uint8_t min, uint8_t max, uint8_t mul, uint8_t value);
+
+/**
+ * Add an item with a text field to the dialog. The item is added following the last one.
+ * The item's name is drawn with item font font and the text field is drawn with action font.
+ */
+void dialog_add_item_text(const char* name, uint8_t max_length, char text[max_length]);
 
 /**
  * Handle buttons input to navigate the dialog, given the last and current input state.

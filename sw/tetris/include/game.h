@@ -109,7 +109,7 @@ void start_game(void);
 
 void resume_game(void);
 
-void save_highscore(void);
+game_state_t save_highscore(void);
 
 void save_options(void);
 

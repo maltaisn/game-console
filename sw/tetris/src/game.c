@@ -136,7 +136,7 @@ game_state_t game_loop(void) {
 
     if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
         // TODO check highscore and show dialog
-        return GAME_STATE_GAME_OVER;
+        return GAME_STATE_HIGH_SCORE;
     }
 
     return GAME_STATE_PLAY;
@@ -191,10 +191,12 @@ game_state_t handle_dialog_input(void) {
 
     } else if (res == RESULT_SAVE_OPTIONS) {
         save_options();
+        return GAME_STATE_MAIN_MENU;
 
     } else if (res == RESULT_SAVE_HIGHSCORE) {
-        save_highscore();
+        return save_highscore();
     }
+    // should not happen
     return GAME_STATE_MAIN_MENU;
 }
 
@@ -312,8 +314,16 @@ void resume_game(void) {
     click_processed = BUTTONS_ALL;
 }
 
-void save_highscore(void) {
-    // TODO
+game_state_t save_highscore(void) {
+    const char* name = dialog.items[0].text.text;
+    if (!*name) {
+        // name is empty, don't hide dialog.
+        return GAME_STATE_HIGH_SCORE;
+    }
+    // TODO save highscore
+    trace("entered name = '%s'", name);
+
+    return GAME_STATE_GAME_OVER;
 }
 
 void save_options(void) {
