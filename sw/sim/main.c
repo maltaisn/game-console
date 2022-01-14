@@ -26,6 +26,7 @@
 #include <sim/input.h>
 
 #include <core/comm.h>
+#include <core/sound.h>
 
 #include <stdbool.h>
 #include <GL/glut.h>
@@ -38,6 +39,8 @@ static void* loop_thread(void* arg) {
 #ifndef DISABLE_COMMS
         comm_receive();
 #endif
+        sound_fill_track_buffers();
+
         bool is_sleep_due = power_is_sleep_due();
 
         loop();

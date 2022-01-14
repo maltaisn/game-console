@@ -15,10 +15,11 @@
  */
 
 #include <sys/main.h>
-
 #include <sys/init.h>
 #include <sys/power.h>
+
 #include <core/comm.h>
+#include <core/sound.h>
 
 #include <stdbool.h>
 
@@ -29,6 +30,8 @@ int main(void) {
 #ifndef DISABLE_COMMS
         comm_receive();
 #endif
+        sound_fill_track_buffers();
+
         bool is_sleep_due = power_is_sleep_due();
 
         loop();

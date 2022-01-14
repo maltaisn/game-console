@@ -99,8 +99,8 @@
 #define SOUND_RESOLUTION 16
 
 // The size of each track buffer, to avoid reading from flash one byte at a time.
-// A buffer size of 16 should give about 1-3 seconds of equivalent playback time.
-#define TRACK_BUFFER_SIZE 16
+// A buffer size of 16 should give about 2-4 seconds of equivalent playback time.
+#define TRACK_BUFFER_SIZE 20
 
 // Masks used to check whether a track is started.
 #define TRACK0_STARTED (1 << 0)
@@ -114,9 +114,15 @@
 #define TRACKS_STARTED_ALL (TRACK0_STARTED | TRACK1_STARTED | TRACK2_STARTED)
 #define TRACKS_PLAYING_ALL (TRACK0_PLAYING | TRACK1_PLAYING | TRACK2_PLAYING)
 
-#define encode_bpm_tempo(bpm) ((uint8_t) ((60.0 * SYSTICK_FREQUENCY) / (bpm * SOUND_RESOLUTION) - 0.5))
+#define encode_bpm_tempo(bpm) ((uint8_t) ((60.0 * SYSTICK_FREQUENCY) / ((bpm) * SOUND_RESOLUTION) - 0.5))
 
 typedef data_ptr_t sound_t;
+
+/**
+ * Fill track buffers with sound data. This must be called periodically
+ * to avoid buffer underrun, in which case sound will be cut.
+ */
+void sound_fill_track_buffers(void);
 
 /**
  * Load and initialize tracks from data contained in unified data space.

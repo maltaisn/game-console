@@ -16,9 +16,9 @@
  */
 
 #include <core/sound.h>
+#include <core/trace.h>
 
 #include <sys/data.h>
-#include <sys/atomic.h>
 
 #define TRACK_DATA_END_MASK ((flash_t) 0x800000)
 
@@ -28,9 +28,19 @@
 
 #define TRACK_END 0xff
 
-// Minimum number of bytes left in buffer required to not refresh.
-// This corresponds to the worst case of <note> + <2 bytes duration>.
-#define TRACK_BUFFER_MIN_SIZE 3
+// Minimum number of bytes left in buffer required to not fill buffer.
+// This should give enough time to fill buffer before it's emptied.
+// Worst case is ~4 notes of duration 1, which is 16 ms at highest tempo.
+// However highest tempo is never used, at 240 BPM this gives 63 ms loose.
+//
+// If buffer underruns become an issue, there are a few solutions:
+// - Call sound_fill_track_buffers() more often, e.g. in draw page loop.
+// - Reduce sound tempo. A tempo of 60 BPM gives at worst 250 ms loose.
+// - Increase this value.
+#define TRACK_BUFFER_MIN_SIZE 8
+
+// Max note length is 3 bytes (1 byte for note, 2 for duration).
+#define TRACK_NOTE_MAX_LENGTH 3
 
 // The size in bytes of the track header in sound data.
 #define TRACK_HEADER_SIZE 4
@@ -38,6 +48,19 @@
 #define TRACK0_ACTIVE (TRACK0_STARTED | TRACK0_PLAYING)
 #define TRACK1_ACTIVE (TRACK1_STARTED | TRACK1_PLAYING)
 #define TRACK2_ACTIVE (TRACK2_STARTED | TRACK2_PLAYING)
+
+#ifdef SIMULATION
+#include <pthread.h>
+static pthread_mutex_t sound_mutex;
+#define ATOMIC_BLOCK_IMPL
+#define lock_sound_mutex() pthread_mutex_lock(&sound_mutex)
+#define unlock_sound_mutex() pthread_mutex_unlock(&sound_mutex)
+#else
+#include <util/atomic.h>
+#define ATOMIC_BLOCK_IMPL ATOMIC_BLOCK(ATOMIC_FORCEON)
+#define lock_sound_mutex()
+#define unlock_sound_mutex()
+#endif
 
 typedef struct {
     // Current position in note data array, in unified data space.
@@ -78,6 +101,7 @@ static uint8_t delay;
 
 /**
  * Fill track data buffer starting from a position by reading from flash.
+ * Must be called within an atomic block.
  */
 static void track_fill_buffer(track_t* track, uint8_t start) {
     const uint8_t read_len = TRACK_BUFFER_SIZE - start;
@@ -108,7 +132,7 @@ static void update_output_state(void) {
 /**
  * Read the next note in track data and set it as current note with its duration.
  * Preconditions: track->duration_left == 0, track is playing.
- * This is called within an interrupt in actual implementation.
+ * On simulator, this is called from the systick thread and on AVR it's called from an interrupt.
  */
 static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
     if (track->duration_total & IMMEDIATE_PAUSE_MASK) {
@@ -116,6 +140,13 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
         track->note = SOUND_NO_NOTE;
         track->duration_left = track->immediate_pause;
         track->duration_total &= ~IMMEDIATE_PAUSE_MASK;
+        return;
+    }
+
+    if (track->buffer_pos > TRACK_BUFFER_SIZE - TRACK_NOTE_MAX_LENGTH) {
+        // buffer underrun! track buffer wasn't filled recently.
+        // keep playing the last note, this will produce a lagging effect.
+        trace("buffer underrun on sound track");
         return;
     }
 
@@ -165,16 +196,35 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
 
 /**
  * Update the current note for all playing tracks.
- * This is called within an interrupt in actual implementation.
+ * On simulator, this is called from the systick thread and on AVR it's called from an interrupt.
  */
 static void tracks_seek_note(void) {
+    lock_sound_mutex();
     uint8_t track_active_mask = TRACK0_ACTIVE;
-    for (int channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
-        track_t* track = &tracks[channel];
+    for (uint8_t channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
         if ((tracks_on & track_active_mask) == track_active_mask) {
             // Track is started & currently playing.
+            track_t* track = &tracks[channel];
             if (track->duration_left == 0) {
-                // Note ended, go to next note. Make sure buffer has enough data.
+                track_seek_note(track, track_active_mask & TRACKS_PLAYING_ALL);
+                sound_play_note(track->note, channel);
+            } else {
+                --track->duration_left;
+            }
+        }
+        track_active_mask <<= 1;
+    }
+    unlock_sound_mutex();
+}
+
+void sound_fill_track_buffers(void) {
+    uint8_t track_active_mask = TRACK0_ACTIVE;
+    for (uint8_t channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
+        if ((tracks_on & track_active_mask) == track_active_mask) {
+            // Track is started & currently playing.
+            track_t* track = &tracks[channel];
+            lock_sound_mutex();
+            ATOMIC_BLOCK_IMPL {
                 if (!(track->data & TRACK_DATA_END_MASK) &&
                     track->buffer_pos >= TRACK_BUFFER_SIZE - TRACK_BUFFER_MIN_SIZE) {
                     // Not enough data to be guaranteed that next note can be decoded.
@@ -186,24 +236,20 @@ static void tracks_seek_note(void) {
                     track->buffer_pos = 0;
                     track_fill_buffer(track, j);
                 }
-                track_seek_note(track, track_active_mask & TRACKS_PLAYING_ALL);
-                sound_play_note(track->note, channel);
-            } else {
-                --track->duration_left;
             }
+            unlock_sound_mutex();
         }
         track_active_mask <<= 1;
     }
 }
 
 void sound_load(sound_t address) {
-    // must be atomic because track_seek_note is called within an interrupt.
-    // a track must not be half configured by then!
-    ATOMIC_BLOCK_FORCEON {
+    lock_sound_mutex();
+    ATOMIC_BLOCK_IMPL {
         uint8_t header[TRACK_HEADER_SIZE];
         uint8_t track_playing_mask = TRACK0_PLAYING;
         uint8_t new_tracks_on = 0;
-        for (int i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
+        for (uint8_t i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
             track_t* track = &tracks[i];
             data_read(address, TRACK_HEADER_SIZE, header);
 #ifdef RUNTIME_CHECKS
@@ -233,6 +279,7 @@ void sound_load(sound_t address) {
 #endif
         tracks_on |= new_tracks_on;
     }
+    unlock_sound_mutex();
     update_output_state();
 }
 
@@ -242,16 +289,20 @@ void sound_start(uint8_t t) {
         trace("invalid track start flags");
     }
 #endif
-    ATOMIC_BLOCK_FORCEON {
+    lock_sound_mutex();
+    ATOMIC_BLOCK_IMPL {
         tracks_on |= t;
     }
+    unlock_sound_mutex();
     update_output_state();
 }
 
 void sound_stop(uint8_t t) {
-    ATOMIC_BLOCK_FORCEON {
+    lock_sound_mutex();
+    ATOMIC_BLOCK_IMPL {
         tracks_on &= ~t;
     }
+    unlock_sound_mutex();
     update_output_state();
 }
 
