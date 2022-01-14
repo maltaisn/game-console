@@ -45,6 +45,7 @@ import flash
 import memory
 from battery import BatteryMonitor
 from comm import Comm, CommError, Packet, PacketType, CommInterface
+from display import DisplayInterface, DisplayDriver
 from spi import SpiInterface
 
 VERSION_MAJOR = 0
@@ -54,6 +55,13 @@ BUTTONS_COUNT = 6
 SYSTICK_FREQ = 256
 
 STD_IO = "-"
+
+# try:
+#     import pydevd_pycharm
+#
+#     pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
+# except ConnectionRefusedError:
+#     pass
 
 parser = argparse.ArgumentParser(description="Programming & debugging program for game console")
 parser.add_argument(
@@ -105,6 +113,12 @@ subparsers.add_parser("monitor", help="Monitor debug messages")
 
 # reset command
 subparsers.add_parser("reset", help="Trigger software reset")
+
+# sleep command
+subparsers.add_parser("sleep", help="Trigger system sleep. Only power cycle can disable sleep.")
+
+# display test command
+subparsers.add_parser("display_test", help="Do a display test.")
 
 
 @dataclass
@@ -169,6 +183,10 @@ class Prog(CommInterface):
             self.command_monitor()
         elif cmd == "reset":
             self.command_reset()
+        elif cmd == "sleep":
+            self.command_sleep()
+        elif cmd == "display_test":
+            self.command_display_test()
 
         self.comm.disconnect()
 
@@ -298,9 +316,11 @@ class Prog(CommInterface):
             try:
                 packet = self.read()
             except CommError:
+                if self.interrupted:
+                    self.interrupt_exit()
                 continue  # ignore empty packet due to timeouts
             if packet.packet_type == PacketType.DEBUG.value:
-                print(packet.payload.decode('utf-8'), end="")
+                print(packet.payload.decode("latin-1"), end="")
 
     def command_flash(self) -> None:
         self.set_fast_baud_rate(True)
@@ -313,6 +333,19 @@ class Prog(CommInterface):
 
     def command_reset(self) -> None:
         self.write(Packet(PacketType.RESET))
+
+    def command_sleep(self) -> None:
+        self.write(Packet(PacketType.SLEEP))
+
+    def command_display_test(self) -> None:
+        self.set_fast_baud_rate(True)
+        interface = DisplayInterface(self)
+        driver = DisplayDriver(interface)
+        driver.init()
+        time.sleep(2)
+        driver.deinit()
+        self.set_fast_baud_rate(False)
+
 
 
 def main() -> None:

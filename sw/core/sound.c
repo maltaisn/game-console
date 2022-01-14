@@ -16,7 +16,9 @@
  */
 
 #include <core/sound.h>
-#include <core/trace.h>
+
+#include <sys/data.h>
+#include <sys/atomic.h>
 
 #define TRACK_DATA_END_MASK ((flash_t) 0x800000)
 
@@ -38,9 +40,9 @@
 #define TRACK2_ACTIVE (TRACK2_STARTED | TRACK2_PLAYING)
 
 typedef struct {
-    // Current position in note data array, in flash data space.
+    // Current position in note data array, in unified data space.
     // TRACK_DATA_END_MASK is set when all data has been read for the track.
-    flash_t data;
+    sound_t data;
     // Pause duration used after note using immediate pause encoding.
     uint8_t immediate_pause;
     // Note being currently played (0-83).
@@ -79,11 +81,11 @@ static uint8_t delay;
  */
 static void track_fill_buffer(track_t* track, uint8_t start) {
     const uint8_t read_len = TRACK_BUFFER_SIZE - start;
-    flash_read(track->data, read_len, &track->buffer[start]);
+    data_read(track->data, read_len, &track->buffer[start]);
     track->data += read_len;
 
     // Look for end of track marker byte
-    for (uint8_t i = start ; i < TRACK_BUFFER_SIZE ; ++i) {
+    for (uint8_t i = start; i < TRACK_BUFFER_SIZE; ++i) {
         if (track->buffer[i] == TRACK_END) {
             track->data |= TRACK_DATA_END_MASK;
             break;
@@ -167,7 +169,7 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
  */
 static void tracks_seek_note(void) {
     uint8_t track_active_mask = TRACK0_ACTIVE;
-    for (int channel = 0 ; channel < SOUND_CHANNELS_COUNT ; ++channel) {
+    for (int channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
         track_t* track = &tracks[channel];
         if ((tracks_on & track_active_mask) == track_active_mask) {
             // Track is started & currently playing.
@@ -178,7 +180,7 @@ static void tracks_seek_note(void) {
                     // Not enough data to be guaranteed that next note can be decoded.
                     // Move all remaining data to the start of buffer and fill the rest.
                     uint8_t j = 0;
-                    for (uint8_t i = track->buffer_pos ; i < TRACK_BUFFER_SIZE ; ++i, ++j) {
+                    for (uint8_t i = track->buffer_pos; i < TRACK_BUFFER_SIZE; ++i, ++j) {
                         track->buffer[j] = track->buffer[i];
                     }
                     track->buffer_pos = 0;
@@ -194,45 +196,44 @@ static void tracks_seek_note(void) {
     }
 }
 
-void sound_load(flash_t address) {
-    uint8_t header[TRACK_HEADER_SIZE];
-    uint8_t track_playing_mask = TRACK0_PLAYING;
+void sound_load(sound_t address) {
+    // must be atomic because track_seek_note is called within an interrupt.
+    // a track must not be half configured by then!
+    ATOMIC_BLOCK_FORCEON {
+        uint8_t header[TRACK_HEADER_SIZE];
+        uint8_t track_playing_mask = TRACK0_PLAYING;
+        uint8_t new_tracks_on = 0;
+        for (int i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
+            track_t* track = &tracks[i];
+            data_read(address, TRACK_HEADER_SIZE, header);
 #ifdef RUNTIME_CHECKS
-    bool any_tracks = false;
+            if (header[0] >= SOUND_CHANNELS_COUNT) {
+                trace("invalid sound data");
+            }
 #endif
-    for (int i = 0 ; i < SOUND_CHANNELS_COUNT ; ++i) {
-        track_t* track = &tracks[i];
-        flash_read(address, TRACK_HEADER_SIZE, header);
-#ifdef RUNTIME_CHECKS
-        if (header[0] >= SOUND_CHANNELS_COUNT) {
-            trace("invalid sound data");
+            if (header[0] == i) {
+                // Initialize track from header, fill buffer with first data.
+                const uint16_t track_length = header[1] | header[2] << 8;
+                track->data = address + TRACK_HEADER_SIZE;
+                track->immediate_pause = header[3];
+                track->duration_left = 0;
+                track->duration_total = 0;
+                track->duration_repeat = 0;
+                track->buffer_pos = 0;
+                track_fill_buffer(track, 0);
+                new_tracks_on |= track_playing_mask;
+                address += (flash_t) track_length;
+            }
+            track_playing_mask <<= 1;
         }
-#endif
-        if (header[0] == i) {
-            // Initialize track from header, fill buffer with first data.
-            const uint16_t track_length = header[1] | header[2] << 8;
-            track->data = address + TRACK_HEADER_SIZE;
-            track->immediate_pause = header[3];
-            track->duration_left = 0;
-            track->duration_total = 0;
-            track->duration_repeat = 0;
-            track->buffer_pos = 0;
-            track_fill_buffer(track, 0);
-            // TODO not atomic
-            tracks_on |= track_playing_mask;
-            address += (flash_t) track_length;
 #ifdef RUNTIME_CHECKS
-            any_tracks = true;
-#endif
-        }
-        track_playing_mask <<= 1;
-    }
-    update_output_state();
-#ifdef RUNTIME_CHECKS
-    if (!any_tracks) {
+        if (new_tracks_on == 0) {
         trace("loaded sound data has no tracks");
     }
 #endif
+        tracks_on |= new_tracks_on;
+    }
+    update_output_state();
 }
 
 void sound_start(uint8_t t) {
@@ -241,15 +242,16 @@ void sound_start(uint8_t t) {
         trace("invalid track start flags");
     }
 #endif
-    // TODO not atomic
-    tracks_on |= t;
+    ATOMIC_BLOCK_FORCEON {
+        tracks_on |= t;
+    }
     update_output_state();
 }
 
 void sound_stop(uint8_t t) {
-    // TODO not atomic
-    tracks_on &= ~TRACKS_STARTED_ALL;
-    tracks_on |= ~t;
+    ATOMIC_BLOCK_FORCEON {
+        tracks_on &= ~t;
+    }
     update_output_state();
 }
 

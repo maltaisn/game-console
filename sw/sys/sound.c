@@ -41,6 +41,7 @@
 // multiplied by an arbitrary constant to account for the volume.
 // Maximum value in array must be SOUND_MAX_PWM.
 static uint8_t PWM_LEVELS[] = {
+        0, 0, 0, 0, 0, 0, 0, 0,     // volume = off
         0, 1, 1, 2, 1, 2, 2, 3,     // volume = 0, duty cycle 0 to 12%
         0, 2, 2, 4, 2, 4, 4, 6,     // volume = 1, duty cycle 0 to 24%
         0, 4, 4, 8, 4, 8, 8, 12,    // volume = 2, duty cycle 0 to 48%
@@ -79,7 +80,7 @@ void sound_set_output_enabled(bool enabled) {
     } else {
         TCA0.SPLIT.CTRLB = 0;
         PORTA.PIN2CTRL = 0;
-        VPORTA.OUT |= PIN2_bm | PIN3_bm;
+        VPORTA.OUT &= ~(PIN2_bm | PIN3_bm);
         TCA_DISABLE();
     }
 }
@@ -112,7 +113,7 @@ sound_volume_t sound_get_volume_impl(void) {
 ISR(TCB0_INT_vect) {
     uint8_t level = out_level;
     level ^= CHANNEL0_ON;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level - SOUND_VOLUME_INCREMENT];
+    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
     out_level = level;
     TCB0.INTFLAGS = TCB_CAPT_bm;
 }
@@ -120,7 +121,7 @@ ISR(TCB0_INT_vect) {
 ISR(TCB1_INT_vect) {
     uint8_t level = out_level;
     level ^= CHANNEL1_ON;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level - SOUND_VOLUME_INCREMENT];
+    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
     out_level = level;
     TCB1.INTFLAGS = TCB_CAPT_bm;
 }
@@ -128,7 +129,7 @@ ISR(TCB1_INT_vect) {
 ISR(TCB2_INT_vect) {
     uint8_t level = out_level;
     level ^= CHANNEL2_ON;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level - SOUND_VOLUME_INCREMENT];
+    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
     out_level = level;
     TCB2.INTFLAGS = TCB_CAPT_bm;
 }

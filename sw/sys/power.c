@@ -19,9 +19,6 @@
 
 #include <sys/defs.h>
 #include <sys/display.h>
-#include <sys/led.h>
-#include <sys/sound.h>
-#include <sys/spi.h>
 #include <sys/input.h>
 #include <sys/init.h>
 

@@ -19,6 +19,11 @@ p.font("font5x7.png", glyph_width=5, glyph_height=7)
 p.font("font6x9.png", glyph_width=6, glyph_height=9)
 p.font("font7x7.png", glyph_width=7, glyph_height=7)
 
+p.image("tiger.png")
+p.image("tiger-bin.png")
+
+str = "Hello world!"
+p.raw(str.encode("ascii"), name="text")
+
 p.pack("test/assets.dat")
 p.create_header("test/include/assets.h", "test/src/assets.c")
-

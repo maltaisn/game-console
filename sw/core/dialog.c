@@ -368,11 +368,11 @@ static void draw_text_field(disp_x_t x, disp_y_t y, uint8_t width, dialog_text_t
 
 /**
  * Format 0-255 number to char buffer.
- * Returns a pointer within the buffer to start of the formatted. string
+ * Returns a pointer within the buffer to start of the formatted string.
  */
-static const char* uint8_to_str(char* buf, uint8_t n) {
-    buf[3] = '\0';
+static const char* uint8_to_str(char buf[static 4], uint8_t n) {
     char* ptr = &buf[3];
+    *ptr = '\0';
     do {
         *(--ptr) = (char) (n % 10 + '0');
         n /= 10;
@@ -454,9 +454,9 @@ void dialog_draw(void) {
             draw_text_field(dialog.x + 4, action_y, dialog.width - 8, &item->text, selected);
 
         } else {
+            char buf[4];
             const char* choice_str;
             if (item->type == DIALOG_ITEM_NUMBER) {
-                char buf[4];
                 choice_str = uint8_to_str(buf, item->number.value * item->number.mul);
             } else {
                 choice_str = item->choice.choices[item->choice.selection];

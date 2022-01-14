@@ -26,6 +26,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include "sys/reset.h"
 
 #define RTC_ENABLE() (RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm)
 #define RTC_DISABLE() (RTC.CTRLA = 0)
@@ -46,8 +47,9 @@ static void init_registers(void) {
     // flash SS, eeprom SS, enable VBAT level
     VPORTF.DIR = PIN0_bm | PIN1_bm | PIN2_bm;
 
-    // set buzzer H-bridge inputs low
-    VPORTA.OUT = PIN2_bm | PIN3_bm;
+    // set buzzer H-bridge inputs high initially
+    // there are hardware pull-down so better to set low to avoid sound artifacts on startup.
+    VPORTA.OUT = 0;
     // set all CS lines high
     spi_deselect_all();
 
@@ -129,6 +131,13 @@ static void init_power_monitor(void) {
 }
 
 void init(void) {
+    uint8_t reset_flags = RSTCTRL.RSTFR;
+    if (reset_flags == 0) {
+        // dirty reset, reset cleanly.
+        reset_system();
+    }
+    RSTCTRL.RSTFR = reset_flags;
+
     init_registers();
     init_wakeup();
 }

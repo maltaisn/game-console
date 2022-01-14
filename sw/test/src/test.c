@@ -27,35 +27,39 @@
 #include <core/sysui.h>
 #include <core/trace.h>
 #include <core/dialog.h>
+#include <core/debug.h>
 
 #include <sim/flash.h>
+
+#include <stdio.h>
 
 #define FPS 5
 
 static bool dialog_shown;
 
-static systime_t last_draw;
 static uint8_t last_input;
 
 void setup(void) {
 #ifdef SIMULATION
     FILE* file = fopen("assets.dat", "r");
-    flash_load_file(file);
+    flash_load_file(0, file);
     fclose(file);
 #endif
 
-    dialog_init(10, 20, 108, 88);
+    dialog_init_centered(108, 88);
     dialog_set_font(ASSET_FONT_FONT7X7, ASSET_FONT_FONT5X7, ASSET_FONT_FONT3X5);
-    dialog.dismissable = true;
+    dialog.flags |= DIALOG_FLAG_DISMISSABLE;
     dialog.title = "GAME OPTIONS";
     dialog.pos_btn = "OK";
     dialog.neg_btn = "CANCEL";
+    dialog.pos_result = 0;
+    dialog.neg_result = 1;
     dialog.selection = DIALOG_SELECTION_POS;
+    dialog_add_item_number("CONTRAST", 0, 10, 10, 7);
     dialog_add_item_button("New game", 2);
     dialog_add_item_button("Main menu", 3);
     static const char* GAME_MODES[] = {"Easy", "Normal", "Hard"};
     dialog_add_item_choice("GAME", 1, 3, GAME_MODES);
-    dialog_add_item_number("CONTRAST", 0, 100, 10, 70);
 }
 
 static void draw(void) {
@@ -65,8 +69,7 @@ static void draw(void) {
         return;
     }
 
-    graphics_image(ASSET_IMAGE_TIGER128, 0, 0);
-
+    graphics_clear(DISPLAY_COLOR_BLACK);
     if (dialog_shown) {
         dialog_draw();
     }
@@ -74,14 +77,14 @@ static void draw(void) {
 
 void loop(void) {
     // input
+    uint8_t state = input_get_state();
     if (dialog_shown) {
-        dialog_result_t result = dialog_handle_input(last_input);
+        dialog_result_t result = dialog_handle_input(last_input, state);
         if (result != DIALOG_RESULT_NONE) {
             dialog_shown = false;
             trace("dialog result = %d", result);
         }
     } else {
-        uint8_t state = input_get_state();
         uint8_t clicked = state & ~last_input;
         if (clicked & BUTTON0) {
             dialog_shown = true;
@@ -90,12 +93,8 @@ void loop(void) {
     last_input = input_get_state();
 
     // drawing
-    systime_t time = time_get();
-    if (time - last_draw < millis_to_ticks(1000.0 / FPS)) {
-        last_draw = time;
-        display_first_page();
-        do {
-            draw();
-        } while (display_next_page());
-    }
+    display_first_page();
+    do {
+        draw();
+    } while (display_next_page());
 }

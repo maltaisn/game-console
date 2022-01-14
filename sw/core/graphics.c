@@ -16,10 +16,11 @@
  */
 
 #include <core/graphics.h>
-#include <core/trace.h>
 
 #include <sys/data.h>
 #include <sys/display.h>
+
+#include <string.h>
 
 /**
  * Important note: when most drawing functions are used in such a way that drawing would happen
@@ -120,8 +121,8 @@ disp_color_t graphics_get_color(void) {
 
 void graphics_set_font(graphics_font_t f) {
     // read font header to get its specs
-    uint8_t buf[FONT_HEADER_SIZE];
-    const uint8_t* header = data_read(f, FONT_HEADER_SIZE, buf);
+    uint8_t header[FONT_HEADER_SIZE];
+    data_read(f, FONT_HEADER_SIZE, header);
     font.addr = f + FONT_HEADER_SIZE;
     font.glyph_count = header[0];
     font.glyph_size = header[1];
@@ -157,9 +158,7 @@ graphics_font_t graphics_get_font(void) {
 void graphics_clear(disp_color_t c) {
     c = c | c << 4;
     uint8_t* buffer = display_buffer(0, 0);
-    for (uint16_t i = DISPLAY_BUFFER_SIZE; i-- > 0;) {
-        buffer[i] = c;
-    }
+    memset(buffer, c, DISPLAY_BUFFER_SIZE);
 }
 
 static void graphics_pixel_fast_color(const disp_x_t x, const disp_y_t y,
@@ -395,22 +394,6 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
     }
 }
 
-void graphics_circle(disp_x_t x, disp_y_t y, uint8_t r) {
-    // TODO
-}
-
-void graphics_filled_circle(disp_x_t x, disp_y_t y, uint8_t r) {
-    // TODO
-}
-
-void graphics_ellipse(disp_x_t x, disp_y_t y, uint8_t rx, uint8_t ry) {
-    // TODO
-}
-
-void graphics_filled_ellipse(disp_x_t x, disp_y_t y, uint8_t rx, uint8_t ry) {
-    // TODO
-}
-
 // The graphics_image_nbit functions draw a region of an image in current page.
 // The region height is at most equals to the page height.
 // `y` is a coordinate in the current page (with y=0 being display_page_ystart on display).
@@ -436,7 +419,6 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
     uint8_t buf_pos = sizeof buf;
-    const uint8_t* image_data;
 
     // current coordinates within the image
     uint8_t x_img = 0;
@@ -452,12 +434,12 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
     while (true) {
         if (buf_pos == sizeof buf) {
             // image data buffer is empty, read more data.
-            image_data = data_read(data, sizeof buf, buf);
+            data_read(data, sizeof buf, buf);
             data += sizeof buf;
             buf_pos = 0;
         }
 
-        const uint8_t byte = image_data[buf_pos++];
+        const uint8_t byte = buf[buf_pos++];
         // number of pixels to draw depends on the MSB (if byte is raw or RLE)
         uint8_t pixels = byte & 0x80 ? (byte & 0x3f) + 8 : 7;
         uint8_t shift_reg = byte;
@@ -524,7 +506,6 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
     uint8_t buf_pos = sizeof buf;
-    const uint8_t* image_data;
 
     // current coordinates within the image
     uint8_t x_img = 0;
@@ -554,11 +535,11 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
         uint8_t byte;
         if (buf_pos == sizeof buf) {
             // image data buffer is empty, read more data.
-            image_data = data_read(data, sizeof buf, buf);
+            data_read(data, sizeof buf, buf);
             data += sizeof buf;
             buf_pos = 0;
         }
-        byte = image_data[buf_pos];
+        byte = buf[buf_pos];
 
         // decode logic
         if (sequence_length == 0) {
@@ -658,8 +639,8 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 #endif
 
     // read image header and index header (even if not indexed)
-    uint8_t header_buf[IMAGE_HEADER_SIZE + IMAGE_INDEX_HEADER_SIZE];
-    const uint8_t* header = data_read(data, sizeof header_buf, header_buf);
+    uint8_t header[IMAGE_HEADER_SIZE + IMAGE_INDEX_HEADER_SIZE];
+    data_read(data, sizeof header, header);
     const uint8_t flags = header[0];
     const uint8_t width = header[1];
     const uint8_t height = header[2];
@@ -711,7 +692,6 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 
         uint8_t index_buf[IMAGE_INDEX_BUFFER_SIZE];
         uint8_t index_buf_pos = sizeof index_buf;
-        const uint8_t* index_ptr;
 
         // To use the index, it's necessary to iterate over all pages that the image was drawn on
         // to know how many rows were drawn on those pages, in order to find the first row to draw
@@ -732,11 +712,11 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
                     for (; index_y <= bound; index_y += index_gran) {
                         if (index_buf_pos == sizeof index_buf) {
                             // index buffer is empty, read more data.
-                            index_ptr = data_read(index_pos, sizeof index_buf, index_buf);
+                            data_read(index_pos, sizeof index_buf, index_buf);
                             index_pos += sizeof index_buf;
                             index_buf_pos = 0;
                         }
-                        data += (uint16_t) index_ptr[index_buf_pos++] + 1;
+                        data += (uint16_t) index_buf[index_buf_pos++] + 1;
                     }
                 }
 
@@ -848,14 +828,14 @@ void graphics_glyph(int8_t x, int8_t y, char c) {
     // read all glyph data
     data_ptr_t addr = font.addr + pos * font.glyph_size;
     uint8_t buf[FONT_MAX_GLYPH_SIZE];
-    const uint8_t* data = data_read(addr, font.glyph_size, buf);
+    data_read(addr, font.glyph_size, buf);
 
     uint8_t byte_pos = font.glyph_size - 1;
     uint8_t bits = 8;
     uint8_t line_left = font.width;
 
     // apply glyph offset
-    uint16_t first_byte = data[byte_pos];
+    uint16_t first_byte = buf[byte_pos];
     first_byte <<= font.offset_bits;
     curr_y = (int8_t) (curr_y + (first_byte >> 8));
     if (curr_y >= PAGE_HEIGHT) {
@@ -869,7 +849,7 @@ void graphics_glyph(int8_t x, int8_t y, char c) {
 
     while (byte_pos--) {
         bits = 8;
-        byte = data[byte_pos];
+        byte = buf[byte_pos];
 glyph_read:
         while (bits--) {
             if ((byte & 0x80) && curr_x >= 0 && curr_y >= 0) {
@@ -971,7 +951,7 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
                     // all spaces at the end of the line.
                     break;
                 }
-                overflow = __builtin_add_overflow(glyph_end_x, glyph_spacing, &glyph_end_x);
+                overflow |= __builtin_add_overflow(glyph_end_x, glyph_spacing, &glyph_end_x);
             }
             if (!next_wrap_pos) {
                 // no space within text line, wrap on last character

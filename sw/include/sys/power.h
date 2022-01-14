@@ -53,6 +53,8 @@ typedef enum {
     SLEEP_CAUSE_INACTIVE,
     /** Upcoming sleep due to low battery level. */
     SLEEP_CAUSE_LOW_POWER,
+    /** Remote sleep caused by communication module. */
+    SLEEP_CAUSE_REMOTE,
 } sleep_cause_t;
 
 /**
@@ -127,6 +129,7 @@ sleep_cause_t power_get_scheduled_sleep_cause(void);
 
 /**
  * Returns true if sleep countdown has expired and device is due to go to sleep.
+ * This will return true at least once in main game loop before going to sleep.
  */
 bool power_is_sleep_due(void);
 
@@ -150,6 +153,7 @@ void power_callback_wakeup(void);
 /**
  * Function called when sleep is scheduled.
  * Default implementation is weakly linked and does nothing.
+ * Note that this is called from an interrupt.
  */
 void power_callback_sleep_scheduled(void);
 

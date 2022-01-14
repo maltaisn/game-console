@@ -10,6 +10,7 @@ include common.mk
 CC := avr-gcc
 OBJCOPY := avr-objcopy
 OBJDUMP := avr-objdump
+SIZE := avr-size
 
 # ATmega toolchain directory for targeting newer parts.
 # It can be downloaded as atpack on Microchip website.
@@ -43,20 +44,22 @@ endif
 	$(E)$(OBJDUMP) -D $< > $(MAIN_TARGET).S
 
 size: $(MAIN_TARGET).elf
-	$(E)$(OBJDUMP) -Pmem-usage $^
+	$(E)$(SIZE) --mcu=$(MCU) -B $^
 
 # ==== UPLOADING ====
-# Programming is done via UPDI pin on the debug port, and using an UPDI programmer (jtag2updi).
-AVRDUDE := avrdude
+# Programming is done via UPDI pin on the debug port, and using a serial adapter and pymcuprog.
+# The serial adapter has 2 interfaces, one for programming, and one for communication with MCU.
+# The communication interface is used to program flash & EEPROM among other things, using gcprog.
+PROG := pymcuprog
 
-AVRDUDE_MCU = $(MCU)
-AVRDUDE_PORT := /dev/ttyUSB0
-AVRDUDE_BAUD := 57600
-AVRDUDE_PROTOCOL := jtag2updi
-AVRDUDE_FLAGS += -v -p $(AVRDUDE_MCU) -P $(AVRDUDE_PORT) -b $(AVRDUDE_BAUD) -c $(AVRDUDE_PROTOCOL)
-AVRDUDE_FLASH := -U flash:w:$(MAIN_TARGET).hex
+PROG_MCU = $(MCU)
+PROG_PORT := /dev/ttyACM0
+PROG_BAUD := 250000
+
+PROG_FLAGS := -t uart -u $(PROG_PORT) -d $(PROG_MCU) -c $(PROG_BAUD)
 
 .PHONY: upload
 
 upload: $(MAIN_TARGET).hex
-	$(E)$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_FLASH)
+	$(E)pymcuprog erase $(PROG_FLAGS)
+	$(E)pymcuprog write -f $(MAIN_TARGET).hex $(PROG_FLAGS)

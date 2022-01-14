@@ -18,9 +18,9 @@
 #ifndef CORE_SOUND_H
 #define CORE_SOUND_H
 
-#include <sys/flash.h>
 #include <sys/time.h>
 #include <sys/sound.h>
+#include <sys/data.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -29,8 +29,8 @@
  * Mostly taken from https://github.com/maltaisn/buzzer-midi, with slight adjustments:
  * - Tempo is given in 1/256th of a second slices to work with system time counter.
  * - All tracks can be loaded independantly, to support mixing sound effects & music.
- * - Data is stored in flash instead of program memory.
- * - Data is buffered to limit number of flash accesses.
+ * - Data is stored in unified data space instead of program memory.
+ * - Data is buffered to limit number of accesses to external memory devices.
  *
  * Sound data format:
  * - 0x00-(end-1):
@@ -116,13 +116,15 @@
 
 #define encode_bpm_tempo(bpm) ((uint8_t) ((60.0 * SYSTICK_FREQUENCY) / (bpm * SOUND_RESOLUTION) - 0.5))
 
+typedef data_ptr_t sound_t;
+
 /**
- * Load and initialize tracks from data contained in flash.
+ * Load and initialize tracks from data contained in unified data space.
  * Can be used to reinitialize tracks state for looping.
  * Tracks not present in the loaded data are not changed.
  * The "playing" state of the track is set for loaded tracks.
  */
-void sound_load(flash_t address);
+void sound_load(sound_t address);
 
 /**
  * Start playback for given tracks. (using TRACKn_ACTIVE masks)

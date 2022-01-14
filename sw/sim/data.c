@@ -15,20 +15,19 @@
  */
 
 #include <sys/data.h>
-
 #include <sys/flash.h>
 #include <sys/eeprom.h>
 
-const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
+#include <string.h>
+
+void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
     // not very portable but we'll assume the program memory isn't located in the range 0x000000 to
     // 0xffffff, and thus any addresses in that range must be either flash or EEPROM.
-    if ((address & ~0x7fffff) == DATA_FLASH_MASK) {
+    if ((address & ~0x1fffff) == DATA_FLASH_MASK) {
         flash_read((flash_t) (address & ~DATA_FLASH_MASK), length, dest);
-        return dest;
     } else if ((address & ~0x0fffff) == DATA_EEPROM_MASK) {
         eeprom_read((eeprom_t) (address & ~DATA_EEPROM_MASK), length, dest);
-        return dest;
     } else {
-        return (const uint8_t*) address;
+        memcpy(dest, (const uint8_t*) (intptr_t) address, length);
     }
 }

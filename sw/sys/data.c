@@ -15,18 +15,17 @@
  */
 
 #include <sys/data.h>
-
 #include <sys/flash.h>
 #include <sys/eeprom.h>
 
-const uint8_t* data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
-    if (address | DATA_FLASH_MASK) {
+#include <string.h>
+
+void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
+    if (address & DATA_FLASH_MASK) {
         flash_read((flash_t) (address & ~DATA_FLASH_MASK), length, dest);
-        return dest;
-    } else if (address | DATA_EEPROM_MASK) {
+    } else if (address & DATA_EEPROM_MASK) {
         eeprom_read((eeprom_t) (address & ~DATA_EEPROM_MASK), length, dest);
-        return dest;
     } else {
-        return (const uint8_t*) (intptr_t) address;
+        memcpy(dest, (const uint8_t*) (intptr_t) address, length);
     }
 }

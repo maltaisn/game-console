@@ -31,10 +31,12 @@ class PacketType(Enum):
     LED = 0x02
     INPUT = 0x03
     SPI = 0x04
-    TIME = 0x05
-    FAST_MODE = 0x06
-    DEBUG = 0x07
-    RESET = 0x08
+    IO = 0x05
+    TIME = 0x06
+    FAST_MODE = 0x07
+    DEBUG = 0x08
+    RESET = 0x09
+    SLEEP = 0x0a
 
 
 @dataclass
@@ -87,7 +89,7 @@ class Comm(CommInterface):
     baud_rate_fast: int
     serial: Optional[Serial]
 
-    DEFAULT_FILENAME = "/dev/ttyACM0"
+    DEFAULT_FILENAME = "/dev/ttyACM1"
     DEFAULT_BAUD_RATE = 19_200
     DEFAULT_BAUD_RATE_FAST = 1_000_000
 

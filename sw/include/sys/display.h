@@ -71,8 +71,8 @@ extern disp_y_t display_page_yend;
 typedef enum {
     DISPLAY_GPIO_DISABLE = 0b00,
     DISPLAY_GPIO_INPUT = 0b01,
-    DISPLAY_GPIO_OUTPUT_HI = 0b10,
-    DISPLAY_GPIO_OUTPUT_LO = 0b11,
+    DISPLAY_GPIO_OUTPUT_LO = 0b10,
+    DISPLAY_GPIO_OUTPUT_HI = 0b11,
 } display_gpio_t;
 
 /**
@@ -87,12 +87,6 @@ void display_init(void);
  * Re-initializing the display will turn it back on via display reset.
  */
 void display_sleep(void);
-
-/**
- * Clear the display. Not paged and doesn't use the buffer,
- * so it shouldn't be used in a page loop.
- */
-void display_clear(disp_color_t color);
 
 /**
  * Turn the display on or off.
@@ -124,6 +118,26 @@ uint8_t display_get_contrast(void);
  * Set the display GPIO mode.
  */
 void display_set_gpio(display_gpio_t mode);
+
+/**
+ * Set D/C pin for display.
+ */
+void display_set_dc(void);
+
+/**
+ * Clear D/C pin for display.
+ */
+void display_clear_dc(void);
+
+/**
+ * Set reset pin for display.
+ */
+void display_set_reset(void);
+
+/**
+ * Clear reset pin for display.
+ */
+void display_clear_reset(void);
 
 /**
  * Start updating display with the first page.

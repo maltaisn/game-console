@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-#include <sys/display.h>
 #include <sim/display.h>
+#include <sim/time.h>
+
+#include <sys/display.h>
 
 #include <core/trace.h>
 
@@ -55,8 +57,6 @@ void display_init(void) {
     disp_contrast = DISPLAY_DEFAULT_CONTRAST;
     disp_gpio_mode = DISPLAY_GPIO_OUTPUT_LO;
 
-    display_clear(DISPLAY_COLOR_BLACK);
-
     disp_data_ptr = 0;
 
     pthread_mutex_init(&display_mutex, 0);
@@ -64,10 +64,6 @@ void display_init(void) {
 
 void display_sleep(void) {
     disp_internal_vdd_enabled = false;
-}
-
-void display_clear(disp_color_t color) {
-    memset(disp_data, color | color << 4, DISPLAY_SIZE);
 }
 
 void display_set_enabled(bool enabled) {
@@ -92,6 +88,22 @@ uint8_t display_get_contrast(void) {
 
 void display_set_gpio(display_gpio_t mode) {
     disp_gpio_mode = mode;
+}
+
+void display_set_dc(void) {
+    // no-op
+}
+
+void display_clear_dc(void) {
+    // no-op
+}
+
+void display_set_reset(void) {
+    // no-op
+}
+
+void display_clear_reset(void) {
+    // no-op
 }
 
 void display_first_page(void) {
@@ -133,6 +145,10 @@ bool display_next_page(void) {
         ++guard_byte;
 
         pthread_mutex_unlock(&display_mutex);
+
+        // sleep to simulate update delay
+        // maximum FPS on game console is about 50
+        time_sleep(20000);
     }
     return has_next_page;
 }

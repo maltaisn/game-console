@@ -24,32 +24,55 @@
 #include <sim/time.h>
 #include <sim/sound.h>
 
-#include <GL/glut.h>
+#include <pthread.h>
+#include <math.h>
 
-static bool rtc_enabled = false;
-static bool power_monitor_enabled = false;
+#define SYSTICK_RATE (1.0 / SYSTICK_FREQUENCY)
+#define POWER_MONITOR_RATE 1.0
 
-static void callback_time_timer(int arg) {
-    glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
-    if (rtc_enabled) {
-        time_update();
+static bool rtc_enabled;
+static bool power_monitor_enabled;
+
+static double last_time_update;
+static double last_power_monitor_update;
+
+static void* callback_systick(void* arg) {
+    while (true) {
+        const double time = time_sim_get();
+
+        // RTC update
+        // Of course the OS can't keep up at the 256 Hz rate, make up for any missed updates
+        // by calling time_update() multiple times.
+        long systick_elapsed = (long) ((time - last_time_update) / SYSTICK_RATE);
+        if (systick_elapsed > 10) {
+            // If 10 updates were missed it's probably not normal, do a single update.
+            systick_elapsed = 1;
+            last_time_update = time - SYSTICK_RATE;
+        }
+        while (systick_elapsed--) {
+            if (rtc_enabled) {
+                time_update();
+            }
+            last_time_update += SYSTICK_RATE;
+        }
+
+        // Power monitor update
+        if (time - last_power_monitor_update >= POWER_MONITOR_RATE) {
+            if (power_monitor_enabled) {
+                power_monitor_update();
+            }
+            last_power_monitor_update = time;
+        }
+        time_sleep(500);
     }
-}
-
-static void callback_power_monitor(int arg) {
-    glutTimerFunc(1000, callback_power_monitor, 0);
-    if (power_monitor_enabled) {
-        power_monitor_update();
-    }
+    return 0;
 }
 
 void init(void) {
     init_wakeup();
 
-    // this gives a 4 ms timer which is not terribly accurate (should be 3.91 ms) but will
-    // work fine for the simulator purposes.
-    glutTimerFunc((unsigned int) (1000.0 / SYSTICK_FREQUENCY + 0.5), callback_time_timer, 0);
-    glutTimerFunc(1000, callback_power_monitor, 0);
+    pthread_t thread;
+    pthread_create(&thread, NULL, callback_systick, NULL);
 }
 
 void init_sleep(void) {
@@ -68,11 +91,13 @@ void init_sleep(void) {
 
 void init_wakeup(void) {
     rtc_enabled = true;
+    last_time_update = time_sim_get();
 
     // check battery level on startup
     power_start_sampling();
     power_wait_for_sample();
     power_schedule_sleep_if_low_battery(false);
+    last_power_monitor_update = time_sim_get();
     power_monitor_enabled = true;
 
     // initialize display

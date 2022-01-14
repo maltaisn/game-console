@@ -26,17 +26,23 @@
 #include <sys/time.h>
 #include <sys/spi.h>
 #include <sys/reset.h>
+#include <sys/display.h>
 
 #ifdef SIMULATION
 #include <stdio.h>
 #include <memory.h>
 #endif
 
-typedef enum {
+enum {
     SPI_CS_FLASH = 0b00,
     SPI_CS_EEPROM = 0b01,
     SPI_CS_DISPLAY = 0b10,
-} spi_cs_sel_t;
+};
+
+enum {
+    IO_DISP_DC = 1 << 0,
+    IO_DISP_RES = 1 << 1,
+};
 
 // TODO eventually, put this in the same data space as display buffer since
 //  both aren't used at the same time, using linker script.
@@ -93,6 +99,20 @@ static void handle_packet_spi(uint8_t length) {
     }
 }
 
+static void handle_packet_io(void) {
+    const uint8_t command = comm_payload_buf[0];
+    if (command & IO_DISP_DC) {
+        display_set_dc();
+    } else {
+        display_clear_dc();
+    }
+    if (command & IO_DISP_RES) {
+        display_set_reset();
+    } else {
+        display_clear_reset();
+    }
+}
+
 static void handle_packet_time(void) {
     const systime_t time = time_get();
     comm_payload_buf[0] = time & 0xff;
@@ -122,7 +142,7 @@ static void handle_packet_reset(void) {
 }
 
 static void handle_packet_sleep(void) {
-    power_enable_sleep();
+    power_schedule_sleep(SLEEP_CAUSE_REMOTE, false, false);
 }
 
 void comm_receive(void) {
@@ -147,6 +167,8 @@ void comm_receive(void) {
         handle_packet_input();
     } else if (type == PACKET_SPI) {
         handle_packet_spi(length);
+    } else if (type == PACKET_IO) {
+        handle_packet_io();
     } else if (type == PACKET_TIME) {
         handle_packet_time();
     } else if (type == PACKET_FAST_MODE) {

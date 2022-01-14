@@ -17,6 +17,7 @@
 
 #include <sim/power.h>
 #include <sim/sound.h>
+#include <sim/time.h>
 
 #include <sys/power.h>
 #include <sys/display.h>
@@ -28,7 +29,7 @@
 
 #include <stdio.h>
 #include <stdatomic.h>
-#include <time.h>
+#include "sys/led.h"
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300
@@ -166,8 +167,7 @@ void power_enable_sleep(void) {
     trace("sleep enabled");
     while (sleeping || !sleep_allow_wakeup) {
         // sleep thread for 100 ms, better than busy loop.
-        struct timespec remaining, request = {0, 100000000};
-        nanosleep(&request, &remaining);
+        time_sleep(100000);
     }
 
     // --> wake-up from sleep

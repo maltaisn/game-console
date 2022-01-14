@@ -17,18 +17,24 @@
 #include <sim/time.h>
 #include <sys/time.h>
 
-#include <time.h>
 #include <sys/input.h>
 #include <core/sound.h>
 #include <sim/power.h>
 
+#include <time.h>
+#include <math.h>
+
 #define SYSTICK_MAX 0xffffff
 
-static clock_t start_time;
+static struct timespec start_time;
+
+static double get_elapsed_time(const struct timespec* start, const struct timespec* end) {
+    return (double) (end->tv_sec - start->tv_sec) +
+           (double) (end->tv_nsec - start->tv_nsec) / 1e9;
+}
 
 void time_init(void) {
-    const clock_t time = clock();
-    start_time = time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
 }
 
 void time_update(void) {
@@ -37,6 +43,16 @@ void time_update(void) {
 }
 
 systime_t time_get() {
-    return (systime_t) ((double) (clock() - start_time) /
-                        CLOCKS_PER_SEC * SYSTICK_FREQUENCY) & SYSTICK_MAX;
+    return (systime_t) (lround(time_sim_get() * SYSTICK_FREQUENCY)) & SYSTICK_MAX;
+}
+
+double time_sim_get(void) {
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    return get_elapsed_time(&start_time, &time);
+}
+
+void time_sleep(long us) {
+    struct timespec remaining, request = {0, us * 1000};
+    nanosleep(&request, &remaining);
 }

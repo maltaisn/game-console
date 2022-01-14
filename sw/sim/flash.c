@@ -50,18 +50,18 @@ const uint8_t* flash_at(flash_t address) {
     return &flash[address];
 }
 
-void flash_load(size_t length, const uint8_t data[static length]) {
+void flash_load(flash_t address, size_t length, const uint8_t data[static length]) {
     if (length > FLASH_SIZE) {
         length = FLASH_SIZE;
     }
-    memcpy(flash, data, length);
+    memcpy(flash + address, data, length);
 }
 
-void flash_load_file(FILE* file) {
+void flash_load_file(flash_t address, FILE* file) {
     if (!file || ferror(file)) {
         return;
     }
-    uint8_t* ptr = flash;
+    uint8_t* ptr = flash + address;
     while (true) {
         size_t n = READ_BUFFER_SIZE;
         if (ptr + n >= flash + FLASH_SIZE) {

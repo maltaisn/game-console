@@ -20,6 +20,8 @@
 #ifndef SIM_TIME_H
 #define SIM_TIME_H
 
+#include <time.h>
+
 /**
  * Initialize time module.
  */
@@ -29,6 +31,16 @@ void time_init(void);
  * Do the things normally done in periodic RTC interrupt.
  */
 void time_update(void);
+
+/**
+ * Return time elapsed since start of simulation, in seconds.
+ */
+double time_sim_get(void);
+
+/**
+ * Sleep thread for a number of us.
+ */
+void time_sleep(long us);
 
 #endif //SIM_TIME_H
 

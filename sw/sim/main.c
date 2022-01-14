@@ -50,8 +50,7 @@ static void* loop_thread(void* arg) {
         }
 
         // 1 ms sleep (fixes responsiveness issues with keyboard input)
-        struct timespec remaining, request = {0, 1000000};
-        nanosleep(&request, &remaining);
+        time_sleep(1000);
     }
     return 0;
 }
@@ -59,9 +58,9 @@ static void* loop_thread(void* arg) {
 int main(int argc, char** argv) {
     // == simulator initialization
     // initialize memories as initially empty; they can be loaded from a file later.
+    time_init();
     eeprom_load_erased();
     flash_load_erased();
-    time_init();
     sound_init();
 
     glutInit(&argc, argv);

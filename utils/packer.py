@@ -71,7 +71,7 @@ class ImagePackResult(PackResult):
         s += ("1-bit" if d.binary else "4-bit") + ", "
         if d.indexed:
             s += f"indexed every {d.index.granularity} rows, " \
-                 f"max {max(d.index.entries[1:])} bytes between rows"
+                 f"max {max(d.index.entries[1:])} bytes between entries"
         else:
             s += f"not indexed"
         return s
@@ -173,6 +173,9 @@ class SoundObject(FileObject):
         except sound_gen.EncodeError as e:
             raise PackError(f"encoding error: {e}")
         return SoundPackResult(data, sound_data)
+
+    def is_in_unified_data_space(self) -> bool:
+        return True
 
 
 @dataclass
@@ -730,6 +733,10 @@ class Packer:
             self._error("source file must have .c extension")
 
         gen = CodeGenerator()
+
+        if self.offset != 0:
+            gen.add_separator()
+            gen.add_define(f"{prefix.upper()}_OFFSET", self.offset, is_hex=True)
 
         objects_by_group: Dict[str, List[Tuple[int, DataObject]]] = {}
         for i, obj in enumerate(self.objects):

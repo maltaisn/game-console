@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +15,14 @@
  * limitations under the License.
  */
 
-#include <sys/reset.h>
-#include <sys/uart.h>
+#ifndef SYS_ATOMIC_H
+#define SYS_ATOMIC_H
 
-#include <avr/io.h>
+#ifdef SIMULATION
+#define ATOMIC_BLOCK_FORCEON
+#else
+#include <util/atomic.h>
+#define ATOMIC_BLOCK_FORCEON ATOMIC_BLOCK(ATOMIC_FORCEON)
+#endif
 
-void reset_system(void) {
-    // trigger software reset
-    _PROTECTED_WRITE(RSTCTRL.SWRR, RSTCTRL_SWRE_bm);
-    __builtin_unreachable();
-}
+#endif //SYS_ATOMIC_H

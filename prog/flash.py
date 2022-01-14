@@ -66,7 +66,7 @@ class FlashDriver(MemoryDriver):
         spi.peripheral = SpiPeripheral.FLASH
         self.spi = spi
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset device and verify manufacturer ID."""
         self._wait_ready()
         self.spi.transceive([INSTR_RESET_ENABLE])

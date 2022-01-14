@@ -71,6 +71,14 @@
  *      otherwise there might be two CS lines asserted on the next transfer!
  * [1..n]: SPI data
  *
+ * IO: use I/O pins
+ * - RX payload:
+ * [0]: output pins state.
+ *     - [0]: display D/C pin
+ *     - [1]: display RESET pin
+ *     - others: unused
+ * - TX payload: none
+ *
  * TIME: get system time
  * - RX payload: empty
  * - TX payload:
@@ -105,11 +113,12 @@ typedef enum {
     PACKET_LED = 0x02,
     PACKET_INPUT = 0x03,
     PACKET_SPI = 0x04,
-    PACKET_TIME = 0x05,
-    PACKET_FAST_MODE = 0x06,
-    PACKET_DEBUG = 0x07,
-    PACKET_RESET = 0x08,
-    PACKET_SLEEP = 0x09,
+    PACKET_IO = 0x05,
+    PACKET_TIME = 0x06,
+    PACKET_FAST_MODE = 0x07,
+    PACKET_DEBUG = 0x08,
+    PACKET_RESET = 0x09,
+    PACKET_SLEEP = 0x0a,
 } packet_type_t;
 
 /**
