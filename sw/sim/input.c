@@ -21,6 +21,7 @@
 #include <sys/power.h>
 
 #include <sim/power.h>
+#include <sim/display.h>
 
 #include <core/trace.h>
 
@@ -42,6 +43,13 @@ static void reset_inactive_countdown(void) {
     }
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
     power_schedule_sleep_cancel();
+}
+
+static void save_display(void) {
+    FILE* file = fopen("screenshot.png", "wb");
+    display_save(file);
+    fclose(file);
+    trace("screenshot saved to 'screenshot.png'");
 }
 
 static uint8_t get_key_state_mask(unsigned int key) {
@@ -83,6 +91,10 @@ static void on_input_change(void) {
 static void input_on_key_down(unsigned char key, int x, int y) {
     state |= get_key_state_mask(key);
     on_input_change();
+
+    if (key == 'p') {
+        save_display();
+    }
 }
 
 static void input_on_key_up(unsigned char key, int x, int y) {

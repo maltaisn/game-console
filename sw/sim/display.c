@@ -22,8 +22,9 @@
 #include <core/trace.h>
 
 #include <memory.h>
-#include <GL/glut.h>
 #include <stdio.h>
+#include <GL/glut.h>
+#include <png.h>
 
 #define GUARD_SIZE 8192
 
@@ -203,4 +204,35 @@ void display_draw(void) {
     }
     pthread_mutex_unlock(&display_mutex);
     glPopMatrix();
+}
+
+void display_save(FILE* file) {
+    if (!file) {
+        return;
+    }
+
+    pthread_mutex_lock(&display_mutex);
+
+    // libpng requires data to be in reverse order vs. what is stored.
+    // the most significant nibble comes first.
+    png_byte image[DISPLAY_SIZE];
+    for (size_t i = 0; i < DISPLAY_SIZE; ++i) {
+        image[i] = disp_data[i] << 4 | disp_data[i] >> 4;
+    }
+    png_bytep row_pointers[DISPLAY_HEIGHT];
+    for (size_t i = 0; i < DISPLAY_HEIGHT; ++i) {
+        row_pointers[i] = (png_bytep) &image[DISPLAY_NUM_COLS * i];
+    }
+
+    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+    png_infop info_ptr = png_create_info_struct(png_ptr);
+    png_init_io(png_ptr, file);
+    png_set_IHDR(png_ptr, info_ptr, DISPLAY_WIDTH, DISPLAY_HEIGHT, 4, PNG_COLOR_TYPE_GRAY,
+                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_COMPRESSION_TYPE_DEFAULT);
+    png_write_info(png_ptr, info_ptr);
+    png_write_image(png_ptr, row_pointers);
+    png_write_end(png_ptr, info_ptr);
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+
+    pthread_mutex_unlock(&display_mutex);
 }

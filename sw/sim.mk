@@ -6,7 +6,7 @@ include common.mk
 
 CC := gcc
 
-LIBS += glut pthread portaudio m
+LIBS += m glut pthread portaudio png
 
 DEFINES += SIMULATION
 

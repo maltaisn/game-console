@@ -26,6 +26,7 @@
 #include <stdbool.h>
 
 #include <pthread.h>
+#include <stdio.h>
 
 #define DISPLAY_COLOR_R 1.0f
 #define DISPLAY_COLOR_G 1.0f
@@ -45,6 +46,11 @@ extern pthread_mutex_t display_mutex;
  * Draw the display on a frame where each pixel is 1x1.
  */
 void display_draw(void);
+
+/**
+ * Print screen and save to PNG file.
+ */
+void display_save(FILE* file);
 
 #endif //SIM_DISPLAY_H
 

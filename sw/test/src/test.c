@@ -41,7 +41,7 @@ static uint8_t last_input;
 
 void setup(void) {
 #ifdef SIMULATION
-    FILE* file = fopen("assets.dat", "r");
+    FILE* file = fopen("assets.dat", "rb");
     flash_load_file(0, file);
     fclose(file);
 #endif

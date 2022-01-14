@@ -60,7 +60,7 @@ void setup(void) {
     flash_load_file(flash);
     fclose(flash);
 
-    FILE* eeprom = fopen("eeprom.dat", "r");
+    FILE* eeprom = fopen("eeprom.dat", "rb");
     if (eeprom) {
         eeprom_load_file(eeprom);
         fclose(eeprom);
@@ -466,7 +466,7 @@ void save_to_eeprom(void) {
     eeprom_write(0, buf - buf_start, buf_start);
 
 #ifdef SIMULATION
-    FILE* eeprom = fopen("eeprom.dat", "w");
+    FILE* eeprom = fopen("eeprom.dat", "wb");
     eeprom_save(eeprom);
     fclose(eeprom);
 #endif
