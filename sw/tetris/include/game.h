@@ -23,8 +23,11 @@
 #include <stdbool.h>
 
 // display frames per second
-//#define DISPLAY_FPS 8
-#define DISPLAY_FPS 24  // for debugging
+#ifdef SIMULATION
+#define DISPLAY_FPS 24  // faster for debugging
+#else
+#define DISPLAY_FPS 8
+#endif
 
 // Keybindings, can be a single button or two buttons
 #define BUTTON_LEFT      (BUTTON1)
@@ -35,7 +38,6 @@
 #define BUTTON_HOLD      (BUTTON2)
 #define BUTTON_HARD_DROP (BUTTON1 | BUTTON5)
 #define BUTTON_PAUSE     (BUTTON0 | BUTTON4)
-
 
 // Buttons for which delayed auto-shift is enabled.
 #define DAS_MASK         (BUTTON1 | BUTTON3 | BUTTON5)
@@ -92,8 +94,6 @@ typedef struct {
     uint8_t version_major;
     uint8_t version_minor;
 } game_header_t;
-
-extern const game_header_t GAME_HEADER;
 
 typedef struct {
     uint8_t features;

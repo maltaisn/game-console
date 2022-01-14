@@ -52,7 +52,8 @@ static uint8_t button_hold_time[BUTTONS_COUNT];
 // mask indicating for which buttons DAS is currently enabled.
 static uint8_t delayed_auto_shift;
 
-const game_header_t GAME_HEADER = (game_header_t) {0xa5, GAME_VERSION_MAJOR, GAME_VERSION_MINOR};
+static const game_header_t GAME_HEADER = (game_header_t)
+        {0xa5, GAME_VERSION_MAJOR, GAME_VERSION_MINOR};
 
 void setup(void) {
 #ifdef SIMULATION
@@ -66,6 +67,15 @@ void setup(void) {
         fclose(eeprom);
     }
 #endif
+
+    // check header in flash to make sure flash has been written
+    uint8_t header[3];
+    flash_read(ASSET_RAW_HEADER, sizeof GAME_HEADER, header);
+    if (memcmp(header, &GAME_HEADER, sizeof GAME_HEADER)) {
+        // wrong header, don't start game.
+        led_set();
+        for (;;);
+    }
 
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
 
@@ -358,7 +368,7 @@ game_state_t save_highscore(void) {
 }
 
 void update_display_contrast(uint8_t value) {
-    display_set_contrast(value * 20);
+    display_set_contrast(value * 15);
 }
 
 void save_options(void) {

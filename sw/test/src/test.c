@@ -33,33 +33,13 @@
 
 #include <stdio.h>
 
-#define FPS 5
-
-static bool dialog_shown;
-
-static uint8_t last_input;
-
 void setup(void) {
 #ifdef SIMULATION
     FILE* file = fopen("assets.dat", "rb");
     flash_load_file(0, file);
     fclose(file);
 #endif
-
-    dialog_init_centered(108, 88);
-    dialog_set_font(ASSET_FONT_FONT7X7, ASSET_FONT_FONT5X7, ASSET_FONT_FONT3X5);
-    dialog.flags |= DIALOG_FLAG_DISMISSABLE;
-    dialog.title = "GAME OPTIONS";
-    dialog.pos_btn = "OK";
-    dialog.neg_btn = "CANCEL";
-    dialog.pos_result = 0;
-    dialog.neg_result = 1;
-    dialog.selection = DIALOG_SELECTION_POS;
-    dialog_add_item_number("CONTRAST", 0, 10, 10, 7);
-    dialog_add_item_button("New game", 2);
-    dialog_add_item_button("Main menu", 3);
-    static const char* GAME_MODES[] = {"Easy", "Normal", "Hard"};
-    dialog_add_item_choice("GAME", 1, 3, GAME_MODES);
+    graphics_set_font(ASSET_FONT_FONT7X7);
 }
 
 static void draw(void) {
@@ -69,28 +49,23 @@ static void draw(void) {
         return;
     }
 
-    graphics_clear(DISPLAY_COLOR_BLACK);
-    if (dialog_shown) {
-        dialog_draw();
-    }
+    graphics_clear(DISPLAY_COLOR_WHITE);
+    char buf[4];
+    sprintf(buf, "%d", display_get_contrast());
+    graphics_text(10, 10, buf);
 }
 
 void loop(void) {
+    systime_t time = time_get();
+    while (time_get() - time < millis_to_ticks(20));
+
     // input
     uint8_t state = input_get_state();
-    if (dialog_shown) {
-        dialog_result_t result = dialog_handle_input(last_input, state);
-        if (result != DIALOG_RESULT_NONE) {
-            dialog_shown = false;
-            trace("dialog result = %d", result);
-        }
-    } else {
-        uint8_t clicked = state & ~last_input;
-        if (clicked & BUTTON0) {
-            dialog_shown = true;
-        }
+    if (state & BUTTON0) {
+        display_set_contrast(display_get_contrast() + 1);
+    } else if (state & BUTTON1) {
+        display_set_contrast(display_get_contrast() - 1);
     }
-    last_input = input_get_state();
 
     // drawing
     display_first_page();

@@ -2,6 +2,8 @@
 
 from packer import Packer, ArrayType
 
+game_version = [0, 1]
+
 tempo = 120
 
 p = Packer(assets_directory="tetris/assets")
@@ -9,9 +11,7 @@ p = Packer(assets_directory="tetris/assets")
 p.sound("music.mid", tempo=tempo, channels={0, 1}, merge_midi_tracks=True)
 
 # images
-p.set_array_options("tile", ArrayType.REGULAR)
-for piece in ["i", "j", "l", "o", "s", "t", "z", "ghost"]:
-    p.image(f"tile-{piece}.png", "tile")
+p.image(f"tile-ghost.png")
 
 # fonts
 p.font("font5x7.png", "font", name="5x7", glyph_width=5, glyph_height=7)

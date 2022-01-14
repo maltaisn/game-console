@@ -32,6 +32,36 @@
 #define TILE_WIDTH 6
 #define TILE_HEIGHT 6
 
+// outer color, inner color, tile I to Z
+static const disp_color_t TILE_COLORS[] = {
+        15, 1,  // I
+        4,  1,  // J
+        7,  10, // L
+        10, 7,  // O
+        6,  1,  // S
+        15, 12, // T
+        12, 15, // Z
+};
+
+static void draw_tile_block(disp_x_t x, disp_y_t y, tetris_piece piece) {
+    if (piece == TETRIS_PIECE_GHOST) {
+        graphics_set_color(6);
+        graphics_image(ASSET_IMAGE_TILE_GHOST, x, y);
+    } else {
+        graphics_set_color(TILE_COLORS[piece * 2]);
+        graphics_fill_rect(x, y, TILE_WIDTH, TILE_HEIGHT);
+        graphics_set_color(TILE_COLORS[piece * 2 + 1]);
+        graphics_rect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2);
+    }
+}
+
+static void draw_tile_block_part(disp_x_t x, tetris_piece piece) {
+    graphics_set_color(TILE_COLORS[piece * 2]);
+    graphics_fill_rect(x, 0, TILE_WIDTH, 2);
+    graphics_set_color(TILE_COLORS[piece * 2 + 1]);
+    graphics_hline(x + 1, x + TILE_WIDTH - 2, 0);
+}
+
 /**
  * Draw a centered piece in a 24x12 rectangle with the top left corner at (x, y).
  */
@@ -56,7 +86,7 @@ static void draw_centered_piece_at(disp_x_t x, disp_y_t y, tetris_piece piece) {
         uint8_t block = piece_data[i];
         disp_x_t px = x + (block >> 4) * TILE_WIDTH;
         disp_y_t py = y + (PIECE_GRID_SIZE - (block & 0xf) - 1) * TILE_HEIGHT;
-        graphics_image(ASSET_TILE(piece), px, py);
+        draw_tile_block(px, py, piece);
     }
 }
 
@@ -179,13 +209,13 @@ static void draw_game(void) {
             block_y -= TILE_HEIGHT;
             piece = *grid_ptr++;
             if (piece != TETRIS_PIECE_NONE) {
-                graphics_image(ASSET_TILE(piece), block_x, block_y);
+                draw_tile_block(block_x, block_y, piece);
             }
         }
         // row 21 (only partly shown)
         piece = *grid_ptr++;
         if (piece != TETRIS_PIECE_NONE) {
-            graphics_image_region(ASSET_TILE(piece), block_x, 0, 0, 4, TILE_WIDTH - 1, 5);
+            draw_tile_block_part(block_x, piece);
         }
         block_x += TILE_WIDTH;
     }
