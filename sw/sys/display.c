@@ -159,19 +159,31 @@ void display_set_contrast(uint8_t contrast) {
     display_set_contrast_internal(contrast);
 }
 
+uint8_t display_get_contrast(void) {
+    return display_contrast;
+}
+
 void display_set_dimmed(bool dimmed) {
     uint8_t contrast = display_contrast;
     if (dimmed) {
-        if (display_state & STATE_DIMMED) {
+        if (display_is_dimmed()) {
             // already dimmed
             return;
         }
         contrast /= 2;
-    } else if (!(display_contrast & STATE_DIMMED)) {
-        // already not dimmed.
-        return;
+        display_state |= STATE_DIMMED;
+    } else {
+        if (!display_is_dimmed()) {
+            // already not dimmed.
+            return;
+        }
+        display_state &= ~STATE_DIMMED;
     }
     display_set_contrast_internal(contrast);
+}
+
+bool display_is_dimmed(void) {
+    return (display_state & STATE_DIMMED) != 0;
 }
 
 void display_set_gpio(display_gpio_t mode) {

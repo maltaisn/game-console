@@ -83,6 +83,10 @@ void display_set_dimmed(bool dimmed) {
     disp_dimmed = dimmed;
 }
 
+bool display_is_dimmed(void) {
+    return disp_dimmed;
+}
+
 uint8_t display_get_contrast(void) {
     return disp_contrast;
 }

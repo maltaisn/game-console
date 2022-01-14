@@ -53,6 +53,12 @@ uint8_t input_get_state_immediate(void);
 void input_update_state(void);
 
 /**
+ * Dim or undim screen depending on inactivity countdown value.
+ * Must not be called within an interrupt.
+ */
+void input_dim_if_inactive(void);
+
+/**
  * Reset inactivity countdown timer and undim screen.
  */
 void input_reset_inactivity(void);

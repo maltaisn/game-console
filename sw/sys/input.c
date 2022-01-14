@@ -40,10 +40,6 @@ static uint8_t inactive_countdown;
 
 ISR(PORTD_PORT_vect) {
     VPORTD.INTFLAGS = BUTTONS_ALL;
-    if (inactive_countdown <= INACTIVITY_COUNTDOWN_DIM) {
-        // screen was dimmed, reset contrast.
-        display_set_dimmed(false);
-    }
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
     power_schedule_sleep_cancel();
 }
@@ -71,10 +67,15 @@ void input_update_state(void) {
     }
 }
 
+void input_dim_if_inactive(void) {
+#ifndef DISABLE_INACTIVE_SLEEP
+    display_set_dimmed(inactive_countdown <= INACTIVITY_COUNTDOWN_DIM);
+#endif
+}
+
 void input_reset_inactivity(void) {
 #ifndef DISABLE_INACTIVE_SLEEP
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
-    display_set_dimmed(false);
 #endif
 }
 
@@ -84,9 +85,6 @@ void input_update_inactivity(void) {
         power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
     } else {
         --inactive_countdown;
-        if (inactive_countdown == INACTIVITY_COUNTDOWN_DIM) {
-            display_set_dimmed(true);
-        }
     }
 #endif
 }

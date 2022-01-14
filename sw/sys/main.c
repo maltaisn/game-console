@@ -17,6 +17,7 @@
 #include <sys/main.h>
 #include <sys/init.h>
 #include <sys/power.h>
+#include <sys/input.h>
 
 #include <core/comm.h>
 #include <core/sound.h>
@@ -31,6 +32,7 @@ int main(void) {
         comm_receive();
 #endif
         sound_fill_track_buffers();
+        input_dim_if_inactive();
 
         bool is_sleep_due = power_is_sleep_due();
 

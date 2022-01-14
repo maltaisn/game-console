@@ -17,6 +17,7 @@
 #include <sys/main.h>
 #include <sys/power.h>
 #include <sys/init.h>
+#include <sys/input.h>
 
 #include <sim/time.h>
 #include <sim/glut.h>
@@ -40,6 +41,7 @@ static void* loop_thread(void* arg) {
         comm_receive();
 #endif
         sound_fill_track_buffers();
+        input_dim_if_inactive();
 
         bool is_sleep_due = power_is_sleep_due();
 

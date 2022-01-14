@@ -26,6 +26,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include <util/delay.h>
 #include "sys/reset.h"
 
 #define RTC_ENABLE() (RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm)
@@ -33,6 +34,8 @@
 
 #define PIT_ENABLE() (RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm)
 #define PIT_DISABLE() (RTC.PITCTRLA = 0)
+
+#define ADC_ENABLE() (ADC0.CTRLA = ADC_RESSEL_10BIT_gc | ADC_ENABLE_bm)
 
 static void init_registers(void) {
     // ====== CLOCK =====
@@ -54,6 +57,7 @@ static void init_registers(void) {
     spi_deselect_all();
 
 #ifndef DISABLE_INACTIVE_SLEEP
+    // note: both edges is needed for asynchronous sensing, needed to wake up from deep power down.
     PORTD.PIN0CTRL = PORT_ISC_BOTHEDGES_gc;
     PORTD.PIN1CTRL = PORT_ISC_BOTHEDGES_gc;
     PORTD.PIN2CTRL = PORT_ISC_BOTHEDGES_gc;
@@ -113,7 +117,6 @@ static void init_registers(void) {
     ADC0.CTRLB = ADC_SAMPNUM_ACC64_gc;
     ADC0.CTRLC = ADC_SAMPCAP_bm | ADC_REFSEL_INTREF_gc | ADC_PRESC_DIV128_gc;
     ADC0.INTCTRL = ADC_RESRDY_bm;
-    ADC0.CTRLA = ADC_RESSEL_10BIT_gc | ADC_ENABLE_bm;
 
     // === SLEEP ===
     sleep_enable();
@@ -134,6 +137,9 @@ void init(void) {
     uint8_t reset_flags = RSTCTRL.RSTFR;
     if (reset_flags == 0) {
         // dirty reset, reset cleanly.
+        VPORTC.DIR |= PIN0_bm;
+        VPORTC.OUT |= PIN0_bm;
+        _delay_ms(1000);
         reset_system();
     }
     RSTCTRL.RSTFR = reset_flags;
@@ -151,15 +157,14 @@ void init_sleep(void) {
     display_set_enabled(false);
     display_sleep();
     sound_set_output_enabled(false);
+    power_end_sampling();
     flash_sleep();
     led_clear();
 }
 
 void init_wakeup(void) {
-    while (RTC.STATUS != 0);
-    RTC_ENABLE();
-
     // check battery level on startup
+    ADC_ENABLE();
     power_start_sampling();
     power_wait_for_sample();
     power_schedule_sleep_if_low_battery(false);
@@ -173,4 +178,7 @@ void init_wakeup(void) {
     input_reset_inactivity();
 
     flash_wakeup();
+
+    while (RTC.STATUS & RTC_CTRLABUSY_bm);
+    RTC_ENABLE();
 }

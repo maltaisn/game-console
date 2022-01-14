@@ -65,6 +65,11 @@ typedef enum {
 void power_start_sampling(void);
 
 /**
+ * End current sampling, if started.
+ */
+void power_end_sampling(void);
+
+/**
  * Wait until battery sample is ready.
  */
 void power_wait_for_sample(void);

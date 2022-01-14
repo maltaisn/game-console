@@ -26,6 +26,7 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <util/atomic.h>
+#include "sys/led.h"
 
 #define MUXPOS_CHARGE_STATUS ADC_MUXPOS_AIN7_gc
 #define MUXPOS_VBAT_LEVEL ADC_MUXPOS_AIN6_gc
@@ -152,6 +153,12 @@ void power_start_sampling(void) {
     }
 }
 
+void power_end_sampling(void) {
+    if (sampler_state != STATE_DONE) {
+        sampler_state = STATE_DONE;
+    }
+}
+
 void power_wait_for_sample(void) {
     while (sampler_state != STATE_DONE);
 }
@@ -251,7 +258,7 @@ void power_schedule_sleep_if_low_battery(bool countdown) {
 
 void power_schedule_sleep_cancel(void) {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-        power_state &= ~STATE_SLEEP_SCHEDULED;
+        power_state &= ~(STATE_SLEEP_SCHEDULED | STATE_SLEEP_ALLOW_WAKEUP);
     }
     sleep_cause = SLEEP_CAUSE_NONE;
 }
@@ -266,14 +273,16 @@ bool power_is_sleep_due(void) {
 
 void power_enable_sleep(void) {
     power_callback_sleep();
-    power_schedule_sleep_cancel();
 
     // go to sleep
     init_sleep();
     if (!(power_state & STATE_SLEEP_ALLOW_WAKEUP)) {
         cli();
     }
+    power_schedule_sleep_cancel();
+    led_set();
     sleep_cpu();
+    led_clear();
 
     // --> wake-up from sleep
     // reset power state because some time may have passed since device was put to sleep.

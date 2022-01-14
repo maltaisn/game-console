@@ -62,6 +62,10 @@ void power_start_sampling(void) {
     // no-op
 }
 
+void power_end_sampling(void) {
+    // no-op
+}
+
 void power_wait_for_sample(void) {
     // no-op
 }

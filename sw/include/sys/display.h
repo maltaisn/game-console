@@ -110,6 +110,11 @@ void display_set_contrast(uint8_t contrast);
 void display_set_dimmed(bool dimmed);
 
 /**
+ * Returns true if display is currently dimmed.
+ */
+bool display_is_dimmed(void);
+
+/**
  * Get the display contrast.
  */
 uint8_t display_get_contrast(void);
