@@ -209,6 +209,8 @@ class TrackData:
 class SoundData:
     tracks: List[TrackData] = field(default_factory=list)
 
+    SIGNATURE = 0xf2
+
     SOUND_END = 0xff
     CHANNELS_COUNT = 3
 
@@ -221,6 +223,7 @@ class SoundData:
             raise EncodeError("tracks must be unique")
 
         b = bytearray()
+        b.append(SoundData.SIGNATURE)
         for track in self.tracks:
             if len(track.notes) > 0:
                 b += track.encode()

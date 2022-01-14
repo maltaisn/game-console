@@ -285,6 +285,7 @@ void power_enable_sleep(void) {
     // --> wake-up from sleep
     // reset power state because some time may have passed since device was put to sleep.
     battery_status = BATTERY_UNKNOWN;
+    battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
     init_wakeup();
     power_callback_wakeup();
 }

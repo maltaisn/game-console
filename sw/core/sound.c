@@ -20,6 +20,8 @@
 
 #include <sys/data.h>
 
+#define SOUND_SIGNATURE 0xf2
+
 #define TRACK_DATA_END_MASK ((flash_t) 0x800000)
 
 #define IMMEDIATE_PAUSE_OFFSET 0x55
@@ -50,7 +52,9 @@
 #define TRACK2_ACTIVE (TRACK2_STARTED | TRACK2_PLAYING)
 
 #ifdef SIMULATION
+
 #include <pthread.h>
+
 static pthread_mutex_t sound_mutex;
 #define ATOMIC_BLOCK_IMPL
 #define lock_sound_mutex() pthread_mutex_lock(&sound_mutex)
@@ -245,6 +249,13 @@ void sound_fill_track_buffers(void) {
 
 void sound_load(sound_t address) {
     lock_sound_mutex();
+    uint8_t signature;
+    data_read(address, 1, &signature);
+    if (signature != SOUND_SIGNATURE) {
+        trace("invalid sound signature");
+        return;
+    }
+    ++address;
     ATOMIC_BLOCK_IMPL {
         uint8_t header[TRACK_HEADER_SIZE];
         uint8_t track_playing_mask = TRACK0_PLAYING;
@@ -274,8 +285,8 @@ void sound_load(sound_t address) {
         }
 #ifdef RUNTIME_CHECKS
         if (new_tracks_on == 0) {
-        trace("loaded sound data has no tracks");
-    }
+            trace("loaded sound data has no tracks");
+        }
 #endif
         tracks_on |= new_tracks_on;
     }
@@ -287,6 +298,7 @@ void sound_start(uint8_t t) {
 #ifdef RUNTIME_CHECKS
     if ((t & ~TRACKS_STARTED_ALL) != 0) {
         trace("invalid track start flags");
+        return;
     }
 #endif
     lock_sound_mutex();

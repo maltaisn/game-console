@@ -89,6 +89,8 @@ class FontData:
     max_offset: int = field(default=-1)
     offset_bits: int = field(default=0)
 
+    SIGNATURE = 0xf0
+
     GLYPH_WIDTH_RANGE = range(1, 17)
     GLYPH_HEIGHT_RANGE = range(1, 17)
     MAX_OFFSET_RANGE = range(0, 16)
@@ -116,6 +118,7 @@ class FontData:
                               f"bounds, valid range is {range_repr(FontData.BYTES_PER_GLYPH_RANGE)}")
 
         data = bytearray()
+        data.append(FontData.SIGNATURE)
         data.append(count)
         data.append(self.bytes_per_glyph)
         data.append((self.width - 1) | (self.height - 1) << 4)

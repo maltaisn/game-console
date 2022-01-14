@@ -120,11 +120,14 @@ class ImageData:
     index: Optional[ImageIndex]
     data: bytes
 
+    SIGNATURE = 0xf1
+
     FLAG_BINARY = 1
     FLAG_INDEXED = 2
 
     def encode(self) -> bytes:
         data = bytearray()
+        data.append(ImageData.SIGNATURE)
         flags = 0
         if self.indexed:
             flags |= ImageData.FLAG_INDEXED

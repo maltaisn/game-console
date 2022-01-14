@@ -25,6 +25,8 @@
 #include <sys/display.h>
 #include <sys/time.h>
 #include <sys/power.h>
+#include <sys/eeprom.h>
+#include <sys/led.h>
 
 #include <core/graphics.h>
 #include <core/sound.h>
@@ -59,8 +61,8 @@ static const game_header_t GAME_HEADER = (game_header_t)
 
 void setup(void) {
 #ifdef SIMULATION
-    FILE* flash = fopen("assets.dat", "r");
-    flash_load_file(flash);
+    FILE* flash = fopen("assets.dat", "rb");
+    flash_load_file(ASSET_OFFSET, flash);
     fclose(flash);
 
     FILE* eeprom = fopen("eeprom.dat", "rb");

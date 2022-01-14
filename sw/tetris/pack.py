@@ -6,7 +6,9 @@ game_version = [0, 1]
 
 tempo = 120
 
-p = Packer(assets_directory="tetris/assets")
+p = Packer(assets_directory="tetris/assets", offset=0x10000)
+
+p.raw(bytes([0xa5, *game_version]), name="header")
 
 p.sound("music.mid", tempo=tempo, channels={0, 1}, merge_midi_tracks=True)
 

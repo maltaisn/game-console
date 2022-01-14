@@ -40,6 +40,11 @@ void setup(void) {
     fclose(file);
 #endif
     graphics_set_font(ASSET_FONT_FONT7X7);
+
+    sound_set_tempo(encode_bpm_tempo(120));
+    sound_start(TRACKS_STARTED_ALL);
+    sound_set_volume(SOUND_VOLUME_2);
+    sound_load(ASSET_SOUND_MUSIC0);
 }
 
 static void draw(void) {

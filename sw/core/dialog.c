@@ -21,9 +21,9 @@
 #include <string.h>
 
 // dialog-arrow-left.png, 3x5, 1-bit.
-static const uint8_t ARROW_LEFT[] = {0x01, 0x02, 0x04, 0x17, 0x6c, 0x40};
+static const uint8_t ARROW_LEFT[] = {0xf1, 0x01, 0x02, 0x04, 0x17, 0x6c, 0x40};
 // dialog-arrow-right.png, 3x5, 1-bit.
-static const uint8_t ARROW_RIGHT[] = {0x01, 0x02, 0x04, 0x4d, 0x7a, 0x00};
+static const uint8_t ARROW_RIGHT[] = {0xf1, 0x01, 0x02, 0x04, 0x4d, 0x7a, 0x00};
 
 // characters allowed in text fields
 static const char TEXT_FIELD_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-*!";

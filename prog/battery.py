@@ -41,8 +41,8 @@ class BatteryInfo:
 
 def format_time(t: float) -> str:
     """Format time in seconds to 'hhhh:mm:ss' format."""
-    h, r = divmod(t, 60)
-    m, s = divmod(t, 60)
+    h, r = divmod(t, 3600)
+    m, s = divmod(r, 60)
     return f"{h:02.0f}:{m:02.0f}:{s:02.0f}"
 
 

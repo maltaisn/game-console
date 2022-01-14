@@ -22,12 +22,12 @@
 #include <sys/display.h>
 #include <sys/led.h>
 #include <sys/input.h>
+#include <sys/reset.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
-#include "sys/reset.h"
 
 #define RTC_ENABLE() (RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm)
 #define RTC_DISABLE() (RTC.CTRLA = 0)
