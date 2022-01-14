@@ -18,10 +18,35 @@
 #ifndef SYS_LED_H
 #define SYS_LED_H
 
+#include <stdint.h>
+
+#define LED_BLINK_NONE 0
+
+/**
+ * Turn the LED on.
+ */
 void led_set(void);
 
+/**
+ * Turn the LED off.
+ */
 void led_clear(void);
 
+/**
+ * Toggle the LED.
+ */
 void led_toggle(void);
+
+/**
+ * Blink the LED at a certain half-period in system ticks.
+ * Note that setting, clearing and toggling the LED does not disable blinking.
+ * Blinking must be disabled by calling `led_blink(LED_BLINK_NONE)`.
+ */
+void led_blink(uint8_t ticks);
+
+/**
+ * Called every tick to update LED blinking.
+ */
+void led_blink_update(void);
 
 #endif //SYS_LED_H

@@ -22,6 +22,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/atomic.h>
+#include "sys/led.h"
 
 static volatile systime_t systick;
 
@@ -34,6 +35,7 @@ ISR(RTC_CNT_vect) {
 
     input_update_state();
     sound_update();
+    led_blink_update();
 }
 
 systime_t time_get() {

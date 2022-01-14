@@ -18,6 +18,8 @@
 #include <stdbool.h>
 
 static bool led_on;
+static uint8_t blink_period;
+static uint8_t blink_counter;
 
 void led_set(void) {
     led_on = true;
@@ -33,4 +35,20 @@ void led_toggle(void) {
 
 bool led_get(void) {
     return led_on;
+}
+
+void led_blink(uint8_t ticks) {
+    blink_period = ticks;
+    blink_counter = 0;
+}
+
+void led_blink_update(void) {
+    if (blink_period == LED_BLINK_NONE) {
+        return;
+    }
+    ++blink_counter;
+    if (blink_counter == blink_period) {
+        led_toggle();
+        blink_counter = 0;
+    }
 }

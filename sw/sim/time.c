@@ -23,6 +23,7 @@
 
 #include <time.h>
 #include <math.h>
+#include "sys/led.h"
 
 #define SYSTICK_MAX 0xffffff
 
@@ -40,6 +41,7 @@ void time_init(void) {
 void time_update(void) {
     input_update_state();
     sound_update();
+    led_blink_update();
 }
 
 systime_t time_get() {

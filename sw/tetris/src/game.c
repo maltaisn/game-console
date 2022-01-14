@@ -52,6 +52,8 @@ static uint8_t button_hold_time[BUTTONS_COUNT];
 // mask indicating for which buttons DAS is currently enabled.
 static uint8_t delayed_auto_shift;
 
+static uint8_t led_blink_duration;
+
 static const game_header_t GAME_HEADER = (game_header_t)
         {0xa5, GAME_VERSION_MAJOR, GAME_VERSION_MINOR};
 
@@ -71,7 +73,7 @@ void setup(void) {
     // check header in flash to make sure flash has been written
     uint8_t header[3];
     flash_read(ASSET_RAW_HEADER, sizeof GAME_HEADER, header);
-    if (memcmp(header, &GAME_HEADER, sizeof GAME_HEADER)) {
+    if (memcmp(header, &GAME_HEADER, sizeof GAME_HEADER) != 0) {
         // wrong header, don't start game.
         led_set();
         for (;;);
@@ -86,13 +88,24 @@ void setup(void) {
 }
 
 void loop(void) {
+    // wait until game tick has passed
+    // note that rendering can take long enough to skip several game ticks.
     systime_t time;
     do {
         time = time_get();
     } while (time - last_tick_time < GAME_TICK);
     last_tick_time = time;
 
-    game.state = main_loop();
+    // stop blinking LED if period elapsed
+    if (led_blink_duration > 0) {
+        --led_blink_duration;
+        if (led_blink_duration == 0) {
+            led_blink(LED_BLINK_NONE);
+            led_clear();
+        }
+    }
+
+    game.state = update_game_state();
 
     last_input_state = input_get_state();
 
@@ -105,10 +118,10 @@ void loop(void) {
     }
 }
 
-game_state_t main_loop(void) {
+game_state_t update_game_state(void) {
     game_state_t s = game.state;
     if (s == GAME_STATE_PLAY) {
-        return game_loop();
+        return update_tetris_state();
     } else if (!game.dialog_shown) {
         // all other states show a dialog, and it wasn't initialized yet.
         if (s == GAME_STATE_MAIN_MENU) {
@@ -135,7 +148,7 @@ game_state_t main_loop(void) {
     return handle_dialog_input();
 }
 
-game_state_t game_loop(void) {
+game_state_t update_tetris_state(void) {
     game_state_t new_state = handle_game_input();
     if (new_state != GAME_STATE_PLAY) {
         return new_state;
@@ -144,6 +157,9 @@ game_state_t game_loop(void) {
     tetris_update();
 
     if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
+        led_blink(32);
+        led_blink_duration = 128;
+
         // check if new high score achieved and find its position.
         int8_t pos = -1;
         int8_t end = (int8_t) game.leaderboard.size;
@@ -165,8 +181,9 @@ game_state_t game_loop(void) {
             game.leaderboard.entries[pos] = (game_highscore_t) {tetris.score, "(UNNAMED)"};
             game.new_highscore_pos = pos;
             save_to_eeprom();
+            return GAME_STATE_HIGH_SCORE;
         }
-        return GAME_STATE_HIGH_SCORE;
+        return GAME_STATE_GAME_OVER;
     }
 
     return GAME_STATE_PLAY;

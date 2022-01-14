@@ -121,9 +121,9 @@ typedef struct {
 
 extern game_t game;
 
-game_state_t main_loop(void);
+game_state_t update_game_state(void);
 
-game_state_t game_loop(void);
+game_state_t update_tetris_state(void);
 
 game_state_t handle_dialog_input(void);
 

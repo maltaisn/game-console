@@ -280,9 +280,7 @@ void power_enable_sleep(void) {
         cli();
     }
     power_schedule_sleep_cancel();
-    led_set();
     sleep_cpu();
-    led_clear();
 
     // --> wake-up from sleep
     // reset power state because some time may have passed since device was put to sleep.
