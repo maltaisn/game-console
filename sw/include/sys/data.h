@@ -24,7 +24,7 @@
 #define DATA_EEPROM_MASK 0x100000
 #define DATA_FLASH_MASK 0x200000
 
-#define data_mcu(ptr) ((data_ptr_t) (intptr_t) (ptr))
+#define data_mcu(ptr) ((data_ptr_t) (uintptr_t) (ptr))
 #define data_flash(addr) ((data_ptr_t) (addr) | DATA_FLASH_MASK)
 #define data_eeprom(addr) ((data_ptr_t) (addr) | DATA_EEPROM_MASK)
 

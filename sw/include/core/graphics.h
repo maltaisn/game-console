@@ -153,7 +153,7 @@ typedef data_ptr_t graphics_image_t;
  */
 typedef data_ptr_t graphics_font_t;
 
-// 3x5 font, 2 bytes per char, encodes 0x21-0x5a, total size 121 bytes.
+// 3x5 font, 2 bytes per char, encodes 0x21-0x5a, total size 122 bytes.
 // from https://github.com/olikraus/u8g2/wiki/fntgrpx11#micro, u8g2_font_micro_tr, modified
 extern const uint8_t GRAPHICS_BUILTIN_FONT_DATA[];
 #define GRAPHICS_BUILTIN_FONT data_mcu(GRAPHICS_BUILTIN_FONT_DATA)

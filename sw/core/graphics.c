@@ -215,7 +215,7 @@ void graphics_pixel(const disp_x_t x, const disp_y_t y) {
 static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y) {
     // preconditions: y must be in current page, 0 <= y < PAGE_HEIGHT.
 #ifdef RUNTIME_CHECKS
-    if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
+    if (x1 < x0 || x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
         trace("outside of bounds");
         return;
     }

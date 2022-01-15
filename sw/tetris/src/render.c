@@ -29,6 +29,9 @@
 
 #include <string.h>
 
+#define STR1(x) #x
+#define STR(x) STR1(x)
+
 #define TILE_WIDTH 6
 #define TILE_HEIGHT 6
 
@@ -187,6 +190,7 @@ static void draw_game(void) {
 
     // held piece
     if (hold_piece) {
+        graphics_set_color(4);
         graphics_rect(66, hold_piece_y, 30, 18);
         draw_centered_piece_at(69, hold_piece_y + 3, tetris.hold_piece);
     }
@@ -255,6 +259,18 @@ static void draw_game(void) {
     }
 }
 
+static void draw_main_menu(void) {
+    // background art
+    graphics_image(ASSET_IMAGE_MENU, 0, 0);
+
+    // version info at the bottom left corner
+    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_set_color(DISPLAY_COLOR_BLACK);
+    graphics_fill_rect(0, 121, 18, 7);
+    graphics_set_color(10);
+    graphics_text(1, 122, "V" STR(GAME_VERSION_MAJOR) "." STR(GAME_VERSION_MINOR));
+}
+
 void draw(void) {
     if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
         // low power sleep scheduled, show low battery UI before sleeping.
@@ -264,17 +280,18 @@ void draw(void) {
 
     graphics_clear(DISPLAY_COLOR_BLACK);
 
-    if (game.state < GAME_STATE_PLAY) {
-        // TODO draw main menu image
+    game_state_t s = game.state;
+    if (s < GAME_STATE_PLAY) {
+        draw_main_menu();
     } else {
         draw_game();
     }
 
     if (game.dialog_shown) {
         dialog_draw();
-        if (game.state == GAME_STATE_LEADERBOARD) {
+        if (s == GAME_STATE_LEADERBOARD || s == GAME_STATE_LEADERBOARD_PLAY) {
             draw_leaderboard_overlay();
-        } else if (game.state == GAME_STATE_CONTROLS || game.state == GAME_STATE_CONTROLS_PLAY) {
+        } else if (s == GAME_STATE_CONTROLS || s == GAME_STATE_CONTROLS_PLAY) {
             draw_controls_overlay();
         }
     }

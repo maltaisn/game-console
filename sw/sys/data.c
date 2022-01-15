@@ -26,6 +26,6 @@ void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length])
     } else if (address & DATA_EEPROM_MASK) {
         eeprom_read((eeprom_t) (address & ~DATA_EEPROM_MASK), length, dest);
     } else {
-        memcpy(dest, (const uint8_t*) (intptr_t) address, length);
+        memcpy(dest, (const uint8_t*) (uintptr_t) address, length);
     }
 }

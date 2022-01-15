@@ -376,6 +376,7 @@ class Packer:
     """Class used to create a flash image containing all assets, as well as a header
     with the memory map. Supports raw data, images, fonts, and sound."""
     objects: List[DataObject]
+    defines: List[CodeGenerator.Define]
     directory: str
     padding_byte: int
     padding: int
@@ -394,6 +395,7 @@ class Packer:
                  padding: int = 1, default_indexed: bool = True,
                  default_index_granularity: str = repr(ImageEncoder.DEFAULT_INDEX_GRANULARITY)):
         self.objects = []
+        self.defines = []
         self.directory = assets_directory
         self.offset = offset
         self.padding_byte = padding_byte
@@ -429,9 +431,11 @@ class Packer:
             self._error("invalid file", len(self.objects))
         return path
 
-    def _name_or_default(self, name: Optional[str], filename: str) -> str:
+    def _name_or_default(self, name: Optional[str], filename: Optional[str]) -> str:
         """Validate object name, use filename if none."""
         if name is None:
+            if filename is None:
+                self._error("object has no name")
             name = Path(filename).stem
         else:
             name = name.strip()
@@ -528,6 +532,12 @@ class Packer:
         self._check_not_packed()
         self.objects.append(PadObject("", None, self.padding_byte, bound))
 
+    def define(self, name: str, value: int, is_hex: bool = False) -> None:
+        """Add a define to the generated header."""
+        self._check_not_packed()
+        name = self._name_or_default(name, None).upper()
+        self.defines.append(CodeGenerator.Define(name, value, is_hex, False))
+
     def _print_pack_results(self, total_size: int, pack_results: List[PackResult]) -> None:
         """Print pack results and object addresses, as well as total size."""
         addr_width = len(f"{total_size:x}")
@@ -561,7 +571,8 @@ class Packer:
         do the alignment. It's not necessary for other array types but having everything the same
         simplifies the process."""
         arrays_data: Packer.ArraysData = {}
-        for group, array_type in self._array_options.items():
+        for group, array_options in self._array_options.items():
+            array_type = array_options.array_type
             if array_type == ArrayType.NONE:
                 continue
 
@@ -603,7 +614,7 @@ class Packer:
 
             if obj.group in arrays_data:
                 # object is in array, already encoded previously
-                array_type = self._array_options[obj.group]
+                array_type = self._array_options[obj.group].array_type
                 res = arrays_data[obj.group][0][0]
 
                 data += res.data
@@ -733,6 +744,11 @@ class Packer:
             self._error("source file must have .c extension")
 
         gen = CodeGenerator()
+
+        if self.defines:
+            gen.add_separator()
+            for define in self.defines:
+                gen.add_define(define.name, define.value, define.is_hex)
 
         if self.offset != 0:
             gen.add_separator()

@@ -81,12 +81,15 @@ void setup(void) {
         for (;;);
     }
 
-    dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
-
     load_from_eeprom();
 
-    sound_set_volume(game.options.volume << SOUND_CHANNELS_COUNT);
+    update_sound_volume(game.options.volume);
     update_display_contrast(game.options.contrast);
+
+    sound_set_tempo(encode_bpm_tempo(ASSET_SOUND_TEMPO));
+    start_music(ASSET_MUSIC_MENU, true);
+
+    dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
 }
 
 void loop(void) {
@@ -106,6 +109,8 @@ void loop(void) {
             led_clear();
         }
     }
+
+    update_music();
 
     game.state = update_game_state();
 
@@ -141,9 +146,11 @@ game_state_t update_game_state(void) {
         } else if (s == GAME_STATE_CONTROLS) {
             open_controls_dialog(RESULT_OPEN_MAIN_MENU);
         } else if (s == GAME_STATE_CONTROLS_PLAY) {
-            open_controls_dialog(RESULT_PAUSE_GAME);
+            open_controls_dialog(RESULT_GAME_OVER);
+        } else if (s == GAME_STATE_LEADERBOARD_PLAY) {
+            open_leaderboard_dialog(RESULT_GAME_OVER);
         } else { // s == GAME_STATE_LEADERBOARD
-            open_leaderboard_dialog();
+            open_leaderboard_dialog(RESULT_OPEN_MAIN_MENU);
         }
         game.dialog_shown = true;
     }
@@ -162,6 +169,8 @@ game_state_t update_tetris_state(void) {
         led_blink(32);
         led_blink_duration = 128;
 
+        start_music(ASSET_MUSIC_GAME_OVER, false);
+
         // check if new high score achieved and find its position.
         int8_t pos = -1;
         int8_t end = (int8_t) game.leaderboard.size;
@@ -170,19 +179,24 @@ game_state_t update_tetris_state(void) {
         }
         for (int8_t i = 0; i < end; ++i) {
             if (i == game.leaderboard.size || game.leaderboard.entries[i].score < tetris.score) {
+                // found lower score in leaderboard, save position.
+                // this makes sure to insert the new score after any score that are equal.
                 pos = i;
                 break;
             }
         }
         if (pos != -1) {
             // shift existing high scores and insert new one
-            for (uint8_t i = game.leaderboard.size; i > pos; --i) {
+            uint8_t last_pos = game.leaderboard.size == LEADERBOARD_MAX_SIZE ?
+                    LEADERBOARD_MAX_SIZE - 1 : game.leaderboard.size;
+            for (uint8_t i = last_pos; i > pos; --i) {
                 game.leaderboard.entries[i] = game.leaderboard.entries[i - 1];
             }
             game.leaderboard.size = end;
             game.leaderboard.entries[pos] = (game_highscore_t) {tetris.score, "(UNNAMED)"};
             game.new_highscore_pos = pos;
             save_to_eeprom();
+            game.music = ASSET_MUSIC_HIGH_SCORE;
             return GAME_STATE_HIGH_SCORE;
         }
         return GAME_STATE_GAME_OVER;
@@ -204,7 +218,16 @@ game_state_t handle_dialog_input(void) {
     dialog_result_t res = dialog_handle_input(last_input_state, preprocess_input_state());
 
     if (game.state == GAME_STATE_OPTIONS) {
+        // apply options as they are changed
+        // this will have to be undone if options dialog is cancelled.
+        update_sound_volume(dialog.items[0].number.value);
         update_display_contrast(dialog.items[3].number.value);
+        if (dialog.items[1].choice.selection == 0) {
+            game.options.features &= ~GAME_FEATURE_MUSIC;
+        } else {
+            game.options.features |= GAME_FEATURE_MUSIC;
+        }
+        update_music_enabled();
     }
 
     if (res == DIALOG_RESULT_NONE) {
@@ -221,10 +244,13 @@ game_state_t handle_dialog_input(void) {
         return GAME_STATE_PLAY;
 
     } else if (res == RESULT_PAUSE_GAME) {
-        open_pause_dialog();
         return GAME_STATE_PAUSE;
 
+    } else if (res == RESULT_GAME_OVER) {
+        return GAME_STATE_GAME_OVER;
+
     } else if (res == RESULT_OPEN_OPTIONS) {
+        game.old_features = game.options.features;
         return GAME_STATE_OPTIONS;
 
     } else if (res == RESULT_OPEN_OPTIONS_EXTRA) {
@@ -243,19 +269,21 @@ game_state_t handle_dialog_input(void) {
         save_extra_options();
         return GAME_STATE_OPTIONS;
 
-    } else if (res == RESULT_SAVE_OPTIONS) {
-        save_options();
-        return GAME_STATE_MAIN_MENU;
-
-    } else if (res == RESULT_CANCEL_OPTIONS) {
-        // restore old contrast
-        update_display_contrast(game.options.contrast);
-        return GAME_STATE_MAIN_MENU;
-
     } else if (res == RESULT_SAVE_HIGHSCORE) {
         return save_highscore();
+
+    } else if (res == RESULT_SAVE_OPTIONS) {
+        save_options();
+
+    } else if (res == RESULT_CANCEL_OPTIONS) {
+        // restore old options changed by preview feature
+        game.options.features = game.old_features;
+        update_sound_volume(game.options.volume);
+        update_display_contrast(game.options.contrast);
+        update_music_enabled();
     }
-    // should not happen
+
+    start_music(ASSET_MUSIC_MENU, true);
     return GAME_STATE_MAIN_MENU;
 }
 
@@ -361,11 +389,46 @@ game_state_t handle_game_input(void) {
     return GAME_STATE_PLAY;
 }
 
+void start_music(sound_t music, bool loop) {
+    if (game.music != music) {
+        if (game.options.features & GAME_FEATURE_MUSIC) {
+            sound_load(music);
+            sound_start(TRACKS_STARTED_ALL);
+        }
+        if (loop) {
+            game.music = music;
+        } else {
+            game.music = MUSIC_NONE;
+        }
+    }
+}
+
+void stop_music(void) {
+    sound_stop(TRACKS_STARTED_ALL);
+    game.music = MUSIC_NONE;
+}
+
+void update_music(void) {
+    if (!sound_check_tracks(TRACKS_PLAYING_ALL)) {
+        // music finished playing, restart it if any.
+        sound_t music = game.music;
+        if (music != MUSIC_NONE) {
+            sound_load(music);
+        }
+    }
+}
+
 void start_game(void) {
     random_seed(time_get());
     tetris_init();
     tetris_next_piece();
     resume_game();
+
+    led_blink_duration = 0;
+    led_blink(LED_BLINK_NONE);
+    led_clear();
+
+    start_music(ASSET_MUSIC_THEME, true);
 }
 
 void resume_game(void) {
@@ -383,11 +446,23 @@ game_state_t save_highscore(void) {
     strcpy(game.leaderboard.entries[game.new_highscore_pos].name, dialog.items[0].text.text);
     save_to_eeprom();
 
-    return GAME_STATE_LEADERBOARD;
+    return GAME_STATE_LEADERBOARD_PLAY;
 }
 
 void update_display_contrast(uint8_t value) {
     display_set_contrast(value * 15);
+}
+
+void update_sound_volume(uint8_t volume) {
+    sound_set_volume(volume << SOUND_CHANNELS_COUNT);
+}
+
+void update_music_enabled(void) {
+    if (game.options.features & GAME_FEATURE_MUSIC) {
+        start_music(ASSET_MUSIC_MENU, true);
+    } else {
+        stop_music();
+    }
 }
 
 void save_options(void) {
@@ -410,8 +485,9 @@ void save_options(void) {
     };
     tetris.options.preview_pieces = preview_pieces;
 
-    sound_set_volume(volume << SOUND_CHANNELS_COUNT);
+    update_sound_volume(volume);
     update_display_contrast(contrast);
+    update_music_enabled();
 
     save_to_eeprom();
 }

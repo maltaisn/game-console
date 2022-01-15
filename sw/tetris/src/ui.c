@@ -21,7 +21,6 @@
 #include <assets.h>
 
 #include <core/dialog.h>
-#include <string.h>
 
 static const char* CHOICES_ON_OFF[] = {"OFF", "ON"};
 
@@ -100,16 +99,16 @@ void open_extra_options_dialog(void) {
     dialog_add_item_choice("T-SPIN BONUS", feature_tspins, 2, CHOICES_ON_OFF);
 }
 
-void open_controls_dialog(game_state_t result) {
+void open_controls_dialog(uint8_t result) {
     dialog_init_centered(108, 110);
     dialog.title = "HOW TO PLAY";
     init_empty_dialog(result);
 }
 
-void open_leaderboard_dialog(void) {
+void open_leaderboard_dialog(uint8_t result) {
     dialog_init_centered(108, 109);
     dialog.title = "LEADERBOARD";
-    init_empty_dialog(RESULT_OPEN_MAIN_MENU);
+    init_empty_dialog(result);
 }
 
 void open_high_score_dialog(void) {

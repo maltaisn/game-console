@@ -20,6 +20,8 @@
 #include <sys/input.h>
 #include <sys/sound.h>
 
+#include <core/sound.h>
+
 #include <stdbool.h>
 
 // display frames per second
@@ -52,6 +54,8 @@
 #define HIGHSCORE_NAME_MAX_LENGTH 12
 #define LEADERBOARD_MAX_SIZE 10
 
+#define MUSIC_NONE 0
+
 typedef enum {
     // states with art background
     GAME_STATE_MAIN_MENU,
@@ -62,6 +66,7 @@ typedef enum {
     // states with game background
     GAME_STATE_PLAY,
     GAME_STATE_CONTROLS_PLAY,
+    GAME_STATE_LEADERBOARD_PLAY,
     GAME_STATE_PAUSE,
     GAME_STATE_GAME_OVER,
     GAME_STATE_HIGH_SCORE,
@@ -72,6 +77,7 @@ enum {
     RESULT_NEW_GAME,
     RESULT_PAUSE_GAME,
     RESULT_RESUME_GAME,
+    RESULT_GAME_OVER,
     RESULT_OPEN_OPTIONS,
     RESULT_OPEN_OPTIONS_EXTRA,
     RESULT_OPEN_CONTROLS,
@@ -88,6 +94,14 @@ enum {
     GAME_FEATURE_MUSIC = 1 << 0,
     GAME_FEATURE_SOUND_EFFECTS = 1 << 1,
 };
+
+// note: structs are stored in eeprom in the same layout as in memory.
+// if the any of the following structs is changed, the version should be changed:
+// - game_header_t
+// - game_options_t
+// - tetris_options_t
+// - game_highscore_t
+// - game_leaderboard_t
 
 typedef struct {
     uint8_t signature;
@@ -113,10 +127,13 @@ typedef struct {
 
 typedef struct {
     game_options_t options;
+    game_leaderboard_t leaderboard;
+
     game_state_t state;
     uint8_t new_highscore_pos;
-    game_leaderboard_t leaderboard;
+    uint8_t old_features;
     bool dialog_shown;
+    sound_t music;
 } game_t;
 
 extern game_t game;
@@ -129,6 +146,12 @@ game_state_t handle_dialog_input(void);
 
 game_state_t handle_game_input(void);
 
+void start_music(sound_t music, bool loop);
+
+void stop_music(void);
+
+void update_music(void);
+
 void start_game(void);
 
 void resume_game(void);
@@ -136,6 +159,10 @@ void resume_game(void);
 game_state_t save_highscore(void);
 
 void update_display_contrast(uint8_t value);
+
+void update_sound_volume(uint8_t volume);
+
+void update_music_enabled(void);
 
 void save_options(void);
 
