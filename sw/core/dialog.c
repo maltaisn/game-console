@@ -17,6 +17,7 @@
 
 #include <core/dialog.h>
 #include <core/trace.h>
+#include <core/utils.h>
 
 #include <string.h>
 
@@ -364,20 +365,6 @@ static void draw_text_field(disp_x_t x, disp_y_t y, uint8_t width, dialog_text_t
         graphics_set_color(0);
         graphics_glyph((int8_t) cursor_x, (int8_t) y, item->text[dialog.cursor_pos]);
     }
-}
-
-/**
- * Format 0-255 number to char buffer.
- * Returns a pointer within the buffer to start of the formatted string.
- */
-static const char* uint8_to_str(char buf[static 4], uint8_t n) {
-    char* ptr = &buf[3];
-    *ptr = '\0';
-    do {
-        *(--ptr) = (char) (n % 10 + '0');
-        n /= 10;
-    } while (n);
-    return ptr;
 }
 
 void dialog_draw(void) {

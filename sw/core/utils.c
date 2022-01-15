@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2022 Nicolas Maltais
  *
@@ -15,17 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef CORE_SYSUI_H
-#define CORE_SYSUI_H
+#include <core/utils.h>
 
-/**
- * Draw the system UI to indicate that the battery is too low and device will go to sleep.
- */
-void sysui_battery_sleep(void);
-
-/**
- * Draw an overlay in the bottom right corner indicating the battery status and percentage.
- */
-void sysui_battery_overlay(void);
-
-#endif //CORE_SYSUI_H
+const char* uint8_to_str(char buf[static 4], uint8_t n) {
+    char* ptr = &buf[3];
+    *ptr = '\0';
+    do {
+        *(--ptr) = (char) (n % 10 + '0');
+        n /= 10;
+    } while (n);
+    return ptr;
+}

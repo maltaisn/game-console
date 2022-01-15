@@ -40,8 +40,10 @@ static uint8_t inactive_countdown;
 
 ISR(PORTD_PORT_vect) {
     VPORTD.INTFLAGS = BUTTONS_ALL;
+    if (inactive_countdown == 0) {
+        power_schedule_sleep_cancel();
+    }
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
-    power_schedule_sleep_cancel();
 }
 #endif
 

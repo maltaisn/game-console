@@ -38,7 +38,7 @@ void power_set_battery_status(battery_status_t status);
  * Set current battery level in percent.
  * Battery level is set to 100% by default and doesn't change.
  */
-void power_set_battery_level(uint8_t level);
+void power_set_battery_percent(uint8_t percent);
 
 /**
  * Returns true if simulator is "sleeping".

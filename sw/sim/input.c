@@ -37,8 +37,10 @@ static uint8_t state;
 static uint8_t inactive_countdown;
 
 static void reset_inactive_countdown(void) {
+    if (inactive_countdown == 0) {
+        power_schedule_sleep_cancel();
+    }
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
-    power_schedule_sleep_cancel();
 }
 
 static void save_display(void) {

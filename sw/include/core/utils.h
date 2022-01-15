@@ -15,17 +15,15 @@
  * limitations under the License.
  */
 
-#ifndef CORE_SYSUI_H
-#define CORE_SYSUI_H
+#ifndef CORE_UTILS_H
+#define CORE_UTILS_H
+
+#include <stdint.h>
 
 /**
- * Draw the system UI to indicate that the battery is too low and device will go to sleep.
+ * Format 0-255 number to char buffer.
+ * Returns a pointer within the buffer to start of the formatted string.
  */
-void sysui_battery_sleep(void);
+const char* uint8_to_str(char buf[static 4], uint8_t n);
 
-/**
- * Draw an overlay in the bottom right corner indicating the battery status and percentage.
- */
-void sysui_battery_overlay(void);
-
-#endif //CORE_SYSUI_H
+#endif //CORE_UTILS_H

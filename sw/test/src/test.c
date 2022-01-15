@@ -30,6 +30,7 @@
 #include <core/debug.h>
 
 #include <sim/flash.h>
+#include <sim/power.h>
 
 #include <stdio.h>
 
@@ -39,25 +40,19 @@ void setup(void) {
     flash_load_file(0, file);
     fclose(file);
 #endif
-    graphics_set_font(ASSET_FONT_FONT7X7);
-
-    sound_set_tempo(encode_bpm_tempo(120));
-    sound_start(TRACKS_STARTED_ALL);
-    sound_set_volume(SOUND_VOLUME_2);
-    sound_load(ASSET_SOUND_MUSIC0);
 }
 
 static void draw(void) {
+    graphics_clear(DISPLAY_COLOR_BLACK);
+
     if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
         sound_set_output_enabled(false);
         sysui_battery_sleep();
         return;
     }
 
-    graphics_clear(DISPLAY_COLOR_WHITE);
-    char buf[4];
-    sprintf(buf, "%d", display_get_contrast());
-    graphics_text(10, 10, buf);
+//    graphics_image(ASSET_IMAGE_TIGER128, 0, 0);
+    sysui_battery_overlay();
 }
 
 void loop(void) {
@@ -66,11 +61,21 @@ void loop(void) {
 
     // input
     uint8_t state = input_get_state();
+#ifdef SIMULATION
     if (state & BUTTON0) {
-        display_set_contrast(display_get_contrast() + 1);
-    } else if (state & BUTTON1) {
-        display_set_contrast(display_get_contrast() - 1);
+        power_set_battery_status((power_get_battery_status() + 1) % (BATTERY_DISCHARGING + 1));
+    } else if (state & BUTTON2) {
+        uint8_t percent = power_get_battery_percent();
+        if (percent < 100) {
+            power_set_battery_percent(percent + 1);
+        }
+    } else if (state & BUTTON3) {
+        uint8_t percent = power_get_battery_percent();
+        if (percent > 0) {
+            power_set_battery_percent(percent - 1);
+        }
     }
+#endif
 
     // drawing
     display_first_page();

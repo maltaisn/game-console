@@ -91,8 +91,8 @@ void power_set_battery_status(battery_status_t status) {
     battery_status = status;
 }
 
-void power_set_battery_level(uint8_t level) {
-    battery_percent = level;
+void power_set_battery_percent(uint8_t percent) {
+    battery_percent = percent;
 }
 
 bool power_is_15v_reg_enabled(void) {

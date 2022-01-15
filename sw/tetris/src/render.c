@@ -265,20 +265,18 @@ static void draw_main_menu(void) {
 
     // version info at the bottom left corner
     graphics_set_font(GRAPHICS_BUILTIN_FONT);
-    graphics_set_color(DISPLAY_COLOR_BLACK);
-    graphics_fill_rect(0, 121, 18, 7);
     graphics_set_color(10);
     graphics_text(1, 122, "V" STR(GAME_VERSION_MAJOR) "." STR(GAME_VERSION_MINOR));
 }
 
 void draw(void) {
+    graphics_clear(DISPLAY_COLOR_BLACK);
+
     if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
         // low power sleep scheduled, show low battery UI before sleeping.
         sysui_battery_sleep();
         return;
     }
-
-    graphics_clear(DISPLAY_COLOR_BLACK);
 
     game_state_t s = game.state;
     if (s < GAME_STATE_PLAY) {
@@ -293,6 +291,9 @@ void draw(void) {
             draw_leaderboard_overlay();
         } else if (s == GAME_STATE_CONTROLS || s == GAME_STATE_CONTROLS_PLAY) {
             draw_controls_overlay();
+        }
+        if (s == GAME_STATE_MAIN_MENU || s == GAME_STATE_PAUSE || s == GAME_STATE_GAME_OVER) {
+            sysui_battery_overlay();
         }
     }
 }
