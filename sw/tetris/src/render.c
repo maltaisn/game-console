@@ -27,7 +27,8 @@
 #include <core/sysui.h>
 #include <core/dialog.h>
 
-#include <string.h>
+#include <stdio.h>
+#include <inttypes.h>
 
 #define STR1(x) #x
 #define STR(x) STR1(x)
@@ -38,10 +39,10 @@
 // outer color, inner color, tile I to Z
 static const disp_color_t TILE_COLORS[] = {
         15, 1,  // I
-        4,  1,  // J
-        7,  10, // L
+        4, 1,  // J
+        7, 10, // L
         10, 7,  // O
-        6,  1,  // S
+        6, 1,  // S
         15, 12, // T
         12, 15, // Z
 };
@@ -93,39 +94,15 @@ static void draw_centered_piece_at(disp_x_t x, disp_y_t y, tetris_piece piece) {
     }
 }
 
-static char* format_number(uint32_t n, uint8_t len, char buf[static len]) {
-    buf[--len] = '\0';
-    do {
-        buf[--len] = (char) (n % 10 + '0');
-        n /= 10;
-    } while (n != 0);
-    return &buf[len];
-}
-
-static void format_number_pad(uint32_t n, uint8_t len, char buf[static len]) {
-    buf[--len] = '\0';
-    do {
-        buf[--len] = (char) (n % 10 + '0');
-        n /= 10;
-    } while (len);
-}
-
 static void write_last_clear_info(char buf[static 16]) {
     if (tetris.last_points > 0) {
         // <Perfect | Line> clear x<lines>
         int8_t info_y = 101;
         if (tetris.last_lines_cleared > 0) {
-            memcpy(buf + 10, " X ", 10);
-            char* line_clear_buf;
-            if (tetris.flags & TETRIS_FLAG_LAST_PERFECT) {
-                line_clear_buf = buf + 3;
-                memcpy(line_clear_buf, "PERFECT", 7);
-            } else {
-                line_clear_buf = buf;
-                memcpy(line_clear_buf, "LINE CLEAR", 10);
-            }
-            buf[12] = (char) ('0' + tetris.last_lines_cleared);
-            graphics_text(66, info_y, line_clear_buf);
+            const char* clear_name = (tetris.flags & TETRIS_FLAG_LAST_PERFECT) ?
+                                     "PERFECT" : "LINE CLEAR";
+            sprintf(buf, "%s X%" PRIu8, clear_name, tetris.last_lines_cleared);
+            graphics_text(66, info_y, buf);
             info_y += 6;
         }
 
@@ -138,16 +115,14 @@ static void write_last_clear_info(char buf[static 16]) {
 
         // Combo x<count>
         if (tetris.combo_count > 1) {
-            char* combo_buf = format_number(tetris.combo_count, 3, buf) - 7;
-            memcpy(combo_buf, "COMBO X", 7);
-            graphics_text(66, info_y, combo_buf);
+            sprintf(buf, "COMBO X%" PRIu8, tetris.combo_count);
+            graphics_text(66, info_y, buf);
             info_y += 6;
         }
 
         // +<points>
-        char* pts_buf = format_number(tetris.last_points, 7, buf) - 1;
-        pts_buf[0] = '+';
-        graphics_text(66, info_y, pts_buf);
+        sprintf(buf, "+%" PRIu32, (uint32_t) tetris.last_points);
+        graphics_text(66, info_y, buf);
     }
 }
 
@@ -157,7 +132,7 @@ static void draw_game(void) {
     bool hold_piece = tetris.options.features & TETRIS_FEATURE_HOLD;
 
     // score
-    format_number_pad(tetris.score, 9, buf);
+    sprintf(buf, "%08" PRIu32, tetris.score);
     graphics_set_color(11);
     graphics_set_font(ASSET_FONT_7X7);
     graphics_text(65, 2, buf);
@@ -229,29 +204,18 @@ static void draw_game(void) {
     write_last_clear_info(buf);
 
     // level
-    char* level_buf = format_number(tetris.level, 3, buf) - 6;
-    memcpy(level_buf, "LEVEL ", 6);
+    sprintf(buf, "LEVEL %" PRIu8, tetris.level);
     graphics_set_color(11);
-    graphics_text(67, 11, level_buf);
+    graphics_text(67, 11, buf);
 
     // lines cleared
-    char* lines_buf = format_number(tetris.lines, 6, buf);
-    if (tetris.lines == 1) {
-        memcpy(buf + 5, " LINE", 6);
-    } else {
-        memcpy(buf + 5, " LINES", 7);
-    }
-    graphics_text(67, 18, lines_buf);
+    sprintf(buf, "%" PRIu16 " LINE%s", tetris.lines, tetris.lines == 1 ? "" : "S");
+    graphics_text(67, 18, buf);
 
     // hold piece & next piece text
     graphics_set_color(13);
     if (preview_pieces > 0) {
-        const char* next_text;
-        if (preview_pieces == 1) {
-            next_text = "NEXT PIECE";
-        } else {
-            next_text = "NEXT PIECES";
-        }
+        const char* next_text = (preview_pieces == 1 ? "NEXT PIECE" : "NEXT PIECES");
         graphics_text(66, 28, next_text);
     }
     if (hold_piece) {
@@ -361,10 +325,8 @@ void draw_leaderboard_overlay(void) {
     graphics_set_color(13);
     y = 24;
     for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
-        const char* buf = format_number(game.leaderboard.entries[i].score, 9, score_buf);
-        // right align number
-        uint8_t x = 68 + (buf - score_buf) * (graphics_glyph_width() + GRAPHICS_GLYPH_SPACING);
-        graphics_text((int8_t) x, (int8_t) y, buf);
+        sprintf(score_buf, "%8" PRIu32, game.leaderboard.entries[i].score);
+        graphics_text(68, (int8_t) y, score_buf);
         y += 8;
     }
 }
