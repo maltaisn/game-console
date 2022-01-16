@@ -52,9 +52,14 @@
 #define BUTTON_COMBINATION_DELAY 2
 
 #define HIGHSCORE_NAME_MAX_LENGTH 12
+// maximum number of entries in leaderboard
 #define LEADERBOARD_MAX_SIZE 10
 
+// delay in game ticks before starting a different music (= 500 ms)
+#define MUSIC_START_DELAY 32
+
 #define MUSIC_NONE 0
+#define MUSIC_TRACKS_STARTED (TRACK0_STARTED | TRACK1_STARTED)
 
 typedef enum {
     // states with art background
@@ -133,7 +138,10 @@ typedef struct {
     uint8_t new_highscore_pos;
     uint8_t old_features;
     bool dialog_shown;
-    sound_t music;
+
+    sound_t current_music;
+    sound_t loop_music;
+    uint8_t music_start_delay;
 } game_t;
 
 extern game_t game;

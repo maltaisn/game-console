@@ -200,12 +200,12 @@ static void draw_game(void) {
     }
 
     // last clear bonus info
+    graphics_set_color(11);
     graphics_set_font(GRAPHICS_BUILTIN_FONT);
     write_last_clear_info(buf);
 
     // level
     sprintf(buf, "LEVEL %" PRIu8, tetris.level);
-    graphics_set_color(11);
     graphics_text(67, 11, buf);
 
     // lines cleared

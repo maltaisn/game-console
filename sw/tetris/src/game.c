@@ -196,7 +196,7 @@ game_state_t update_tetris_state(void) {
             game.leaderboard.entries[pos] = (game_highscore_t) {tetris.score, "(UNNAMED)"};
             game.new_highscore_pos = pos;
             save_to_eeprom();
-            game.music = ASSET_MUSIC_HIGH_SCORE;
+            game.loop_music = ASSET_MUSIC_HIGH_SCORE;
             return GAME_STATE_HIGH_SCORE;
         }
         return GAME_STATE_GAME_OVER;
@@ -390,32 +390,44 @@ game_state_t handle_game_input(void) {
 }
 
 void start_music(sound_t music, bool loop) {
-    if (game.music != music) {
+    if (game.current_music != music) {
         if (game.options.features & GAME_FEATURE_MUSIC) {
-            sound_load(music);
-            sound_start(TRACKS_STARTED_ALL);
+            game.current_music = music;
+            game.music_start_delay = MUSIC_START_DELAY;
+            sound_stop(MUSIC_TRACKS_STARTED);
         }
         if (loop) {
-            game.music = music;
+            game.loop_music = music;
         } else {
-            game.music = MUSIC_NONE;
+            game.loop_music = MUSIC_NONE;
         }
     }
 }
 
 void stop_music(void) {
-    sound_stop(TRACKS_STARTED_ALL);
-    game.music = MUSIC_NONE;
+    sound_stop(MUSIC_TRACKS_STARTED);
+    game.current_music = MUSIC_NONE;
+    game.loop_music = MUSIC_NONE;
 }
 
 void update_music(void) {
-    if (!sound_check_tracks(TRACKS_PLAYING_ALL)) {
-        // music finished playing, restart it if any.
-        sound_t music = game.music;
-        if (music != MUSIC_NONE) {
-            sound_load(music);
+    if (game.music_start_delay > 0) {
+        // music started but start delay not elapsed yet.
+        --game.music_start_delay;
+        if (game.music_start_delay > 0) {
+            return;
         }
+    } else if (!sound_check_tracks(TRACKS_PLAYING_ALL)) {
+        // music finished playing, restart it if any.
+        if (game.loop_music == MUSIC_NONE) {
+            return;
+        }
+        game.current_music = game.loop_music;
+    } else {
+        return;
     }
+    sound_load(game.current_music);
+    sound_start(MUSIC_TRACKS_STARTED);
 }
 
 void start_game(void) {
