@@ -175,6 +175,7 @@ void init_wakeup(void) {
     power_set_15v_reg_enabled(true);
     display_set_enabled(true);
 
+    input_update_state_immediate();
     input_reset_inactivity();
 
     flash_wakeup();

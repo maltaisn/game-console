@@ -41,16 +41,16 @@
 uint8_t input_get_state(void);
 
 /**
- * Returns the immediate input state, without debouncing.
- * A 1 bit indicates that the button is pressed.
- */
-uint8_t input_get_state_immediate(void);
-
-/**
- * Update current input state.
+ * Update current input state, with debouncing.
  * This is called on systick update.
  */
 void input_update_state(void);
+
+/**
+ * Update current input state, without debouncing.
+ * This is called on wakeup from sleep.
+ */
+void input_update_state_immediate(void);
 
 /**
  * Dim or undim screen depending on inactivity countdown value.

@@ -589,6 +589,6 @@ void power_callback_sleep_scheduled(void) {
 }
 
 void power_callback_wakeup(void) {
-    // ignore whatever button was used to wake up.
-    input_wait_released = input_get_state_immediate();
+    // ignore whatever button was used to wake up, until it is released.
+    input_wait_released = input_get_state();
 }

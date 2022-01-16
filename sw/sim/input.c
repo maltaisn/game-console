@@ -122,13 +122,12 @@ uint8_t input_get_state(void) {
     return state;
 }
 
-uint8_t input_get_state_immediate(void) {
-    // no debouncing; immediate is same as debounced.
-    return state;
-}
-
 void input_update_state(void) {
     // no-op, glut callbacks are used instead.
+}
+
+void input_update_state_immediate(void) {
+    // no-op, there's no debouncing in simulator anyway.
 }
 
 void input_dim_if_inactive(void) {

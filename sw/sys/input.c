@@ -51,10 +51,6 @@ uint8_t input_get_state(void) {
     return state;
 }
 
-uint8_t input_get_state_immediate(void) {
-    return VPORTD.IN;
-}
-
 void input_update_state(void) {
     // 2 levels debouncing: new value is most common value among last two and new.
     // this is probably overkill since the buttons don't even bounce...
@@ -67,6 +63,13 @@ void input_update_state(void) {
     } else {
         --update_register;
     }
+}
+
+void input_update_state_immediate(void) {
+    const uint8_t port = VPORTD.IN & BUTTONS_ALL;
+    state = port;
+    state0 = port;
+    state1 = port;
 }
 
 void input_dim_if_inactive(void) {
