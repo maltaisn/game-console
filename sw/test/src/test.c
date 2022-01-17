@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-#include <assets.h>
 
 #include <sys/main.h>
 #include <sys/input.h>
 #include <sys/display.h>
 #include <sys/time.h>
-#include <sys/power.h>
 
 #include <core/graphics.h>
 #include <core/sound.h>
@@ -35,11 +33,7 @@
 #include <stdio.h>
 
 void setup(void) {
-#ifdef SIMULATION
-    FILE* file = fopen("assets.dat", "rb");
-    flash_load_file(0, file);
-    fclose(file);
-#endif
+
 }
 
 static void draw(void) {
@@ -57,7 +51,7 @@ static void draw(void) {
 
 void loop(void) {
     systime_t time = time_get();
-    while (time_get() - time < millis_to_ticks(20));
+    while (time_get() - time < millis_to_ticks(200));
 
     // input
     uint8_t state = input_get_state();

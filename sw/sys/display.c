@@ -80,14 +80,15 @@ static const uint8_t INIT_SEQUENCE[] = {
 //      DISPLAY_SET_MUX_RATIO, DISPLAY_NUM_ROWS - 1,
 //      DISPLAY_MODE_NORMAL,
         DISPLAY_FUNC_SEL_A, FUNC_SEL_A_INTERNAL_VDD_ENABLE,
-        // Values given by manufacturer
-        DISPLAY_SET_PHASE_LENGTH, 0x31,
-        DISPLAY_SET_CLK, 0xb1,
-        DISPLAY_SET_PRECHARGE_PERIOD, 0x0d,
-        DISPLAY_SET_PRECHARGE_VOLTAGE, 0x07,
+        // Values given by manufacturer + attempt to linearize grayscale
+        DISPLAY_SET_PHASE_LENGTH, 0x37,
+        // DISPLAY_SET_CLK, 0x00,
         DISPLAY_FUNC_SEL_B, 0x02,
+        DISPLAY_SET_PRECHARGE_PERIOD, 0x0d,
+        DISPLAY_SET_PRECHARGE_VOLTAGE, 0x03,
         DISPLAY_SET_VCOM, 0x07,
         DISPLAY_SET_CONTRAST, DISPLAY_DEFAULT_CONTRAST,
+        DISPLAY_SET_GRAYSCALE, 0, 1, 2, 3, 4, 5, 7, 9, 11, 13, 15, 17, 20, 23, 26, 30,
 //      DISPLAY_GPIO, 0x02,
 //      DISPLAY_SET_GRAYSCALE_DEFAULT,
 };
