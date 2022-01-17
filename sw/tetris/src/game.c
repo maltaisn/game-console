@@ -30,7 +30,6 @@
 
 #include <core/graphics.h>
 #include <core/sound.h>
-#include <core/trace.h>
 #include <core/dialog.h>
 #include <core/random.h>
 
@@ -38,6 +37,7 @@
 #include <sim/eeprom.h>
 
 #include <string.h>
+#include <stdio.h>
 
 game_t game;
 
@@ -87,32 +87,29 @@ void setup(void) {
     update_display_contrast(game.options.contrast);
 
     sound_set_tempo(encode_bpm_tempo(ASSET_SOUND_TEMPO));
-    start_music(ASSET_MUSIC_MENU, true);
+    start_music(ASSET_MUSIC_MENU, true, false);
 
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
 }
 
 void loop(void) {
-    // wait until game tick has passed
-    // note that rendering can take long enough to skip several game ticks.
+    // wait until at least one game tick has passed since last loop
+    // if display was refreshed, dt will be greater than 1, otherwise it will probably be 1.
     systime_t time;
+    uint8_t dt;
     do {
         time = time_get();
-    } while (time - last_tick_time < GAME_TICK);
+        dt = (time - last_tick_time) / GAME_TICK;
+    } while (dt == 0);
+    if (dt > MAX_DELTA_TIME) {
+        dt = MAX_DELTA_TIME;
+    }
     last_tick_time = time;
 
-    // stop blinking LED if period elapsed
-    if (led_blink_duration > 0) {
-        --led_blink_duration;
-        if (led_blink_duration == 0) {
-            led_blink(LED_BLINK_NONE);
-            led_clear();
-        }
-    }
+    update_led(dt);
+    update_music(dt);
 
-    update_music();
-
-    game.state = update_game_state();
+    game.state = update_game_state(dt);
 
     last_input_state = input_get_state();
 
@@ -125,10 +122,10 @@ void loop(void) {
     }
 }
 
-game_state_t update_game_state(void) {
+game_state_t update_game_state(uint8_t dt) {
     game_state_t s = game.state;
     if (s == GAME_STATE_PLAY) {
-        return update_tetris_state();
+        return update_tetris_state(dt);
     } else if (!game.dialog_shown) {
         // all other states show a dialog, and it wasn't initialized yet.
         if (s == GAME_STATE_MAIN_MENU) {
@@ -157,19 +154,19 @@ game_state_t update_game_state(void) {
     return handle_dialog_input();
 }
 
-game_state_t update_tetris_state(void) {
+game_state_t update_tetris_state(uint8_t dt) {
     game_state_t new_state = handle_game_input();
     if (new_state != GAME_STATE_PLAY) {
         return new_state;
     }
 
-    tetris_update();
+    tetris_update(dt);
 
     if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
         led_blink(32);
         led_blink_duration = 128;
 
-        start_music(ASSET_MUSIC_GAME_OVER, false);
+        start_music(ASSET_MUSIC_GAME_OVER, false, true);
 
         // check if new high score achieved and find its position.
         int8_t pos = -1;
@@ -283,7 +280,7 @@ game_state_t handle_dialog_input(void) {
         update_music_enabled();
     }
 
-    start_music(ASSET_MUSIC_MENU, true);
+    start_music(ASSET_MUSIC_MENU, true, true);
     return GAME_STATE_MAIN_MENU;
 }
 
@@ -389,10 +386,23 @@ game_state_t handle_game_input(void) {
     return GAME_STATE_PLAY;
 }
 
-void start_music(sound_t music, bool loop) {
+void update_led(uint8_t dt) {
+    // stop blinking LED if period elapsed
+    if (led_blink_duration > 0) {
+        if (led_blink_duration > dt) {
+            led_blink_duration -= dt;
+        } else {
+            led_blink_duration = 0;
+            led_blink(LED_BLINK_NONE);
+            led_clear();
+        }
+    }
+}
+
+void start_music(sound_t music, bool loop, bool delay) {
     if (game.current_music != music && (game.options.features & GAME_FEATURE_MUSIC)) {
         game.current_music = music;
-        game.music_start_delay = MUSIC_START_DELAY;
+        game.music_start_delay = delay ? MUSIC_START_DELAY : 1;
         sound_stop(MUSIC_TRACKS_STARTED);
         if (loop) {
             game.loop_music = music;
@@ -408,19 +418,22 @@ void stop_music(void) {
     game.loop_music = MUSIC_NONE;
 }
 
-void update_music(void) {
+void update_music(uint8_t dt) {
     if (game.music_start_delay > 0) {
         // music started but start delay not elapsed yet.
-        --game.music_start_delay;
-        if (game.music_start_delay > 0) {
+        if (game.music_start_delay > dt) {
+            game.music_start_delay -= dt;
             return;
         }
+        game.music_start_delay = 0;
+
     } else if (!sound_check_tracks(TRACKS_PLAYING_ALL)) {
         // music finished playing, restart it if any.
         if (game.loop_music == MUSIC_NONE) {
             return;
         }
         game.current_music = game.loop_music;
+
     } else {
         return;
     }
@@ -438,7 +451,7 @@ void start_game(void) {
     led_blink(LED_BLINK_NONE);
     led_clear();
 
-    start_music(ASSET_MUSIC_THEME, true);
+    start_music(ASSET_MUSIC_THEME, true, true);
 }
 
 void resume_game(void) {
@@ -469,7 +482,7 @@ void update_sound_volume(uint8_t volume) {
 
 void update_music_enabled(void) {
     if (game.options.features & GAME_FEATURE_MUSIC) {
-        start_music(ASSET_MUSIC_MENU, true);
+        start_music(ASSET_MUSIC_MENU, true, false);
     } else {
         stop_music();
     }
@@ -495,9 +508,7 @@ void save_options(void) {
     };
     tetris.options.preview_pieces = preview_pieces;
 
-    update_sound_volume(volume);
-    update_display_contrast(contrast);
-    update_music_enabled();
+    // contrast, volume and music enabled were already changed during preview
 
     save_to_eeprom();
 }
@@ -601,4 +612,6 @@ void power_callback_sleep_scheduled(void) {
 void power_callback_wakeup(void) {
     // ignore whatever button was used to wake up, until it is released.
     input_wait_released = input_get_state();
+    // last tick has probably happened very long ago, reset last tick time.
+    last_tick_time = time_get();
 }

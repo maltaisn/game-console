@@ -126,6 +126,10 @@ static void write_last_clear_info(char buf[static 16]) {
     }
 }
 
+/**
+ * Draw the game screen.
+ * When unbounded FPS vary between 15 (full grid + dialog) and 20 (empty grid).
+ */
 static void draw_game(void) {
     char buf[16];
     uint8_t preview_pieces = tetris.options.preview_pieces;
@@ -223,6 +227,10 @@ static void draw_game(void) {
     }
 }
 
+/**
+ * Draw the main menu screen.
+ * When unbounded FPS vary between 5 (options dialog) and 7 (main menu).
+ */
 static void draw_main_menu(void) {
     // background art
     graphics_image(ASSET_IMAGE_MENU, 0, 0);

@@ -146,19 +146,21 @@ typedef struct {
 
 extern game_t game;
 
-game_state_t update_game_state(void);
+game_state_t update_game_state(uint8_t dt);
 
-game_state_t update_tetris_state(void);
+game_state_t update_tetris_state(uint8_t dt);
 
 game_state_t handle_dialog_input(void);
 
 game_state_t handle_game_input(void);
 
-void start_music(sound_t music, bool loop);
+void update_led(uint8_t dt);
+
+void start_music(sound_t music, bool loop, bool delay);
 
 void stop_music(void);
 
-void update_music(void);
+void update_music(uint8_t dt);
 
 void start_game(void);
 

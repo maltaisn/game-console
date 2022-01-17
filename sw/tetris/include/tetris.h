@@ -26,6 +26,8 @@
 // game tick in number of system ticks, on which a state update is made and input is read.
 // this is 64 ticks per second, or roughly 15.6 ms per tick.
 #define GAME_TICK 4
+// maximum delta time in game ticks
+#define MAX_DELTA_TIME 16
 
 // Various game delays, in game ticks.
 #define DELAYED_AUTO_SHIFT 12
@@ -147,7 +149,7 @@ extern tetris_t tetris;
 
 void tetris_init(void);
 
-void tetris_update(void);
+void tetris_update(uint8_t dt);
 
 void tetris_remove_piece(void);
 

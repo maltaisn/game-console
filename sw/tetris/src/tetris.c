@@ -157,29 +157,37 @@ void tetris_init(void) {
     tetris_shuffle_bag();
 }
 
-void tetris_update(void) {
+void tetris_update(uint8_t dt) {
     if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
         // game over, nothing to update.
         return;
     }
 
-    if (tetris.entry_delay != 0) {
-        --tetris.entry_delay;
-        if (tetris.entry_delay == 0) {
+    if (tetris.entry_delay > 0) {
+        // last piece was locked, new piece not spawned yet.
+        if (tetris.entry_delay > dt) {
+            tetris.entry_delay -= dt;
+        } else {
+            tetris.entry_delay = 0;
             tetris_next_piece();
         }
     } else if (tetris.flags & TETRIS_FLAG_PIECE_AT_BOTTOM) {
-        --tetris.lock_delay;
-        if (tetris.lock_delay == 0) {
-            // lock delay expired, lock piece.
+        // piece is at bottom, but wasn't locked yet.
+        if (tetris.lock_delay > dt) {
+            tetris.lock_delay -= dt;
+        } else {
+            tetris.lock_delay = 0;
+            // lock delay elapsed, lock piece.
             // input is invalidated (by not handling).
             tetris_lock_piece();
             return;
         }
     } else {
-        --tetris.drop_delay;
-        if (tetris.drop_delay == 0) {
-            // drop delay expired, drop piece one block.
+        // piece is falling
+        if (tetris.drop_delay > dt) {
+            tetris.drop_delay -= dt;
+        } else {
+            // drop delay elapsed, drop piece one block.
             tetris.drop_delay = tetris.level_drop_delay;
             tetris_move_down(false);
         }
