@@ -26,40 +26,21 @@
 
 // display frames per second
 #ifdef SIMULATION
-#define DISPLAY_FPS 24  // faster for debugging
+#define DISPLAY_MAX_FPS 24  // faster for debugging
 #else
-#define DISPLAY_FPS 8
+#define DISPLAY_MAX_FPS 8
 #endif
 
-// Keybindings, can be a single button or two buttons
-#define BUTTON_LEFT      (BUTTON1)
-#define BUTTON_RIGHT     (BUTTON5)
-#define BUTTON_DOWN      (BUTTON3)
-#define BUTTON_ROT_CW    (BUTTON4)
-#define BUTTON_ROT_CCW   (BUTTON0)
-#define BUTTON_HOLD      (BUTTON2)
-#define BUTTON_HARD_DROP (BUTTON1 | BUTTON5)
-#define BUTTON_PAUSE     (BUTTON0 | BUTTON4)
+// game tick in number of system ticks, on which a state update is made and input is read.
+// this equals to 64 ticks per second, or roughly 15.6 ms per tick.
+#define GAME_TICK 4
 
-// Buttons for which delayed auto-shift is enabled.
-#define DAS_MASK         (BUTTON1 | BUTTON3 | BUTTON5)
-// Disallowed DAS mask (if all bits in mask are set, all DAS are disabled)
-#define DAS_DISALLOWED (BUTTON_LEFT | BUTTON_RIGHT)
-
-// If a single button is pressed, wait for this delay in game ticks for a
-// second button click to create a two-buttons combination.
-// This does introduce a 50 ms delay between click and action.
-#define BUTTON_COMBINATION_DELAY 2
+// maximum delta time in game ticks
+#define MAX_DELTA_TIME 16
 
 #define HIGHSCORE_NAME_MAX_LENGTH 12
 // maximum number of entries in leaderboard
 #define LEADERBOARD_MAX_SIZE 10
-
-// delay in game ticks before starting a different music (= 500 ms)
-#define MUSIC_START_DELAY 32
-
-#define MUSIC_NONE 0
-#define MUSIC_TRACKS_STARTED (TRACK0_STARTED | TRACK1_STARTED)
 
 typedef enum {
     // states with art background
@@ -114,6 +95,8 @@ typedef struct {
     uint8_t version_minor;
 } game_header_t;
 
+extern const game_header_t GAME_HEADER;
+
 typedef struct {
     uint8_t features;
     sound_volume_t volume; // 0-4
@@ -138,50 +121,10 @@ typedef struct {
     uint8_t new_highscore_pos;
     uint8_t old_features;
     bool dialog_shown;
-
-    sound_t current_music;
-    sound_t loop_music;
-    uint8_t music_start_delay;
 } game_t;
 
 extern game_t game;
 
-game_state_t update_game_state(uint8_t dt);
-
-game_state_t update_tetris_state(uint8_t dt);
-
-game_state_t handle_dialog_input(void);
-
-game_state_t handle_game_input(void);
-
-void update_led(uint8_t dt);
-
-void start_music(sound_t music, bool loop, bool delay);
-
-void stop_music(void);
-
-void update_music(uint8_t dt);
-
-void start_game(void);
-
-void resume_game(void);
-
-game_state_t save_highscore(void);
-
-void update_display_contrast(uint8_t value);
-
-void update_sound_volume(uint8_t volume);
-
-void update_music_enabled(void);
-
-void save_options(void);
-
-void save_extra_options(void);
-
-void set_default_options(void);
-
-void load_from_eeprom(void);
-
-void save_to_eeprom(void);
+void game_start(void);
 
 #endif //TETRIS_GAME_H

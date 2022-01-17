@@ -15,9 +15,25 @@
  * limitations under the License.
  */
 
-#ifndef TETRIS_RENDER_H
-#define TETRIS_RENDER_H
+#ifndef TETRIS_SAVE_H
+#define TETRIS_SAVE_H
 
-void draw(void);
+#include <game.h>
 
-#endif //TETRIS_RENDER_H
+void load_from_eeprom(void);
+
+void save_to_eeprom(void);
+
+game_state_t save_highscore(void);
+
+void save_dialog_options(void);
+
+void save_dialog_extra_options(void);
+
+void update_display_contrast(uint8_t value);
+
+void update_sound_volume(uint8_t volume);
+
+void update_music_enabled(void);
+
+#endif //TETRIS_SAVE_H

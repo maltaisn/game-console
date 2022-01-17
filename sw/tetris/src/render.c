@@ -18,8 +18,8 @@
 #include <render.h>
 #include <game.h>
 #include <tetris.h>
-#include <ui.h>
 #include <assets.h>
+#include <input.h>
 
 #include <sys/power.h>
 
@@ -36,6 +36,8 @@
 #define TILE_WIDTH 6
 #define TILE_HEIGHT 6
 
+#define CONTROLS_COUNT 8
+
 // outer color, inner color, tile I to Z
 static const disp_color_t TILE_COLORS[] = {
         15, 1,  // I
@@ -45,6 +47,27 @@ static const disp_color_t TILE_COLORS[] = {
         6, 1,  // S
         15, 12, // T
         12, 15, // Z
+};
+
+static const char* CONTROL_NAMES[CONTROLS_COUNT] = {
+        "Pause",
+        "Move left",
+        "Move right",
+        "Rotate left",
+        "Rotate right",
+        "Soft drop",
+        "Hard drop",
+        "Hold/swap",
+};
+static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
+        BUTTON_PAUSE,
+        BUTTON_LEFT,
+        BUTTON_RIGHT,
+        BUTTON_ROT_CCW,
+        BUTTON_ROT_CW,
+        BUTTON_DOWN,
+        BUTTON_HARD_DROP,
+        BUTTON_HOLD,
 };
 
 static void draw_tile_block(disp_x_t x, disp_y_t y, tetris_piece piece) {
@@ -228,6 +251,58 @@ static void draw_game(void) {
 }
 
 /**
+ * Draw the content for the controls dialog.
+ */
+static void draw_controls_overlay(void) {
+    graphics_set_font(ASSET_FONT_5X7);
+    disp_y_t y = 25;
+    for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
+        // control name text
+        graphics_set_color(DISPLAY_COLOR_WHITE);
+        graphics_text(30, (int8_t) y, CONTROL_NAMES[i]);
+
+        // illustrate the 6 buttons with the one used by the control highlighted.
+        uint8_t buttons = CONTROL_BUTTONS[i];
+        uint8_t mask = BUTTON0;
+        disp_x_t button_x = 15;
+        for (uint8_t j = 0; j < 3; ++j) {
+            disp_y_t button_y = y;
+            for (uint8_t k = 0; k < 2; ++k) {
+                graphics_set_color(buttons & mask ? DISPLAY_COLOR_WHITE : 6);
+                graphics_fill_rect(button_x, button_y, 3, 3);
+                button_y += 4;
+                mask <<= 1;
+            }
+            button_x += 4;
+        }
+        y += 10;
+    }
+}
+
+/**
+ * Draw the content for the leaderboard dialog.
+ */
+static void draw_leaderboard_overlay(void) {
+    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    disp_y_t y = 25;
+    for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
+        graphics_text(13, (int8_t) y, game.leaderboard.entries[i].name);
+        y += 8;
+    }
+
+    char score_buf[9];
+    graphics_set_font(ASSET_FONT_5X7);
+    graphics_set_color(13);
+    y = 24;
+    for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
+        sprintf(score_buf, "%8" PRIu32, game.leaderboard.entries[i].score);
+        graphics_text(68, (int8_t) y, score_buf);
+        y += 8;
+    }
+}
+
+/**
  * Draw the main menu screen.
  * When unbounded FPS vary between 5 (options dialog) and 7 (main menu).
  */
@@ -267,74 +342,5 @@ void draw(void) {
         if (s == GAME_STATE_MAIN_MENU || s == GAME_STATE_PAUSE || s == GAME_STATE_GAME_OVER) {
             sysui_battery_overlay();
         }
-    }
-}
-
-#define CONTROLS_COUNT 8
-
-static const char* CONTROL_NAMES[CONTROLS_COUNT] = {
-        "Pause",
-        "Move left",
-        "Move right",
-        "Rotate left",
-        "Rotate right",
-        "Soft drop",
-        "Hard drop",
-        "Hold/swap",
-};
-static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
-        BUTTON_PAUSE,
-        BUTTON_LEFT,
-        BUTTON_RIGHT,
-        BUTTON_ROT_CCW,
-        BUTTON_ROT_CW,
-        BUTTON_DOWN,
-        BUTTON_HARD_DROP,
-        BUTTON_HOLD,
-};
-
-void draw_controls_overlay(void) {
-    graphics_set_font(ASSET_FONT_5X7);
-    disp_y_t y = 25;
-    for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
-        // control name text
-        graphics_set_color(DISPLAY_COLOR_WHITE);
-        graphics_text(30, (int8_t) y, CONTROL_NAMES[i]);
-
-        // illustrate the 6 buttons with the one used by the control highlighted.
-        uint8_t buttons = CONTROL_BUTTONS[i];
-        uint8_t mask = BUTTON0;
-        disp_x_t button_x = 15;
-        for (uint8_t j = 0; j < 3; ++j) {
-            disp_y_t button_y = y;
-            for (uint8_t k = 0; k < 2; ++k) {
-                graphics_set_color(buttons & mask ? DISPLAY_COLOR_WHITE : 6);
-                graphics_fill_rect(button_x, button_y, 3, 3);
-                button_y += 4;
-                mask <<= 1;
-            }
-            button_x += 4;
-        }
-        y += 10;
-    }
-}
-
-void draw_leaderboard_overlay(void) {
-    graphics_set_font(GRAPHICS_BUILTIN_FONT);
-    graphics_set_color(DISPLAY_COLOR_WHITE);
-    disp_y_t y = 25;
-    for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
-        graphics_text(13, (int8_t) y, game.leaderboard.entries[i].name);
-        y += 8;
-    }
-
-    char score_buf[9];
-    graphics_set_font(ASSET_FONT_5X7);
-    graphics_set_color(13);
-    y = 24;
-    for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
-        sprintf(score_buf, "%8" PRIu32, game.leaderboard.entries[i].score);
-        graphics_text(68, (int8_t) y, score_buf);
-        y += 8;
     }
 }

@@ -314,8 +314,17 @@ class CodeGenerator:
         max_hex_value = max((e.value for e in self._elements
                              if isinstance(e, CodeGenerator.Define) and e.is_hex))
         hex_value_width = len(f"{max_hex_value:x}")
-        name_width = max((len(e.name) for e in self._elements if e != CodeGenerator.Separator))
+        names = []
         for e in self._elements:
+            if isinstance(e, CodeGenerator.Define):
+                names.append(e.name)
+            elif isinstance(e, CodeGenerator.Macro):
+                names.append(f"{e.name}({', '.join(e.args)})")
+            else:
+                names.append("")
+        name_width = len(max(names, key=len))
+
+        for i, e in enumerate(self._elements):
             if isinstance(e, CodeGenerator.Define):
                 value: str
                 if e.is_hex:
@@ -326,9 +335,9 @@ class CodeGenerator:
                     value += "L"
                 if e.unified_space:
                     value = f"data_flash({value})"
-                lines.append(f"#define {e.name.ljust(name_width)} {value}")
+                lines.append(f"#define {names[i].ljust(name_width)} {value}")
             elif isinstance(e, CodeGenerator.Macro):
-                lines.append(f"#define {e.name}({', '.join(e.args)}) {e.value}")
+                lines.append(f"#define {names[i].ljust(name_width)} {e.value}")
             elif isinstance(e, CodeGenerator.Array):
                 lines.append(f"extern const uint{e.type_width}_t {e.name}[];")
             else:

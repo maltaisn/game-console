@@ -15,9 +15,24 @@
  * limitations under the License.
  */
 
-#ifndef TETRIS_RENDER_H
-#define TETRIS_RENDER_H
+#ifndef TETRIS_LED_H
+#define TETRIS_LED_H
 
-void draw(void);
+#include <stdint.h>
 
-#endif //TETRIS_RENDER_H
+/**
+ * Start blinking the LED with a period in systicks and a duration in game ticks.
+ */
+void game_led_start(uint8_t period, uint8_t duration);
+
+/**
+ * Stop blinking the LED and turn it off.
+ */
+void game_led_stop(void);
+
+/**
+ * Update the blinking LED logic.
+ */
+void game_led_update(uint8_t dt);
+
+#endif //TETRIS_LED_H

@@ -23,18 +23,11 @@
 #include <sys/defs.h>
 #include <sys/time.h>
 
-// game tick in number of system ticks, on which a state update is made and input is read.
-// this is 64 ticks per second, or roughly 15.6 ms per tick.
-#define GAME_TICK 4
-// maximum delta time in game ticks
-#define MAX_DELTA_TIME 16
-
-// Various game delays, in game ticks.
-#define DELAYED_AUTO_SHIFT 12
-#define AUTO_REPEAT_RATE 4
+// delay in game ticks between the time piece is locked and next piece is spawned.
 #define ENTRY_DELAY 10
-
+// delay in game ticks after which piece at bottom is locked.
 #define LOCK_DELAY 32
+// number of moves after which piece at bottom is locked.
 #define LOCK_MOVES 15
 
 #define LINES_PER_LEVEL 10
@@ -49,13 +42,12 @@
 #define GRID_SPAWN_ROW 20
 #define PIECE_GRID_SIZE 5
 #define SPAWN_PIECE_OFFSET 2
-#define LAST_ROT_NONE 0xff
 
 #define SOFT_DROP_PTS_PER_CELL 1
 #define HARD_DROP_PTS_PER_CELL 2
-#define BACK_TO_BACK_MULTIPLIER(pts) ((pts) * 3 / 2)  // *1.5
 #define COMBO_POINTS 50
 #define DIFFICULT_CLEAR_MIN_LINES 4
+#define BACK_TO_BACK_MULTIPLIER(pts) ((pts) * 3 / 2)  // *1.5
 
 // all bonuses below are multiplied by this number
 // bonuses values are defined in tetris.c
@@ -147,42 +139,28 @@ typedef struct {
 
 extern tetris_t tetris;
 
+/** Initialize the tetris state and start the game. */
 void tetris_init(void);
 
+/** Update the tetris state for a delta time in game ticks. */
 void tetris_update(uint8_t dt);
 
-void tetris_remove_piece(void);
-
-void tetris_remove_ghost_piece(void);
-
-bool tetris_can_place_piece(void);
-
-void tetris_place_piece(void);
-
-bool tetris_try_move(void);
-
+/** Move the piece left if possible. */
 void tetris_move_left(void);
 
+/** Move the piece right if possible. */
 void tetris_move_right(void);
 
-void tetris_move_down(bool is_soft_drop);
+/** Move the piece down if possible. If not, the piece is locked. */
+void tetris_move_down(void);
 
+/** Move the piece to the bottom and lock it. */
 void tetris_hard_drop(void);
 
+/** Rotate the piece in either direction, if possible. */
 void tetris_rotate_piece(tetris_rot_dir direction);
 
-void tetris_lock_piece(void);
-
+/** Hold the current piece and spawn a new one, or swap it with the old already held. */
 void tetris_hold_or_swap_piece(void);
-
-void tetris_shuffle_bag(void);
-
-void tetris_next_piece(void);
-
-void tetris_spawn_piece(tetris_piece piece);
-
-void tetris_update_score(tetris_tspin tspin, uint8_t lines_cleared);
-
-tetris_tspin tetris_detect_tspin(void);
 
 #endif //TETRIS_TETRIS_H
