@@ -127,11 +127,7 @@ static void handle_packet_fast_mode(void) {
 
     if (comm_payload_buf[0]) {
         uart_set_fast_mode();
-        while (uart_is_in_fast_mode()) {
-            // in fast mode we're continuously decoding packets to avoid losing any data.
-            // the loop will end when a fast mode disable packet is sent.
-            comm_receive();
-        }
+        // will continuously receive in main loop.
     } else {
         uart_set_normal_mode();
     }

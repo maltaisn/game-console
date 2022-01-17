@@ -18,6 +18,7 @@
 #include <sys/init.h>
 #include <sys/power.h>
 #include <sys/input.h>
+#include <sys/uart.h>
 
 #include <core/comm.h>
 #include <core/sound.h>
@@ -29,7 +30,11 @@ int main(void) {
     setup();
     while (true) {
 #ifndef DISABLE_COMMS
-        comm_receive();
+        do {
+            comm_receive();
+            // in fast mode we're continuously decoding packets to avoid losing any data.
+            // the loop will end when a fast mode disable packet is sent.
+        } while (uart_is_in_fast_mode());
 #endif
         sound_fill_track_buffers();
         input_dim_if_inactive();

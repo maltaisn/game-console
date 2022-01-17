@@ -73,7 +73,7 @@ void sysui_battery_overlay(void) {
     if (status == BATTERY_DISCHARGING) {
         graphics_set_font(GRAPHICS_BUILTIN_FONT);
         char buf[4];
-        graphics_text((int8_t) (130 - width), 122, uint8_to_str(buf - 1, percent));
+        graphics_text((int8_t) (130 - width), 122, uint8_to_str(buf, percent));
         graphics_glyph(114, 122, '%');
         if (percent >= 17) {
             graphics_fill_rect(120, 123, percent / 17, 3);

@@ -188,7 +188,7 @@ game_state_t update_tetris_state(void) {
         if (pos != -1) {
             // shift existing high scores and insert new one
             uint8_t last_pos = game.leaderboard.size == LEADERBOARD_MAX_SIZE ?
-                    LEADERBOARD_MAX_SIZE - 1 : game.leaderboard.size;
+                               LEADERBOARD_MAX_SIZE - 1 : game.leaderboard.size;
             for (uint8_t i = last_pos; i > pos; --i) {
                 game.leaderboard.entries[i] = game.leaderboard.entries[i - 1];
             }
@@ -390,12 +390,10 @@ game_state_t handle_game_input(void) {
 }
 
 void start_music(sound_t music, bool loop) {
-    if (game.current_music != music) {
-        if (game.options.features & GAME_FEATURE_MUSIC) {
-            game.current_music = music;
-            game.music_start_delay = MUSIC_START_DELAY;
-            sound_stop(MUSIC_TRACKS_STARTED);
-        }
+    if (game.current_music != music && (game.options.features & GAME_FEATURE_MUSIC)) {
+        game.current_music = music;
+        game.music_start_delay = MUSIC_START_DELAY;
+        sound_stop(MUSIC_TRACKS_STARTED);
         if (loop) {
             game.loop_music = music;
         } else {

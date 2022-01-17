@@ -20,6 +20,18 @@
 
 #include <string.h>
 
+static __attribute__((no_sanitize_address)) void data_read_internal(
+        data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
+    // this function is marked as no_sanitized because we don't care if the program is reading
+    // past the end of the source buffer, and it happens frequently. For example, when drawing
+    // an image of only 6 bytes, the graphics function will fully fill its 16 byte buffer.
+    // There's virtually nothing bad that can arise from this on the microcontroller.
+    const uint8_t* src = (const uint8_t*) (uintptr_t) address;
+    while (length--) {
+        *dest++ = *src++;
+    }
+}
+
 void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
     // not very portable but we'll assume the program memory isn't located in the range 0x000000 to
     // 0xffffff, and thus any addresses in that range must be either flash or EEPROM.
@@ -28,6 +40,6 @@ void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length])
     } else if ((address & ~0x0fffff) == DATA_EEPROM_MASK) {
         eeprom_read((eeprom_t) (address & ~DATA_EEPROM_MASK), length, dest);
     } else {
-        memcpy(dest, (const uint8_t*) (uintptr_t) address, length);
+        data_read_internal(address, length, dest);
     }
 }
