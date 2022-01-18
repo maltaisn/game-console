@@ -207,9 +207,29 @@ void display_clear_reset(void) {
     VPORTC.OUT &= ~PIN2_bm;
 }
 
-void display_first_page(void) {
+static void reset_cursor(void) {
     display_clear_dc();
     write_data(sizeof RESET_CURSOR_SEQUENCE, RESET_CURSOR_SEQUENCE);
+}
+
+void display_clear(disp_color_t color) {
+    // fill 256 bytes buffer with color to use for transfer
+    color = color | color << 4;
+    uint8_t i = 0;
+    do {
+        buffer[i++] = color;
+    } while (i != 0);
+
+    // write buffer until whole display has been cleared
+    reset_cursor();
+    display_set_dc();
+    for (i = 0; i < DISPLAY_SIZE / 256; ++i) {
+        write_data(256, buffer);
+    }
+}
+
+void display_first_page(void) {
+    reset_cursor();
     display_page_ystart = 0;
     display_page_yend = PAGE_HEIGHT;
 }

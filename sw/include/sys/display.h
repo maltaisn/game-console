@@ -145,6 +145,11 @@ void display_set_reset(void);
 void display_clear_reset(void);
 
 /**
+ * Clear the whole display, not paged.
+ */
+void display_clear(disp_color_t c);
+
+/**
  * Start updating display with the first page.
  * The display buffer is NOT cleared beforehand.
  */

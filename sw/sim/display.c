@@ -111,6 +111,12 @@ void display_clear_reset(void) {
     // no-op
 }
 
+void display_clear(disp_color_t color) {
+    pthread_mutex_lock(&display_mutex);
+    memset(disp_data, color | color << 4, DISPLAY_SIZE);
+    pthread_mutex_unlock(&display_mutex);
+}
+
 void display_first_page(void) {
     display_page_ystart = 0;
     display_page_yend = PAGE_HEIGHT;

@@ -172,6 +172,7 @@ void init_wakeup(void) {
 
     // initialize display
     display_init();
+    display_clear(DISPLAY_COLOR_BLACK);
     power_set_15v_reg_enabled(true);
     display_set_enabled(true);
 
