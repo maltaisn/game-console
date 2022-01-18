@@ -45,7 +45,7 @@ typedef enum sampler_state {
 // If outside of these intervals, status is unknown.
 // VREF = 2.5V
 static const uint8_t BATTERY_STATUS_RANGES[] = {
-        166, 210,   // no battery,  bat stat = 1.6 to 2.1 V
+        130, 210,   // no battery,  bat stat = 1.3 to 2.1 V
         4, 62,      // charging,    bat stat = 0.1 to 0.6 V
         211, 255,   // charged,     bat stat = 2.1 to 2.6 V
         0, 3,       // discharging, bat stat = 0 V
@@ -61,72 +61,107 @@ static const uint16_t BATTERY_LEVEL_POINTS[] = {
 };
 
 enum {
-    STATE_BATTERY_PERCENT_CACHED = 1 << 0,
-    STATE_15V_ENABLED = 1 << 1,
-    STATE_SLEEP_SCHEDULED = 1 << 2,
-    STATE_SLEEP_ALLOW_WAKEUP = 1 << 3,
+    STATE_15V_ENABLED = 1 << 0,
+    STATE_SLEEP_SCHEDULED = 1 << 1,
+    STATE_SLEEP_ALLOW_WAKEUP = 1 << 2,
 };
 
 static volatile uint8_t power_state;
 static volatile sampler_state_t sampler_state;
 static volatile battery_status_t battery_status;
+static volatile uint8_t battery_percent;
 
 // sampling is done every second and accumulated in buffer for averaging.
-static volatile uint16_t battery_level_buf[BATTERY_BUFFER_SIZE];
-static volatile uint8_t battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
-static uint8_t battery_percent_cache;
+static uint16_t battery_level_buf[BATTERY_BUFFER_SIZE];
+static uint8_t battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
 
 // sleeping
 static volatile sleep_cause_t sleep_cause;
 static uint8_t sleep_countdown;
 
+/** Find the battery status from a voltage measurement and return it. */
+static battery_status_t get_battery_status(uint8_t res) {
+    // return battery status according to precalculated ranges.
+    // if none match, battery status is unknown.
+    const uint8_t* ranges = BATTERY_STATUS_RANGES;
+    for (uint8_t status = BATTERY_NONE; status <= (uint8_t) BATTERY_DISCHARGING; ++status) {
+        uint8_t min = *ranges++;
+        uint8_t max = *ranges++;
+        if (res >= min && res <= max) {
+            return status;
+        }
+    }
+    return BATTERY_UNKNOWN;
+}
+
+/** "Average" battery level from measurements in buffer. */
+static uint16_t get_battery_level_avg(void) {
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        uint24_t sum = 0;
+        for (uint8_t i = 0; i < BATTERY_BUFFER_SIZE; ++i) {
+            sum += (uint24_t) battery_level_buf[i];
+        }
+        return sum >> BATTERY_BUFFER_SIZE_LOG2;
+    }
+    return 0;
+}
+
+/** Calculate and return battery percent from measurements in buffer,
+ *  and predetermined voltage levels. */
+static uint8_t get_battery_percent(uint16_t res) {
+    // push new battery level to buffer
+    const uint8_t head = battery_level_head;
+    if (head == BATTERY_BUFFER_HEAD_EMPTY) {
+        // buffer is empty, fill it with first sample
+        battery_level_head = 0;
+        for (uint8_t i = 0; i < BATTERY_BUFFER_SIZE; ++i) {
+            battery_level_buf[i] = res;
+        }
+    } else {
+        battery_level_buf[head] = res;
+        battery_level_head = (head + 1) % BATTERY_BUFFER_SIZE;
+    }
+
+    // linearly interpolate battery percentage from precalculated points.
+    const uint16_t level = get_battery_level_avg();
+    uint16_t left = BATTERY_LEVEL_POINTS[0];
+    if (level < left) {
+        // battery level <0%
+        return 0;
+    }
+    for (uint8_t i = 1; i < 11; ++i) {
+        uint16_t right = BATTERY_LEVEL_POINTS[i];
+        if (level < right) {
+            return 10 * (i - 1) + ((level - left) * 10 + 5) / (right - left);
+        }
+        left = right;
+    }
+    return 100;
+}
+
 ISR(ADC0_RESRDY_vect) {
     uint16_t res = ADC0.RES;
     const sampler_state_t state = sampler_state;
     if (state == STATE_STATUS) {
-        // set battery status according to precalculated ranges.
-        // if none match, battery status is unknown.
-        res >>= 8;
-        const uint8_t* ranges = BATTERY_STATUS_RANGES;
-        battery_status_t new_status = BATTERY_UNKNOWN;
-        for (uint8_t status = BATTERY_NONE; status <= (uint8_t) BATTERY_DISCHARGING; ++status) {
-            uint8_t min = *ranges++;
-            uint8_t max = *ranges++;
-            if (res >= min && res <= max) {
-                new_status = status;
-                break;
-            }
-        }
-
-        battery_status = new_status;
-        if (new_status == BATTERY_DISCHARGING) {
+        battery_status_t status = get_battery_status(res >> 8);
+        battery_status = status;
+        if (status == BATTERY_DISCHARGING) {
             // start conversion for battery level.
-            PORTF.OUT |= PIN6_bm;  // enable switch for reading
+            VPORTF.OUT |= PIN6_bm;  // enable switch for reading
             ADC0.MUXPOS = MUXPOS_VBAT_LEVEL;
             ADC0.COMMAND = ADC_STCONV_bm;
             sampler_state = STATE_LEVEL;
         } else {
             // no battery, or vbat is sourced from vbus,
             // in which case we can't know the battery voltage.
+            battery_percent = 0;
             battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
             sampler_state = STATE_DONE;
         }
 
     } else if (state == STATE_LEVEL) {
-        PORTF.OUT &= ~PIN6_bm;
-        // push new battery level to buffer
-        const uint8_t head = battery_level_head;
-        if (head == BATTERY_BUFFER_HEAD_EMPTY) {
-            // buffer is empty, fill it with first sample
-            battery_level_head = 0;
-            for (uint8_t i = 0; i < BATTERY_BUFFER_SIZE; ++i) {
-                battery_level_buf[i] = res;
-            }
-        } else {
-            battery_level_buf[head] = res;
-            battery_level_head = (head + 1) % BATTERY_BUFFER_SIZE;
-        }
-        power_state &= ~STATE_BATTERY_PERCENT_CACHED;
+        VPORTF.OUT &= ~PIN6_bm;
+        battery_percent = get_battery_percent(res);
         sampler_state = STATE_DONE;
     }
 }
@@ -167,38 +202,8 @@ battery_status_t power_get_battery_status(void) {
     return battery_status;
 }
 
-/** "Average" battery level from measurements in buffer. */
-static uint16_t get_battery_level_avg(void) {
-    ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        uint24_t sum = 0;
-        for (uint8_t i = 0; i < BATTERY_BUFFER_SIZE; ++i) {
-            sum += (uint24_t) battery_level_buf[i];
-        }
-        return sum >> BATTERY_BUFFER_SIZE_LOG2;
-    }
-    return 0;
-}
-
 uint8_t power_get_battery_percent(void) {
-    if (power_state & STATE_BATTERY_PERCENT_CACHED) {
-        return battery_percent_cache;
-    }
-    // linearly interpolate battery percentage from precalculated points.
-    const uint16_t level = get_battery_level_avg();
-    uint16_t left = BATTERY_LEVEL_POINTS[0];
-    if (level < left) {
-        // battery level <0%
-        return 0;
-    }
-    for (uint8_t i = 1; i < 11; ++i) {
-        uint16_t right = BATTERY_LEVEL_POINTS[i];
-        if (level < right) {
-            return 10 * (i - 1) + ((level - left) * 10 + 5) / (right - left);
-        }
-        left = right;
-    }
-    // battery level >= 100%
-    return 100;
+    return battery_percent;
 }
 
 uint16_t power_get_battery_voltage(void) {

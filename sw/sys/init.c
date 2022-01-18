@@ -48,7 +48,7 @@ static void init_registers(void) {
     // status LED, display SS, display reset, display D/C
     VPORTC.DIR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
     // flash SS, eeprom SS, enable VBAT level
-    VPORTF.DIR = PIN0_bm | PIN1_bm | PIN2_bm;
+    VPORTF.DIR = PIN0_bm | PIN1_bm | PIN6_bm;
 
     // set buzzer H-bridge inputs high initially
     // there are hardware pull-down so better to set low to avoid sound artifacts on startup.

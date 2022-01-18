@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+#include <assets.h>
 
 #include <sys/main.h>
 #include <sys/input.h>
 #include <sys/display.h>
 #include <sys/time.h>
+#include <sys/power.h>
 
 #include <core/graphics.h>
 #include <core/sound.h>
@@ -31,10 +33,23 @@
 #include <sim/power.h>
 
 #include <stdio.h>
+#include <inttypes.h>
 
 void setup(void) {
-
+#ifdef SIMULATION
+    FILE* file = fopen("assets.dat", "rb");
+    flash_load_file(0, file);
+    fclose(file);
+#endif
 }
+
+static const char* STATUS_NAMES[] = {
+        "unknown",
+        "none",
+        "charging",
+        "charged",
+        "discharging",
+};
 
 static void draw(void) {
     graphics_clear(DISPLAY_COLOR_BLACK);
@@ -45,31 +60,23 @@ static void draw(void) {
         return;
     }
 
-//    graphics_image(ASSET_IMAGE_TIGER128, 0, 0);
     sysui_battery_overlay();
+
+    char buf[32];
+    graphics_set_font(ASSET_FONT_FONT5X7);
+    sprintf(buf, "status = %s", STATUS_NAMES[power_get_battery_status()]);
+    graphics_text(5, 10, buf);
+    sprintf(buf, "level = %d%%", power_get_battery_percent());
+    graphics_text(5, 20, buf);
+    sprintf(buf, "voltage = %d mV", power_get_battery_voltage());
+    graphics_text(5, 30, buf);
+    sprintf(buf, "time = %" PRIu32, (uint32_t) time_get());
+    graphics_text(5, 40, buf);
 }
 
 void loop(void) {
     systime_t time = time_get();
-    while (time_get() - time < millis_to_ticks(200));
-
-    // input
-    uint8_t state = input_get_state();
-#ifdef SIMULATION
-    if (state & BUTTON0) {
-        power_set_battery_status((power_get_battery_status() + 1) % (BATTERY_DISCHARGING + 1));
-    } else if (state & BUTTON2) {
-        uint8_t percent = power_get_battery_percent();
-        if (percent < 100) {
-            power_set_battery_percent(percent + 1);
-        }
-    } else if (state & BUTTON3) {
-        uint8_t percent = power_get_battery_percent();
-        if (percent > 0) {
-            power_set_battery_percent(percent - 1);
-        }
-    }
-#endif
+    while (time_get() - time < millis_to_ticks(20));
 
     // drawing
     display_first_page();
@@ -77,3 +84,4 @@ void loop(void) {
         draw();
     } while (display_next_page());
 }
+
