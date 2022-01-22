@@ -33,7 +33,8 @@
  * - Data is buffered to limit number of accesses to external memory devices.
  *
  * Sound data format:
- * - 0x00-(end-1):
+ * - 0x00: signature byte, 0xf2
+ * - 0x01-(end-1):
  *       Track data. Tracks with no data are omitted.
  * - end: last byte is 0xff
  *
@@ -174,20 +175,20 @@ uint8_t sound_get_tempo(void);
 void sound_set_volume(sound_volume_t volume);
 
 /**
- * Returns the sound volume value.
+ * Returns the sound global volume value.
  * If the volume is off, playback will continue but no sound will be produced.
  */
 sound_volume_t sound_get_volume(void);
 
 /**
- * Increase volume by one level, wrapping around to OFF after maximum.
+ * Set the sound volume value for a specific channel.
  */
-void sound_increase_volume(void);
+void sound_set_channel_volume(uint8_t channel, sound_channel_volume_t volume);
 
 /**
- * Decrease volume by one level, wrapping around to maximum after OFF.
+ * Returns the sound volume value for a specific channel.
  */
-void sound_decrease_volume(void);
+sound_channel_volume_t sound_get_channel_volume(uint8_t channel);
 
 /**
  * Update sound state after one system time counter tick.

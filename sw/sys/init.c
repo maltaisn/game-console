@@ -23,6 +23,7 @@
 #include <sys/led.h>
 #include <sys/input.h>
 #include <sys/reset.h>
+#include <sys/flash.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -83,13 +84,13 @@ static void init_registers(void) {
     // Prescaler 2, split mode, single slope PWM on compare channel 3.
     // PWM is output on PA3 for buzzer. Only high timer is used, low timer is unused.
     TCA0.SPLIT.CTRLD = TCA_SPLIT_SPLITM_bm;
+    TCA0.SPLIT.CTRLB = TCA_SPLIT_HCMP0EN_bm;
     TCA0.SPLIT.HPER = SOUND_PWM_MAX;
     TCA0.SPLIT.HCMP0 = 0;
     TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc;
-    // Set the event system channel 0 to PA3, with event user EVOUTA pin (PA2).
-    // PA2 will be inverted when sound is enabled to drive H-bridge setup.
+    // The event system channel 0 is set to PA3, with event user EVOUTA pin (PA2),
+    // to invert PA2 when H-bridge setup is used (event user set when enabled).
     EVSYS.CHANNEL0 = EVSYS_GENERATOR_PORT0_PIN3_gc;
-    EVSYS.USEREVOUTA = EVSYS_CHANNEL_CHANNEL0_gc;
 
     // ====== TCB ======
     // Used for each sound channel. Prescaler = 2, periodic interrupt mode.

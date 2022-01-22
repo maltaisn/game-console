@@ -34,7 +34,7 @@
 static void set_default_options(void) {
     game.options = (game_options_t) {
             .features = GAME_FEATURE_MUSIC | GAME_FEATURE_SOUND_EFFECTS,
-            .volume = SOUND_VOLUME_2 >> SOUND_CHANNELS_COUNT,
+            .volume = SOUND_VOLUME_2,
             .contrast = 6,
     };
     tetris.options = (tetris_options_t) {
@@ -159,7 +159,13 @@ void update_display_contrast(uint8_t value) {
 }
 
 void update_sound_volume(uint8_t volume) {
-    sound_set_volume(volume << SOUND_CHANNELS_COUNT);
+    sound_volume_t v;
+    if (volume == 0) {
+        v = SOUND_VOLUME_OFF;
+    } else {
+        v = volume - 1;
+    }
+    sound_set_volume(v);
 }
 
 void update_music_enabled(void) {

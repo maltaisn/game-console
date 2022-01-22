@@ -72,22 +72,23 @@
  * FORMAT DESCRIPTION
  *
  * The header format is:
- * [0]: image flags:
+ * [0]: signature byte, 0xf1
+ * [1]: image flags:
  *      - 0x1: 1-bit format (4-bit if not set)
  *      - 0x2: indexed
  *      - others: unused
- * [1]: image width, -1 (width is from 1 to 256)
- * [2]: image height, -1 (height is from 1 to 256)
+ * [2]: image width, -1 (width is from 1 to 256)
+ * [3]: image height, -1 (height is from 1 to 256)
  *
  * If not indexed, index section is omitted completely.
  * If indexed index format is:
- * [3]: index granularity. The 0x00 value is prohibited.
- * [4..(n+3)]: index entries, n = floor(image_height / granularity)
- *             The first index entry is the offset from position 4 to the start of image data.
+ * [4]: index granularity. The 0x00 value is prohibited.
+ * [5..(n+4)]: index entries, n = floor(image_height / granularity)
+ *             The first index entry is the offset from position 5 to the start of image data.
  *             The following entries are offsets from the previous entry.
  *             If granularity is greater or equal to image height, n = 0 and there are no entries.
  *
- * The image data starts at position 3 if not indexed and at position (n+4) if indexed.
+ * The image data starts at position 4 if not indexed and at position (n+5) if indexed.
  * The data is encoded differently depending on the encoding indicated by the flag byte.
  * Important: the state of the encoder and decoder is reset on index boundaries!
  *
@@ -123,15 +124,16 @@ typedef data_ptr_t graphics_image_t;
 /**
  * A font is just an address to the font data in the unified data space.
  *
- * The font format is a 5-byte header followed by glyph data (by bit position):
- * [0]: glyph count
- * [8]: bytes per char (1-33)
- * [16]: glyph width, minus one (0-15)
- * [20]: glyph height, minus one (0-15)
- * [24]: bits of Y offset per glyph (0-4)
- * [28]: max Y offset (0-15)
- * [32]: line spacing (0-32)
- * [40+]: glyph data
+ * The font format is a 6-byte header followed by glyph data (by bit position):
+ * [0]: signature byte, 0xf0
+ * [8]: glyph count
+ * [16]: bytes per char (1-33)
+ * [24]: glyph width, minus one (0-15)
+ * [28]: glyph height, minus one (0-15)
+ * [32]: bits of Y offset per glyph (0-4)
+ * [36]: max Y offset (0-15)
+ * [40]: line spacing (0-32)
+ * [48+]: glyph data
  *
  * Remarks:
  * - Each glyph data is byte aligned and takes a number of bytes. From most significant bit to

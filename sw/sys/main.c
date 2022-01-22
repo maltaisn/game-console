@@ -24,6 +24,7 @@
 #include <core/sound.h>
 
 #include <stdbool.h>
+#include "sys/led.h"
 
 int main(void) {
     init();

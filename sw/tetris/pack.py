@@ -3,7 +3,7 @@
 from packer import Packer, ArrayType
 
 version_major = 0
-version_minor = 3
+version_minor = 4
 
 tempo = 120
 

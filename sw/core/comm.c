@@ -141,7 +141,7 @@ static void handle_packet_sleep(void) {
     power_schedule_sleep(SLEEP_CAUSE_REMOTE, false, false);
 }
 
-void comm_receive(void) {
+__attribute__((noinline)) void comm_receive(void) {
     if (!uart_available()) return;
     if (uart_read() != PACKET_SIGNATURE) return;
 

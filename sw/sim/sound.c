@@ -34,21 +34,27 @@
 
 #define SAMPLE_RATE 44100
 
-static sound_volume_t volume;
+static sound_volume_t global_volume;
 static bool output_enabled;
 
 static PaStream* stream;
 
-static const float SOUND_LEVELS[] = {
-        [SOUND_VOLUME_OFF] = 0.00f,
-        [SOUND_VOLUME_0] = 0.25f,
-        [SOUND_VOLUME_1] = 0.50f,
-        [SOUND_VOLUME_2] = 0.75f,
-        [SOUND_VOLUME_3] = 1.00f,
+static const float GLOBAL_VOLUME_LEVELS[] = {
+        [SOUND_VOLUME_0] = 0.2f,
+        [SOUND_VOLUME_1] = 0.4f,
+        [SOUND_VOLUME_2] = 0.6f,
+        [SOUND_VOLUME_3] = 0.8f,
+};
+
+static const float CHANNEL_VOLUME_LEVELS[] = {
+        0.0f,
+        0.5f,
+        1.0f,
 };
 
 typedef struct {
     uint8_t note;
+    uint8_t volume;
     uint16_t samples_per_period;
     uint16_t phase;
 } channel_t;
@@ -68,12 +74,29 @@ bool sound_is_output_enabled(void) {
     return output_enabled;
 }
 
-void sound_set_volume_impl(sound_volume_t vol) {
-    volume = vol;
+void sound_set_volume_impl(sound_volume_t volume) {
+    global_volume = volume;
 }
 
 sound_volume_t sound_get_volume_impl(void) {
-    return volume;
+    return global_volume;
+}
+
+void sound_set_channel_volume_impl(uint8_t channel, sound_channel_volume_t volume) {
+    if (channel != 2) {
+        return;
+    }
+    uint8_t v = 0;
+    if (volume == SOUND_CHANNEL2_VOLUME0) {
+        v = 1;
+    } else if (volume == SOUND_CHANNEL2_VOLUME1) {
+        v = 2;
+    }
+    channels[channel].volume = v;
+}
+
+sound_channel_volume_t sound_get_channel_volume_impl(uint8_t channel) {
+    return channels[channel].volume;
 }
 
 void sound_play_note(uint8_t note, uint8_t channel) {
@@ -113,7 +136,7 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
                           PaStreamCallbackFlags status_flags,
                           void* user_data) {
     float* out = (float*) output_buffer;
-    const sound_volume_t vol = volume;
+    const sound_volume_t vol = global_volume;
     if (vol == SOUND_VOLUME_OFF || !output_enabled) {
         memset(out, 0, frames_per_buffer * sizeof(float));
         return paContinue;
@@ -124,8 +147,10 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
         // update the phase for all channels and count how many channels are on the
         // high side of the square wave.
         int level = 0;
+        float ch_vol = 0.0f;
         for (int channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
             channel_t *ch = &channels[channel];
+            ch_vol += CHANNEL_VOLUME_LEVELS[ch->volume];
             if (ch->note != SOUND_NO_NOTE) {
                 if (ch->phase < ch->samples_per_period / 2) {
                     ++level;
@@ -137,7 +162,8 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
             }
         }
         // normalize level and apply volume
-        float sample = ((float) level / (SOUND_CHANNELS_COUNT - 1) * SOUND_LEVELS[vol] * 2 - 1);
+        float volume = ch_vol / SOUND_CHANNELS_COUNT * GLOBAL_VOLUME_LEVELS[vol];
+        float sample = ((float) level / (SOUND_CHANNELS_COUNT - 1) * volume * 2 - 1);
         *out++ = sample;
     }
 
@@ -151,6 +177,10 @@ void sound_init(void) {
     close(STDERR_FILENO);
     handle_pa_error(Pa_Initialize());
     dup2(stderr_copy, STDERR_FILENO);
+
+    for (int i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
+        channels[i].volume = 1;
+    }
 }
 
 void sound_terminate(void) {

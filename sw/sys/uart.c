@@ -22,8 +22,10 @@
 // As given by datasheet formula, Table 23-1, Rev. C 01/2021, for asynchronous USART with CLK2X=1
 #define uart_baud_rate_reg(baud) ((uint16_t) ((64.0 * F_CPU / (8.0 * baud)) + 0.5))
 
-#define STATE_TRANSMITTED 1
-#define STATE_FAST 2
+enum {
+    STATE_TRANSMITTED = (1 << 0),
+    STATE_FAST = (1 << 1),
+};
 
 #ifndef DISABLE_COMMS
 static uint8_t state;

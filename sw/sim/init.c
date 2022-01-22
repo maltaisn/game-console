@@ -23,9 +23,9 @@
 #include <sim/power.h>
 #include <sim/time.h>
 #include <sim/sound.h>
+#include <sim/flash.h>
 
 #include <pthread.h>
-#include <math.h>
 
 #define SYSTICK_RATE (1.0 / SYSTICK_FREQUENCY)
 #define POWER_MONITOR_RATE 1.0

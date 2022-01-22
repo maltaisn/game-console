@@ -22,7 +22,7 @@
 
 #define SOUND_SIGNATURE 0xf2
 
-#define TRACK_DATA_END_MASK ((flash_t) 0x800000)
+#define TRACK_DATA_END_MASK ((data_ptr_t) 0x800000)
 
 #define IMMEDIATE_PAUSE_OFFSET 0x55
 #define SHORT_PAUSE_OFFSET 0xaa
@@ -72,8 +72,6 @@ static void sound_unlock_mutex(int* arg) {
 #include <util/atomic.h>
 
 #define ATOMIC_BLOCK_IMPL ATOMIC_BLOCK(ATOMIC_FORCEON)
-#define lock_sound_mutex()
-#define unlock_sound_mutex()
 #endif
 
 typedef struct {
@@ -286,7 +284,7 @@ void sound_load(sound_t address) {
                 track->buffer_pos = 0;
                 track_fill_buffer(track, 0);
                 new_tracks_on |= track_playing_mask;
-                address += (flash_t) track_length;
+                address += (data_ptr_t) track_length;
             }
             track_playing_mask <<= 1;
         }
@@ -344,18 +342,12 @@ sound_volume_t sound_get_volume(void) {
     return sound_get_volume_impl();
 }
 
-void sound_increase_volume(void) {
-    sound_volume_t vol = sound_get_volume();
-    if (vol != SOUND_VOLUME_3) {
-        sound_set_volume(vol + SOUND_VOLUME_INCREMENT);
-    }
+void sound_set_channel_volume(uint8_t channel, sound_channel_volume_t volume) {
+    sound_set_channel_volume_impl(channel, volume);
 }
 
-void sound_decrease_volume(void) {
-    sound_volume_t vol = sound_get_volume();
-    if (vol != SOUND_VOLUME_OFF) {
-        sound_set_volume(vol - SOUND_VOLUME_INCREMENT);
-    }
+sound_channel_volume_t sound_get_channel_volume(uint8_t channel) {
+    return sound_get_channel_volume_impl(channel);
 }
 
 void sound_update(void) {

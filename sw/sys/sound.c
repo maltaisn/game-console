@@ -20,14 +20,16 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#define CHANNEL0_ON (1 << 0)
-#define CHANNEL1_ON (1 << 1)
-#define CHANNEL2_ON (1 << 2)
-#define CHANNELS_ALL_ON (CHANNEL0_ON | CHANNEL1_ON | CHANNEL2_ON)
+#define GLOBAL_VOLUME_MASK 0x03
+
+// Minimum volume at which the H-bridge driver is used.
+// Using the H-bridge for lower volumes is power inefficient.
+#define HBRIDGE_MIN_VOLUME SOUND_VOLUME_3
 
 // As a whole this register indicates an index in the PWM_LEVELS array.
-// - 0:2 indicate the current level of the output for each channel (CHANNELn_ON masks).
-// - 3:4 indicate the current volume level (sound_volume_t enum).
+// - 0:1 indicate the global volume level (sound_volume_t enum).
+// - 2:5 indicate the current level of the output for each channel (sound_channel_volume_t enum).
+//       These bits are set and cleared to create the waveform for each channel.
 //   If volume is SOUND_VOLUME_OFF, the PWM_LEVELS array is not accessed.
 // To slightly reduce interrupt latency, a general purpose I/O register is used
 // since it allows single cycle access.
@@ -36,16 +38,27 @@
 // zeroing the state of all tracks as an optimization won't make any perceptible difference.
 #define out_level GPIOR0
 
+static sound_volume_t global_volume; // = SOUND_VOLUME_0
+static sound_channel_volume_t channel2_volume = SOUND_CHANNEL2_VOLUME0;
+
 // Timer counts for TCA PWM timer.
-// The number corresponds to the number of bits set in the 0-7 position,
-// multiplied by an arbitrary constant to account for the volume.
-// Maximum value in array must be SOUND_MAX_PWM.
+// The value corresponds to the number of bits set in the 2-5 position in out_level,
+// multiplied by an arbitrary constant to account for the global volume and channel volume.
+// The maximum value in array must be SOUND_MAX_PWM.
+// The condition where both masks for channel 2 are set must never happen (no associated values).
 static uint8_t PWM_LEVELS[] = {
-        0, 0, 0, 0, 0, 0, 0, 0,     // volume = off
-        0, 1, 1, 2, 1, 2, 2, 3,     // volume = 0, duty cycle 0 to 12%
-        0, 2, 2, 4, 2, 4, 4, 6,     // volume = 1, duty cycle 0 to 24%
-        0, 4, 4, 8, 4, 8, 8, 12,    // volume = 2, duty cycle 0 to 48%
-        0, 8, 8, 16, 8, 16, 16, 24, // volume = 3, duty cycle 0 to 96%
+        0, 0, 0, 0,
+        2, 4, 8, 8,
+        2, 4, 8, 8,
+        4, 8, 16, 16,
+        2, 4, 8, 8,
+        4, 8, 16, 16,
+        4, 8, 16, 16,
+        6, 12, 24, 24,
+        4, 8, 16, 16,
+        6, 12, 24, 24,
+        6, 12, 24, 24,
+        8, 16, 32, 32,
 };
 
 // Timer counts for TCB channel timers, for each playable note.
@@ -67,21 +80,24 @@ static uint16_t TIMER_NOTES[] = {
 #define TCB_ENABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm)
 #define TCB_DISABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc)
 
-void sound_set_output_enabled(bool enabled) {
-    // see Note A
-    TCB_DISABLE(TCB0);
-    TCB_DISABLE(TCB1);
-    TCB_DISABLE(TCB2);
+#define HBRIDGE_ENABLE() PORTA.PIN2CTRL = PORT_INVEN_bm; \
+                         EVSYS.USEREVOUTA = EVSYS_CHANNEL_CHANNEL0_gc
+#define HBRIDGE_DISABLE() PORTA.PIN2CTRL = 0; \
+                          EVSYS.USEREVOUTA = EVSYS_CHANNEL_OFF_gc
 
+void sound_set_output_enabled(bool enabled) {
     if (enabled) {
-        TCA0.SPLIT.CTRLB = TCA_SPLIT_HCMP0EN_bm;
-        PORTA.PIN2CTRL = PORT_INVEN_bm;
         TCA_ENABLE();
+        if (global_volume >= HBRIDGE_MIN_VOLUME) {
+            HBRIDGE_ENABLE();
+        }
     } else {
-        TCA0.SPLIT.CTRLB = 0;
-        PORTA.PIN2CTRL = 0;
-        VPORTA.OUT &= ~(PIN2_bm | PIN3_bm);
+        TCB_DISABLE(TCB0);
+        TCB_DISABLE(TCB1);
+        TCB_DISABLE(TCB2);
         TCA_DISABLE();
+        HBRIDGE_DISABLE();
+        VPORTA.OUT &= ~(PIN2_bm | PIN3_bm);
     }
 }
 
@@ -94,16 +110,41 @@ void sound_play_note(uint8_t note, uint8_t channel) {
     } else {
         TCB_DISABLE(*tcb);
         // see Note A
-        out_level &= ~CHANNELS_ALL_ON;
+        out_level &= GLOBAL_VOLUME_MASK;
     }
 }
 
 void sound_set_volume_impl(sound_volume_t volume) {
-    out_level = (out_level & CHANNELS_ALL_ON) | volume;
+    if (volume != SOUND_VOLUME_OFF) {
+        out_level = volume;  // see Note A
+    }
+    if (volume >= HBRIDGE_MIN_VOLUME) {
+        HBRIDGE_ENABLE();
+    } else {
+        HBRIDGE_DISABLE();
+    }
+    global_volume = volume;
 }
 
 sound_volume_t sound_get_volume_impl(void) {
-    return out_level & ~CHANNELS_ALL_ON;
+    return global_volume;
+}
+
+void sound_set_channel_volume_impl(uint8_t channel, sound_channel_volume_t volume) {
+    if (channel == 2) {
+        channel2_volume = volume;
+    }
+    // only one supported level for other channels
+}
+
+sound_channel_volume_t sound_get_channel_volume_impl(uint8_t channel) {
+    if (channel == 0) {
+        return SOUND_CHANNEL0_VOLUME0;
+    } else if (channel == 1) {
+        return SOUND_CHANNEL1_VOLUME0;
+    } else {
+        return channel2_volume;
+    }
 }
 
 // TCB interrupts:
@@ -112,7 +153,7 @@ sound_volume_t sound_get_volume_impl(void) {
 
 ISR(TCB0_INT_vect) {
     uint8_t level = out_level;
-    level ^= CHANNEL0_ON;
+    level ^= SOUND_CHANNEL0_VOLUME0;
     TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
     out_level = level;
     TCB0.INTFLAGS = TCB_CAPT_bm;
@@ -120,7 +161,7 @@ ISR(TCB0_INT_vect) {
 
 ISR(TCB1_INT_vect) {
     uint8_t level = out_level;
-    level ^= CHANNEL1_ON;
+    level ^= SOUND_CHANNEL1_VOLUME0;
     TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
     out_level = level;
     TCB1.INTFLAGS = TCB_CAPT_bm;
@@ -128,7 +169,7 @@ ISR(TCB1_INT_vect) {
 
 ISR(TCB2_INT_vect) {
     uint8_t level = out_level;
-    level ^= CHANNEL2_ON;
+    level ^= channel2_volume;
     TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
     out_level = level;
     TCB2.INTFLAGS = TCB_CAPT_bm;
