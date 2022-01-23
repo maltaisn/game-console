@@ -48,7 +48,7 @@ static const float GLOBAL_VOLUME_LEVELS[] = {
 
 static const float CHANNEL_VOLUME_LEVELS[] = {
         0.0f,
-        0.4f,
+        0.5f,
         1.0f,
 };
 
@@ -146,14 +146,15 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
     for (size_t i = 0; i < frames_per_buffer; ++i) {
         // update the phase for all channels and count how many channels are on the
         // high side of the square wave.
-        int level = 0;
-        float ch_vol = 0.0f;
+        float level = 0;
         for (int channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
             channel_t *ch = &channels[channel];
-            ch_vol += CHANNEL_VOLUME_LEVELS[ch->volume];
+            float ch_vol = CHANNEL_VOLUME_LEVELS[ch->volume];
             if (ch->note != SOUND_NO_NOTE) {
                 if (ch->phase < ch->samples_per_period / 2) {
-                    ++level;
+                    level += ch_vol;
+                } else {
+                    level -= ch_vol;
                 }
                 ++ch->phase;
                 if (ch->phase == ch->samples_per_period) {
@@ -162,8 +163,7 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
             }
         }
         // normalize level and apply volume
-        float volume = ch_vol / SOUND_CHANNELS_COUNT * GLOBAL_VOLUME_LEVELS[vol];
-        float sample = ((float) level / (SOUND_CHANNELS_COUNT - 1) * volume * 2 - 1);
+        float sample = level / SOUND_CHANNELS_COUNT * GLOBAL_VOLUME_LEVELS[vol];
         *out++ = sample;
     }
 
