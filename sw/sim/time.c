@@ -18,12 +18,12 @@
 #include <sys/time.h>
 
 #include <sys/input.h>
+#include <sys/led.h>
+
 #include <core/sound.h>
-#include <sim/power.h>
 
 #include <time.h>
 #include <math.h>
-#include "sys/led.h"
 
 #define SYSTICK_MAX 0xffffff
 

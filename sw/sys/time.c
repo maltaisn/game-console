@@ -16,13 +16,13 @@
 
 #include <sys/time.h>
 #include <sys/input.h>
+#include <sys/led.h>
 
 #include <core/sound.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/atomic.h>
-#include "sys/led.h"
 
 static volatile systime_t systick;
 

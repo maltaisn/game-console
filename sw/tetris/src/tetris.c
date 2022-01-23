@@ -15,6 +15,8 @@
  */
 
 #include <tetris.h>
+#include <sound.h>
+#include <assets.h>
 
 #include <core/random.h>
 
@@ -142,6 +144,7 @@ static void tetris_update_score(tetris_tspin tspin, uint8_t lines_cleared) {
     bool difficult;
     if (tspin != TETRIS_TSPIN_NONE) {
         // award T-spin (all T-spins clearing lines are considered difficult)
+        game_sound_push(ASSET_SOUND_TSPIN);
         if (tspin == TETRIS_TSPIN_PROPER) {
             pts += TETRIS_T_SPIN_PTS[lines_cleared] * TETRIS_BONUS_MUL;
         } else {
@@ -171,7 +174,10 @@ static void tetris_update_score(tetris_tspin tspin, uint8_t lines_cleared) {
 
         pts += TETRIS_LINE_CLEAR_PTS[lines_cleared - 1] * TETRIS_BONUS_MUL;
         if (perfect_clear) {
+            game_sound_push(ASSET_SOUND_PERFECT);
             pts += TETRIS_LINE_PERFECT_CLEAR_PTS[lines_cleared - 1] * TETRIS_BONUS_MUL;
+        } else {
+            game_sound_push(ASSET_SOUND_CLEAR(lines_cleared - 1));
         }
     }
 
@@ -179,6 +185,9 @@ static void tetris_update_score(tetris_tspin tspin, uint8_t lines_cleared) {
     if (lines_cleared == 0) {
         tetris.combo_count = 0;
     } else {
+        if (tetris.combo_count > 0) {
+            game_sound_push(ASSET_SOUND_COMBO);
+        }
         pts += tetris.combo_count * COMBO_POINTS;
         ++tetris.combo_count;
     }
@@ -611,6 +620,8 @@ void tetris_hard_drop(void) {
         ++cells_dropped;
     } while (tetris_can_place_piece());
 
+    game_sound_push(ASSET_SOUND_HARD_DROP);
+
     // undo last drop and replace piece, then lock it.
     ++tetris.curr_piece_y;
     tetris.last_rot_offset = LAST_ROT_NONE;
@@ -677,6 +688,8 @@ void tetris_hold_or_swap_piece(void) {
         // cannot swap piece twice, already swapped or option disabled.
         return;
     }
+
+    game_sound_push(ASSET_SOUND_HOLD);
 
     tetris_remove_piece();
     if (tetris.hold_piece == TETRIS_PIECE_NONE) {

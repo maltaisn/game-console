@@ -21,12 +21,12 @@
 #include <sys/display.h>
 #include <sys/input.h>
 #include <sys/init.h>
+#include <sys/led.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <util/atomic.h>
-#include "sys/led.h"
 
 #define MUXPOS_CHARGE_STATUS ADC_MUXPOS_AIN7_gc
 #define MUXPOS_VBAT_LEVEL ADC_MUXPOS_AIN6_gc

@@ -24,12 +24,12 @@
 #include <sys/spi.h>
 #include <sys/input.h>
 #include <sys/init.h>
+#include <sys/led.h>
 
 #include <core/trace.h>
 
 #include <stdio.h>
 #include <stdatomic.h>
-#include "sys/led.h"
 
 #define VBAT_MAX 4050
 #define VBAT_MIN 3300

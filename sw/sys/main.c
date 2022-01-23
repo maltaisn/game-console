@@ -19,12 +19,12 @@
 #include <sys/power.h>
 #include <sys/input.h>
 #include <sys/uart.h>
+#include <sys/led.h>
 
 #include <core/comm.h>
 #include <core/sound.h>
 
 #include <stdbool.h>
-#include "sys/led.h"
 
 int main(void) {
     init();

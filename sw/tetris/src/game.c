@@ -21,6 +21,7 @@
 #include <render.h>
 #include <save.h>
 #include <music.h>
+#include <sound.h>
 #include <input.h>
 #include <led.h>
 
@@ -73,6 +74,7 @@ void setup(void) {
     }
 
     sound_set_tempo(encode_bpm_tempo(ASSET_SOUND_TEMPO));
+    sound_set_channel_volume(2, SOUND_CHANNEL2_VOLUME1);
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
 
     // load saved (or default) settings and apply them.
@@ -80,6 +82,7 @@ void setup(void) {
     update_sound_volume(game.options.volume);
     update_display_contrast(game.options.contrast);
     update_music_enabled();
+    sound_start(SOUND_TRACKS_STARTED);
 }
 
 void loop(void) {
@@ -98,6 +101,7 @@ void loop(void) {
 
     game_led_update(dt);
     game_music_update(dt);
+    game_sound_update(dt);
     game.state = game_state_update(dt);
 
     if (time - last_draw_time > millis_to_ticks(1000.0 / DISPLAY_MAX_FPS)) {

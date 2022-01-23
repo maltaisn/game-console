@@ -48,7 +48,7 @@ static const float GLOBAL_VOLUME_LEVELS[] = {
 
 static const float CHANNEL_VOLUME_LEVELS[] = {
         0.0f,
-        0.5f,
+        0.4f,
         1.0f,
 };
 
@@ -143,7 +143,7 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
     }
 
     while (atomic_flag_test_and_set(&channels_lock));
-    for (unsigned long i = 0; i < frames_per_buffer; ++i) {
+    for (size_t i = 0; i < frames_per_buffer; ++i) {
         // update the phase for all channels and count how many channels are on the
         // high side of the square wave.
         int level = 0;
