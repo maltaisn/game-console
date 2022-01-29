@@ -25,14 +25,14 @@
  * The CS line for the selected peripheral should be driven low before and after.
  * This should never be called in an interrupt, in case another transfer is in progress already.
  */
-void spi_transceive(uint16_t length, uint8_t data[static length]);
+void spi_transceive(uint16_t length, uint8_t data[]);
 
 /**
  * Transmit data on the SPI bus. Length must be at least 1.
  * The CS line for the selected peripheral should be driven low before and after.
  * This should never be called in an interrupt, in case another transfer is in progress already.
  */
-void spi_transmit(uint16_t length, const uint8_t data[static length]);
+void spi_transmit(uint16_t length, const uint8_t data[]);
 
 /**
  * Transmit a single byte on the SPI bus.

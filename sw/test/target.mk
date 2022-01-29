@@ -1,7 +1,10 @@
 
-DEFINES += DISABLE_INACTIVE_SLEEP
+ALL_TESTS := graphics
 
-.PHONY: pack
+# run all tests
+all_tests: $(addsuffix _test, $(ALL_TESTS))
+	cd test; $(foreach t,$(ALL_TESTS),../$(BUILD_DIR)/$(t)_test;)
 
-pack:
-	$(E)export PYTHONPATH="../utils"; python3 $(TARGET)/pack.py
+graphics_test:
+	$(MAKE) all TEST_NAME=graphics TEST_SRC=""
+

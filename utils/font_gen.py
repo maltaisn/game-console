@@ -242,7 +242,7 @@ def main():
         for r in FontData.RANGES:
             if total + len(r) > glyph_count:
                 ranges_str.append(
-                    f"{r.start:#02x}-{r.start + (glyph_count - total):#02x}")
+                    f"{r.start:#02x}-{r.start + (glyph_count - total - 1):#02x}")
                 break
             else:
                 ranges_str.append(f"{r.start:#02x}-{r.stop - 1:#02x}")

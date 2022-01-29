@@ -22,10 +22,18 @@
 
 #include <core/sound.h>
 
+#define SYSTICK_MAX 0xffffff
+
+void time_update(void) {
+    input_update_state();
+    sound_update();
+    led_blink_update();
+}
+
+#ifndef SIMULATION_HEADLESS
+
 #include <time.h>
 #include <math.h>
-
-#define SYSTICK_MAX 0xffffff
 
 static struct timespec start_time;
 
@@ -38,12 +46,6 @@ void time_init(void) {
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 }
 
-void time_update(void) {
-    input_update_state();
-    sound_update();
-    led_blink_update();
-}
-
 systime_t time_get() {
     return (systime_t) (lround(time_sim_get() * SYSTICK_FREQUENCY)) & SYSTICK_MAX;
 }
@@ -54,7 +56,29 @@ double time_sim_get(void) {
     return get_elapsed_time(&start_time, &time);
 }
 
-void time_sleep(long us) {
+void time_sleep(uint32_t us) {
     struct timespec remaining, request = {0, us * 1000};
     nanosleep(&request, &remaining);
 }
+
+#else
+
+static systime_t systick;
+
+void time_init(void) {
+    systick = 0;
+}
+
+systime_t time_get() {
+    return systick & SYSTICK_MAX;
+}
+
+double time_sim_get(void) {
+    return ((double) systick / SYSTICK_FREQUENCY);
+}
+
+void time_sleep(uint32_t us) {
+    systick += us;
+}
+
+#endif //SIMULATION_HEADLESS

@@ -23,8 +23,11 @@
 
 #include <memory.h>
 #include <stdio.h>
-#include <GL/glut.h>
 #include <png.h>
+
+#ifndef SIMULATION_HEADLESS
+#include <GL/glut.h>
+#endif
 
 #define GUARD_SIZE 8192
 
@@ -39,7 +42,14 @@ static struct {
 
 static uint8_t guard_byte;
 
-pthread_mutex_t display_mutex;
+#ifdef SIMULATION_HEADLESS
+#define lock_display_mutex()
+#define unlock_display_mutex()
+#else
+static pthread_mutex_t display_mutex;
+#define lock_display_mutex() (pthread_mutex_lock(&display_mutex))
+#define unlock_display_mutex() (pthread_mutex_unlock(&display_mutex))
+#endif
 
 static uint8_t disp_data[DISPLAY_SIZE];
 static uint8_t* disp_data_ptr;
@@ -60,7 +70,9 @@ void display_init(void) {
 
     disp_data_ptr = 0;
 
+#ifndef SIMULATION_HEADLESS
     pthread_mutex_init(&display_mutex, 0);
+#endif
 }
 
 void display_sleep(void) {
@@ -112,16 +124,16 @@ void display_clear_reset(void) {
 }
 
 void display_clear(disp_color_t color) {
-    pthread_mutex_lock(&display_mutex);
+    lock_display_mutex();
     memset(disp_data, color | color << 4, DISPLAY_SIZE);
-    pthread_mutex_unlock(&display_mutex);
+    unlock_display_mutex();
 }
 
 void display_first_page(void) {
     display_page_ystart = 0;
     display_page_yend = PAGE_HEIGHT;
     disp_data_ptr = disp_data;
-    pthread_mutex_lock(&display_mutex);
+    lock_display_mutex();
 
     // initialize guards (the guard byte changes every time)
     memset(&disp_buffer.guard0, guard_byte, GUARD_SIZE);
@@ -155,7 +167,7 @@ bool display_next_page(void) {
         }
         ++guard_byte;
 
-        pthread_mutex_unlock(&display_mutex);
+        unlock_display_mutex();
 
         // sleep to simulate update delay
         // maximum FPS on game console is about 50
@@ -168,6 +180,7 @@ uint8_t* display_buffer(disp_x_t x, disp_y_t y) {
     return &disp_buffer.buffer[y * DISPLAY_NUM_COLS + x / 2];
 }
 
+#ifndef SIMULATION_HEADLESS
 static float get_pixel_opacity(disp_color_t color) {
     if (disp_inverted) {
         color = DISPLAY_COLOR_WHITE - color;
@@ -178,8 +191,10 @@ static float get_pixel_opacity(disp_color_t color) {
     if (contrast_factor > 1.0f) contrast_factor = 1.0f;
     return color_factor * contrast_factor;
 }
+#endif
 
 void display_draw(void) {
+#ifndef SIMULATION_HEADLESS
     if (!disp_enabled || !disp_internal_vdd_enabled || disp_gpio_mode != DISPLAY_GPIO_OUTPUT_HI) {
         // display OFF, internal VDD is disabled, or 15V regulator is disabled, nothing shown.
         return;
@@ -189,7 +204,7 @@ void display_draw(void) {
 
     glPushMatrix();
     glTranslatef(DISPLAY_PIXEL_GAP / 2, DISPLAY_PIXEL_GAP / 2, 0);
-    pthread_mutex_lock(&display_mutex);
+    lock_display_mutex();
     const uint8_t* data_ptr = disp_data;
     for (disp_y_t row = 0 ; row < DISPLAY_NUM_ROWS ; ++row) {
         glBegin(GL_QUADS);
@@ -212,8 +227,9 @@ void display_draw(void) {
         glEnd();
         glTranslatef(0, 1, 0);
     }
-    pthread_mutex_unlock(&display_mutex);
+    unlock_display_mutex();
     glPopMatrix();
+#endif //SIMULATION_HEADLESS
 }
 
 void display_save(FILE* file) {
@@ -221,18 +237,7 @@ void display_save(FILE* file) {
         return;
     }
 
-    pthread_mutex_lock(&display_mutex);
-
-    // libpng requires data to be in reverse order vs. what is stored.
-    // the most significant nibble comes first.
-    png_byte image[DISPLAY_SIZE];
-    for (size_t i = 0; i < DISPLAY_SIZE; ++i) {
-        image[i] = disp_data[i] << 4 | disp_data[i] >> 4;
-    }
-    png_bytep row_pointers[DISPLAY_HEIGHT];
-    for (size_t i = 0; i < DISPLAY_HEIGHT; ++i) {
-        row_pointers[i] = (png_bytep) &image[DISPLAY_NUM_COLS * i];
-    }
+    lock_display_mutex();
 
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
     png_infop info_ptr = png_create_info_struct(png_ptr);
@@ -240,9 +245,25 @@ void display_save(FILE* file) {
     png_set_IHDR(png_ptr, info_ptr, DISPLAY_WIDTH, DISPLAY_HEIGHT, 4, PNG_COLOR_TYPE_GRAY,
                  PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_COMPRESSION_TYPE_DEFAULT);
     png_write_info(png_ptr, info_ptr);
-    png_write_image(png_ptr, row_pointers);
+
+    png_byte row[DISPLAY_NUM_COLS];
+    const uint8_t* data_ptr = disp_data;
+    for (size_t y = 0; y < DISPLAY_HEIGHT; ++y) {
+        for (size_t col = 0; col < DISPLAY_NUM_COLS; ++col) {
+            // libpng requires data to be in reverse order vs. what is stored.
+            // the most significant nibble comes first.
+            row[col] = *data_ptr << 4 | *data_ptr >> 4;
+            ++data_ptr;
+        }
+        png_write_row(png_ptr, row);
+    }
+
     png_write_end(png_ptr, info_ptr);
     png_destroy_write_struct(&png_ptr, &info_ptr);
 
-    pthread_mutex_unlock(&display_mutex);
+    unlock_display_mutex();
+}
+
+const uint8_t* display_data(void) {
+    return disp_data;
 }

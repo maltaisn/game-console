@@ -40,6 +40,6 @@ typedef uint24_t data_ptr_t;
  * Addresses in the interface are 24-bit and a mask indicates the data space.
  * Data is copied from the address to the destination buffer.
  */
-void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]);
+void data_read(data_ptr_t address, uint16_t length, uint8_t dest[]);
 
 #endif //SYS_DATA_H

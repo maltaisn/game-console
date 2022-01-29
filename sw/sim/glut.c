@@ -15,14 +15,12 @@
  * limitations under the License.
  */
 
+#ifndef SIMULATION_HEADLESS
+
 #include <sim/glut.h>
-#include <sim/time.h>
-#include <sim/input.h>
 #include <sim/display.h>
 #include <sim/led.h>
 #include <sim/power.h>
-
-#include <sys/time.h>
 
 #include <core/trace.h>
 
@@ -139,3 +137,5 @@ void glut_init(void) {
 
     glutMouseFunc(callback_mouse);
 }
+
+#endif //SIMULATION_HEADLESS

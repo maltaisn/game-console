@@ -172,7 +172,7 @@ void dialog_add_item_number(const char* name, uint8_t min, uint8_t max, uint8_t 
  * Add an item with a text field to the dialog. The item is added following the last one.
  * The item's name is drawn with item font font and the text field is drawn with action font.
  */
-void dialog_add_item_text(const char* name, uint8_t max_length, char text[max_length]);
+void dialog_add_item_text(const char* name, uint8_t max_length, char text[]);
 
 /**
  * Handle buttons input to navigate the dialog, given the last and current input state.

@@ -13,6 +13,7 @@ MAIN_TARGET = $(BUILD_DIR)/$(BUILD_TARGET)
 
 CFLAGS += -Wall $(addprefix -D,$(DEFINES)) $(addprefix -I,$(INCLUDE_DIRS)) \
           $(addprefix -L,$(LIB_DIRS)) $(addprefix -l,$(LIBS))
+CC_FLAGS += -std=gnu11
 LDFLAGS += -Wl,--gc-sections
 DEPFLAGS = -MT $@ -MMD -MP -MF $(BUILD_DIR)/$*.d
 
@@ -38,7 +39,7 @@ $(BUILD_DIR)/%.o: %.c
 ifneq ($(E),)
 	@echo $(CC) $<
 endif
-	$(E)$(CC) -c -o $@ $< $(CFLAGS) $(DEPFLAGS)
+	$(E)$(CC) -c -o $@ $< $(CFLAGS) $(CC_FLAGS) $(DEPFLAGS)
 
 clean:
 	rm -rf $(BUILD_DIR)

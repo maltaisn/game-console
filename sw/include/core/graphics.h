@@ -246,6 +246,7 @@ void graphics_glyph(int8_t x, int8_t y, char c);
 /**
  * Draw text using the current font and color.
  * Text that would be drawn past outside of the display is not drawn.
+ * Does not handle line breaks.
  */
 void graphics_text(int8_t x, int8_t y, const char* text);
 
@@ -253,6 +254,7 @@ void graphics_text(int8_t x, int8_t y, const char* text);
  * Draw text using the current font and color.
  * The text will wrap to next line on space separators whenever possible.
  * `wrap_x` must be at most equal to DISPLAY_WIDTH and must be greater or equal to `x`.
+ * Does not handle line breaks.
  */
 void graphics_text_wrap(int8_t x, int8_t y, uint8_t wrap_x, const char* text);
 

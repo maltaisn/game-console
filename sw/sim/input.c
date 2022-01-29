@@ -16,17 +16,15 @@
  */
 
 #include <sys/input.h>
-#include <sys/time.h>
-#include <sys/display.h>
 #include <sys/power.h>
 
+#include <sim/input.h>
 #include <sim/power.h>
 #include <sim/display.h>
 
 #include <core/trace.h>
 
 #include <GL/glut.h>
-#include <stdbool.h>
 
 #define SPECIAL_MASK 0x80000000
 
@@ -43,6 +41,12 @@ static void reset_inactive_countdown(void) {
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
 }
 
+static void on_input_change(void) {
+    reset_inactive_countdown();
+    power_disable_sleep();
+}
+
+#ifndef SIMULATION_HEADLESS
 static void save_display(void) {
     FILE* file = fopen("screenshot.png", "wb");
     display_save(file);
@@ -81,11 +85,6 @@ static uint8_t get_key_state_mask(unsigned int key) {
     return mask;
 }
 
-static void on_input_change(void) {
-    reset_inactive_countdown();
-    power_disable_sleep();
-}
-
 static void input_on_key_down(unsigned char key, int x, int y) {
     state |= get_key_state_mask(key);
     on_input_change();
@@ -109,13 +108,16 @@ static void input_on_key_up_special(int key, int x, int y) {
     state &= ~get_key_state_mask(key | SPECIAL_MASK);
     on_input_change();
 }
+#endif //SIMULATION_HEADLESS
 
 void input_init(void) {
+#ifndef SIMULATION_HEADLESS
     glutKeyboardFunc(input_on_key_down);
     glutKeyboardUpFunc(input_on_key_up);
     glutSpecialFunc(input_on_key_down_special);
     glutSpecialUpFunc(input_on_key_up_special);
     glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
+#endif //SIMULATION_HEADLESS
 }
 
 uint8_t input_get_state(void) {
@@ -155,3 +157,28 @@ void input_update_inactivity(void) {
     }
 #endif
 }
+
+#ifdef SIMULATION_HEADLESS
+
+void input_set_state(uint8_t s) {
+    if (s != state) {
+        state = s;
+        on_input_change();
+    }
+}
+
+void input_press(uint8_t button_mask) {
+    if ((state & button_mask) != button_mask) {
+        state |= button_mask;
+        on_input_change();
+    }
+}
+
+void input_release(uint8_t button_mask) {
+    if ((state & button_mask) != 0) {
+        state &= ~button_mask;
+        on_input_change();
+    }
+}
+
+#endif //SIMULATION_HEADLESS

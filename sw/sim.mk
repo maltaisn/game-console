@@ -15,10 +15,10 @@ CFLAGS += -Wextra -Wno-unused-parameter -std=gnu11 -g3 -O0 -fshort-enums -fpack-
 CFLAGS += ${shell pkg-config --cflags glu}
 LDFLAGS += ${shell pkg-config --libs glu}
 
-all: $(MAIN_TARGET).elf
+all: $(MAIN_TARGET)
 
-%.elf: $(OBJECTS)
+$(MAIN_TARGET): $(OBJECTS)
 ifneq ($(E),)
-	@echo Creating ELF file
+	@echo Creating binary file
 endif
 	$(E)$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)

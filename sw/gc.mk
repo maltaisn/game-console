@@ -19,7 +19,7 @@ INCLUDE_DIRS += $(ATMEGA_TOOLCHAIN_DIR)/include
 
 DEFINES += F_CPU=$(F_CPU)
 
-CFLAGS += -std=gnu11 -mmcu=$(MCU) -Os \
+CFLAGS += -mmcu=$(MCU) -Os \
           -ffunction-sections -fdata-sections -fshort-enums -fpack-struct -flto \
           -B$(ATMEGA_TOOLCHAIN_DIR)/gcc/dev/$(MCU)
 

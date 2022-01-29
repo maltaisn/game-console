@@ -379,8 +379,8 @@ void graphics_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const ui
 #endif
     const uint8_t right = x + w - 1;
     const uint8_t bottom = y + h - 1;
-    graphics_hline(x + 1, right - 1, y);
-    graphics_hline(x + 1, right - 1, bottom);
+    graphics_hline(x, right, y);
+    graphics_hline(x, right, bottom);
     graphics_vline(y, bottom, x);
     graphics_vline(y, bottom, right);
 }
@@ -910,7 +910,7 @@ void graphics_text(int8_t x, const int8_t y, const char* text) {
         return;
     }
 #endif
-    if (y + font.height + font.offset_max < display_page_ystart || y > display_page_yend) {
+    if (y + font.height + font.offset_max < display_page_ystart || y >= display_page_yend) {
         return;  // out of page
     }
     while (*text) {

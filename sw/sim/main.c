@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef SIMULATION_HEADLESS
+
 #include <sys/main.h>
 #include <sys/power.h>
 #include <sys/init.h>
@@ -87,3 +89,5 @@ int main(int argc, char** argv) {
     glutMainLoop();
     return 0;
 }
+
+#endif //SIMULATION_HEADLESS

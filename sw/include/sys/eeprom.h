@@ -30,13 +30,13 @@ typedef uint16_t eeprom_t;
  * The bytes are copied to the destination buffer.
  * If reading past the end of EEPROM, the address will be wrapped around.
  */
-void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[static length]);
+void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[]);
 
 /**
  * Write a number of bytes to EEPROM starting at an address.
  * The bytes are copied from the source buffer.
  * If writing past the end of EEPROM, the address will be wrapped around.
  */
-void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[static length]);
+void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[]);
 
 #endif //SYS_EEPROM_H

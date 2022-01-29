@@ -1,6 +1,5 @@
-
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,35 +14,15 @@
  * limitations under the License.
  */
 
-#ifdef SIMULATION
+#include <gtest/gtest.h>
 
-#ifndef SIM_TIME_H
-#define SIM_TIME_H
+#include <iostream>
 
-#include <time.h>
-#include <sys/time.h>
+extern "C" {
+#include <core/graphics.h>
+}
 
-/**
- * Initialize time module.
- */
-void time_init(void);
-
-/**
- * Do the things normally done in periodic RTC interrupt.
- */
-void time_update(void);
-
-/**
- * Return time elapsed since start of simulation, in seconds.
- */
-double time_sim_get(void);
-
-/**
- * Sleep thread for a number of us.
- * In headless mode, this increases the current time instantly.
- */
-void time_sleep(uint32_t us);
-
-#endif //SIM_TIME_H
-
-#endif //SIMULATION
+TEST(graphics, test) {
+    std::cout << "Hello world!";
+    ASSERT_TRUE(true);
+}
