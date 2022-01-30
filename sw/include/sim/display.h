@@ -38,6 +38,17 @@
 #define DISPLAY_PIXEL_GAP 0.0f
 
 /**
+ * Set the page height used, between 1 and DISPLAY_HEIGHT.
+ * Must not be changed while in display loop.
+ */
+void display_set_page_height(uint8_t height);
+
+/**
+ * Returns the page height used.
+ */
+uint8_t display_get_page_height(void);
+
+/**
  * Draw the display on a frame where each pixel is 1x1.
  */
 void display_draw(void);

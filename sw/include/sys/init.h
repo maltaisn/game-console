@@ -22,6 +22,7 @@
  * Initialize game console system:
  * - Configure all registers to initialize all modules.
  * - Check battery status & level, sleep if battery too low.
+ * This must be called to initialize the headless simulator.
  */
 void init(void);
 

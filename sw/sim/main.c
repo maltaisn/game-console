@@ -69,10 +69,7 @@ static void* loop_thread(void* arg) {
 
 int main(int argc, char** argv) {
     // == simulator initialization
-    // initialize memories as initially empty; they can be loaded from a file later.
     time_init();
-    eeprom_load_erased();
-    flash_load_erased();
     sound_init();
 
     glutInit(&argc, argv);

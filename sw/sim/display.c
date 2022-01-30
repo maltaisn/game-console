@@ -26,21 +26,14 @@
 #include <png.h>
 
 #ifndef SIMULATION_HEADLESS
-#include <GL/glut.h>
-#endif
 
-#define GUARD_SIZE 8192
+#include <GL/glut.h>
+
+#endif
 
 disp_y_t display_page_ystart;
 disp_y_t display_page_yend;
-
-static struct {
-    uint8_t guard0[GUARD_SIZE];
-    uint8_t buffer[DISPLAY_BUFFER_SIZE];
-    uint8_t guard1[GUARD_SIZE];
-} disp_buffer;
-
-static uint8_t guard_byte;
+uint8_t display_page_height;
 
 #ifdef SIMULATION_HEADLESS
 #define lock_display_mutex()
@@ -51,24 +44,31 @@ static pthread_mutex_t display_mutex;
 #define unlock_display_mutex() (pthread_mutex_unlock(&display_mutex))
 #endif
 
-static uint8_t disp_data[DISPLAY_SIZE];
-static uint8_t* disp_data_ptr;
-static bool disp_enabled;
-static bool disp_internal_vdd_enabled;
-static bool disp_inverted;
-static bool disp_dimmed;
-static uint8_t disp_contrast;
-static display_gpio_t disp_gpio_mode;
+#define GUARD_BYTE 0xfc
+
+static struct {
+    uint8_t buffer[DISPLAY_SIZE];
+    size_t buffer_size;
+    uint8_t data[DISPLAY_SIZE];
+    uint8_t max_page_height;
+    uint8_t* data_ptr;
+    bool enabled;
+    bool internal_vdd_enabled;
+    bool inverted;
+    bool dimmed;
+    uint8_t contrast;
+    display_gpio_t gpio_mode;
+} display;
 
 void display_init(void) {
-    disp_internal_vdd_enabled = true;
-    disp_enabled = false;
-    disp_inverted = false;
-    disp_dimmed = false;
-    disp_contrast = DISPLAY_DEFAULT_CONTRAST;
-    disp_gpio_mode = DISPLAY_GPIO_OUTPUT_LO;
-
-    disp_data_ptr = 0;
+    display.max_page_height = ((uint8_t) ((DISPLAY_HEIGHT - 1) / DISPLAY_PAGES + 1));
+    display.data_ptr = 0;
+    display.internal_vdd_enabled = true;
+    display.enabled = false;
+    display.inverted = false;
+    display.dimmed = false;
+    display.contrast = DISPLAY_DEFAULT_CONTRAST;
+    display.gpio_mode = DISPLAY_GPIO_OUTPUT_LO;
 
 #ifndef SIMULATION_HEADLESS
     pthread_mutex_init(&display_mutex, 0);
@@ -76,35 +76,35 @@ void display_init(void) {
 }
 
 void display_sleep(void) {
-    disp_internal_vdd_enabled = false;
+    display.internal_vdd_enabled = false;
 }
 
 void display_set_enabled(bool enabled) {
-    disp_enabled = enabled;
+    display.enabled = enabled;
 }
 
 void display_set_inverted(bool inverted) {
-    disp_inverted = inverted;
+    display.inverted = inverted;
 }
 
 void display_set_contrast(uint8_t contrast) {
-    disp_contrast = contrast;
+    display.contrast = contrast;
 }
 
 void display_set_dimmed(bool dimmed) {
-    disp_dimmed = dimmed;
+    display.dimmed = dimmed;
 }
 
 bool display_is_dimmed(void) {
-    return disp_dimmed;
+    return display.dimmed;
 }
 
 uint8_t display_get_contrast(void) {
-    return disp_contrast;
+    return display.contrast;
 }
 
 void display_set_gpio(display_gpio_t mode) {
-    disp_gpio_mode = mode;
+    display.gpio_mode = mode;
 }
 
 void display_set_dc(void) {
@@ -125,47 +125,65 @@ void display_clear_reset(void) {
 
 void display_clear(disp_color_t color) {
     lock_display_mutex();
-    memset(disp_data, color | color << 4, DISPLAY_SIZE);
+    memset(display.data, color | color << 4, DISPLAY_SIZE);
     unlock_display_mutex();
 }
 
 void display_first_page(void) {
-    display_page_ystart = 0;
-    display_page_yend = PAGE_HEIGHT;
-    disp_data_ptr = disp_data;
     lock_display_mutex();
 
-    // initialize guards (the guard byte changes every time)
-    memset(&disp_buffer.guard0, guard_byte, GUARD_SIZE);
-    memset(&disp_buffer.guard1, guard_byte, GUARD_SIZE);
+    display_page_ystart = 0;
+    display_page_yend = max_page_height() - 1;
+    display_page_height = max_page_height();
+    display.buffer_size = display_page_height * DISPLAY_NUM_COLS;
+    display.data_ptr = display.data;
+
+    // initialize guard bytes
+    // the display buffer is the same size as the display to accomodate varying page height,
+    // so fsanitize won't catch buffer overflows if buffer is written beyond its set size.
+    memset(display.buffer + display.buffer_size, GUARD_BYTE,
+           sizeof display.buffer - display.buffer_size);
 }
 
 bool display_next_page(void) {
-    if (disp_data_ptr == 0) {
-        puts("Next page called before first page");
+    if (display.data_ptr == 0) {
+        trace("next page called before first page");
         return false;
     }
-    memcpy(disp_data_ptr, disp_buffer.buffer, DISPLAY_BUFFER_SIZE);
-    display_page_ystart += PAGE_HEIGHT;
-    display_page_yend += PAGE_HEIGHT;
-    disp_data_ptr += DISPLAY_BUFFER_SIZE;
+
+    // check guard
+    for (size_t i = display.buffer_size; i < DISPLAY_SIZE; ++i) {
+        if (display.buffer[i] != GUARD_BYTE) {
+            // guard byte smashed, show warning and equivalent position where it would be located.
+            trace("data written beyond display buffer end at pos %zu (x=%zu, y=%zu)",
+                  i, i % DISPLAY_NUM_COLS * 2, i / DISPLAY_NUM_COLS);
+            break;
+        }
+    }
+
+    // copy buffer to main display data
+    size_t bytes_left = (DISPLAY_SIZE - (display.data_ptr - display.data));
+    if (display.buffer_size > bytes_left) {
+        display.buffer_size = bytes_left;
+    }
+    memcpy(display.data_ptr, display.buffer, display.buffer_size);
+    display.data_ptr += display.buffer_size;
+
+    // reset guard for new buffer size
+    memset(display.buffer + display.buffer_size,
+           GUARD_BYTE, sizeof display.buffer - display.buffer_size);
+
+    // update page bounds
+    display_page_ystart += max_page_height();
+    display_page_yend += max_page_height();
+    if (display_page_yend >= DISPLAY_HEIGHT) {
+        display_page_yend = DISPLAY_HEIGHT - 1;
+    }
+    display_page_height = display_page_yend - display_page_ystart + 1;
 
     bool has_next_page = display_page_ystart < DISPLAY_HEIGHT;
     if (!has_next_page) {
-        disp_data_ptr = 0;
-
-        // check guards
-        for (size_t i = 0; i < GUARD_SIZE; ++i) {
-            if (disp_buffer.guard0[i] != guard_byte) {
-                trace("guard before display buffer smashed at pos %zu", i);
-                break;
-            }
-            if (disp_buffer.guard1[i] != guard_byte) {
-                trace("guard after display buffer smashed at pos %zu", i);
-                break;
-            }
-        }
-        ++guard_byte;
+        display.data_ptr = 0;
 
         unlock_display_mutex();
 
@@ -177,25 +195,36 @@ bool display_next_page(void) {
 }
 
 uint8_t* display_buffer(disp_x_t x, disp_y_t y) {
-    return &disp_buffer.buffer[y * DISPLAY_NUM_COLS + x / 2];
+    return &display.buffer[y * DISPLAY_NUM_COLS + x / 2];
+}
+
+void display_set_page_height(uint8_t height) {
+    display.max_page_height = height;
+}
+
+uint8_t display_get_page_height(void) {
+    return display.max_page_height;
 }
 
 #ifndef SIMULATION_HEADLESS
+
 static float get_pixel_opacity(disp_color_t color) {
-    if (disp_inverted) {
+    if (display.inverted) {
         color = DISPLAY_COLOR_WHITE - color;
     }
     float color_factor = (float) color / DISPLAY_COLOR_WHITE;
-    float effective_contrast = (float) disp_contrast / (disp_dimmed ? 2.0f : 1.0f);
+    float effective_contrast = (float) display.contrast / (display.dimmed ? 2.0f : 1.0f);
     float contrast_factor = effective_contrast / DISPLAY_MAX_CONTRAST * 0.8f + 0.2f;
     if (contrast_factor > 1.0f) contrast_factor = 1.0f;
     return color_factor * contrast_factor;
 }
+
 #endif
 
 void display_draw(void) {
 #ifndef SIMULATION_HEADLESS
-    if (!disp_enabled || !disp_internal_vdd_enabled || disp_gpio_mode != DISPLAY_GPIO_OUTPUT_HI) {
+    if (!display.enabled || !display.internal_vdd_enabled ||
+        display.gpio_mode != DISPLAY_GPIO_OUTPUT_HI) {
         // display OFF, internal VDD is disabled, or 15V regulator is disabled, nothing shown.
         return;
     }
@@ -205,13 +234,13 @@ void display_draw(void) {
     glPushMatrix();
     glTranslatef(DISPLAY_PIXEL_GAP / 2, DISPLAY_PIXEL_GAP / 2, 0);
     lock_display_mutex();
-    const uint8_t* data_ptr = disp_data;
-    for (disp_y_t row = 0 ; row < DISPLAY_NUM_ROWS ; ++row) {
+    const uint8_t* data_ptr = display.data;
+    for (disp_y_t row = 0; row < DISPLAY_NUM_ROWS; ++row) {
         glBegin(GL_QUADS);
         disp_x_t x = 0;
-        for (disp_x_t col = 0 ; col < DISPLAY_NUM_COLS ; ++col) {
+        for (disp_x_t col = 0; col < DISPLAY_NUM_COLS; ++col) {
             const uint8_t block = *data_ptr++;
-            for (int nib = 0 ; nib < 2 ; ++nib, ++x) {
+            for (int nib = 0; nib < 2; ++nib, ++x) {
                 const disp_color_t color = nib ? block >> 4 : block & 0xf;
                 const float opacity = get_pixel_opacity(color);
                 if (opacity != 0) {
@@ -247,7 +276,7 @@ void display_save(FILE* file) {
     png_write_info(png_ptr, info_ptr);
 
     png_byte row[DISPLAY_NUM_COLS];
-    const uint8_t* data_ptr = disp_data;
+    const uint8_t* data_ptr = display.data;
     for (size_t y = 0; y < DISPLAY_HEIGHT; ++y) {
         for (size_t col = 0; col < DISPLAY_NUM_COLS; ++col) {
             // libpng requires data to be in reverse order vs. what is stored.
@@ -265,5 +294,5 @@ void display_save(FILE* file) {
 }
 
 const uint8_t* display_data(void) {
-    return disp_data;
+    return display.data;
 }

@@ -24,6 +24,7 @@
 #include <sim/time.h>
 #include <sim/sound.h>
 #include <sim/flash.h>
+#include <sim/eeprom.h>
 
 #include <pthread.h>
 
@@ -36,6 +37,7 @@ static bool power_monitor_enabled;
 static double last_time_update;
 static double last_power_monitor_update;
 
+#ifndef SIMULATION_HEADLESS
 static void* callback_systick(void* arg) {
     while (true) {
         const double time = time_sim_get();
@@ -67,12 +69,18 @@ static void* callback_systick(void* arg) {
     }
     return 0;
 }
+#endif
 
 void init(void) {
+    eeprom_load_erased();
+    flash_load_erased();
+
     init_wakeup();
 
+#ifndef SIMULATION_HEADLESS
     pthread_t thread;
     pthread_create(&thread, NULL, callback_systick, NULL);
+#endif
 }
 
 void init_sleep(void) {

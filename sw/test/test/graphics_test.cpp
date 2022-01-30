@@ -31,6 +31,7 @@
 extern "C" {
 #include <core/graphics.h>
 #include <sim/display.h>
+#include "sys/init.h"
 }
 
 // when set to true, test that have no reference frames will save them and skip the test.
@@ -40,6 +41,9 @@ extern "C" {
 
 // maximum error masks to save per test, to avoid producing too much files.
 static const size_t MAX_ERROR_MASKS = 3;
+
+// all page heights settings tested, to make sure graphics functions work with different sizes.
+static const std::array<uint8_t, 11> PAGE_HEIGHTS{32, 8, 13, 16, 23, 26, 43, 48, 64, 127, 128};
 
 using Frame = std::array<uint8_t, DISPLAY_SIZE>;
 
@@ -58,7 +62,7 @@ private:
     void save_error_mask(const Frame& expected, const uint8_t* actual) const {
         std::ostringstream filename;
         filename << "output/" << ::testing::UnitTest::GetInstance()->current_test_info()->name()
-                 << "_" << current_frame << ".png";
+                 << "_" << display_get_page_height() << "_" << current_frame << ".png";
         std::filesystem::create_directories("output/");
         FILE* out = fopen(filename.str().c_str(), "wb");
         if (!out) {
@@ -122,7 +126,7 @@ public:
         if (SAVE_REFERENCE_PNG) {
             std::ostringstream filename;
             filename << "output/" << ::testing::UnitTest::GetInstance()->current_test_info()->name()
-                     << "_" << current_frame;
+                     << "_" << display_get_page_height() << "_" << current_frame;
             if (!name.empty()) {
                 filename << "_" << name;
             }
@@ -146,8 +150,9 @@ public:
             const Frame& expected = frames[current_frame];
             if (!std::equal(expected.begin(), expected.end(), display_data())) {
                 // frame is different
-                ADD_FAILURE() << "difference in frame " << current_frame <<
-                              (name.empty() ? "" : std::string(" (") + name + ")");
+                ADD_FAILURE() << "difference in frame " << current_frame
+                              << (name.empty() ? "" : std::string(" (") + name + ")")
+                              << ", with page height " << display_get_page_height();
 
                 // save error mask if max not reached
                 if (error_masks < MAX_ERROR_MASKS) {
@@ -159,7 +164,26 @@ public:
         ++current_frame;
     }
 
+    template<typename T>
+    void graphics_test(const T& test) {
+        if (no_reference) {
+            // saving reference, only do the test once.
+            display_set_page_height(PAGE_HEIGHTS[0]);
+            test();
+        } else {
+            for (uint8_t page_height : PAGE_HEIGHTS) {
+                current_frame = 0;
+                display_set_page_height(page_height);
+                test();
+            }
+        }
+    }
+
 protected:
+    static void SetUpTestSuite() {
+        init();
+    }
+
     void SetUp() override {
         if (SAVE_REFERENCE) {
             no_reference = true;
@@ -278,85 +302,93 @@ static std::vector<uint8_t> load_asset(const std::string& filename) {
 }
 
 TEST_F(GraphicsTest, graphics_pixel) {
-    do_test([=]() {
-        uint32_t seed = 1;
-        for (int i = 0; i < 1000; ++i) {
-            graphics_set_color(seed % 16);
-            disp_x_t x = seed % DISPLAY_WIDTH;
-            disp_x_t y = seed % DISPLAY_HEIGHT;
-            graphics_pixel(x, y);
-            seed = 1103515245 * seed + 12345;
-        }
+    graphics_test([&]() {
+        do_test([=]() {
+            uint32_t seed = 1;
+            for (int i = 0; i < 1000; ++i) {
+                graphics_set_color(seed % 16);
+                disp_x_t x = seed % DISPLAY_WIDTH;
+                disp_x_t y = seed % DISPLAY_HEIGHT;
+                graphics_pixel(x, y);
+                seed = 1103515245 * seed + 12345;
+            }
+        });
     });
 }
 
 TEST_F(GraphicsTest, graphics_hline) {
     // full-width lines
-    graphics_set_color(DISPLAY_COLOR_WHITE);
-    for (disp_y_t i = 0; i < DISPLAY_HEIGHT; ++i) {
-        do_test([=]() {
-            graphics_set_color(15);
-            graphics_hline(0, DISPLAY_WIDTH - 1, i);
-        });
-        do_test([=]() {
-            graphics_set_color(10);
-            graphics_hline(DISPLAY_WIDTH - 1, 0, i);
-        });
-    }
-    // varying width lines
-    for (disp_y_t i = 0; i < DISPLAY_HEIGHT; ++i) {
-        do_test([=]() {
-            graphics_set_color(5);
-            graphics_hline(i, DISPLAY_WIDTH - i - 1, i);
-        });
-    }
+    graphics_test([&]() {
+        graphics_set_color(DISPLAY_COLOR_WHITE);
+        for (disp_y_t i = 0; i < DISPLAY_HEIGHT; ++i) {
+            do_test([=]() {
+                graphics_set_color(15);
+                graphics_hline(0, DISPLAY_WIDTH - 1, i);
+            });
+            do_test([=]() {
+                graphics_set_color(10);
+                graphics_hline(DISPLAY_WIDTH - 1, 0, i);
+            });
+        }
+        // varying width lines
+        for (disp_y_t i = 0; i < DISPLAY_HEIGHT; ++i) {
+            do_test([=]() {
+                graphics_set_color(5);
+                graphics_hline(i, DISPLAY_WIDTH - i - 1, i);
+            });
+        }
+    });
 }
 
 TEST_F(GraphicsTest, graphics_vline) {
     // full-height lines
-    for (disp_x_t i = 0; i < DISPLAY_WIDTH; ++i) {
-        do_test([=]() {
-            graphics_set_color(15);
-            graphics_vline(0, DISPLAY_HEIGHT - 1, i);
-        });
-        do_test([=]() {
-            graphics_set_color(10);
-            graphics_vline(DISPLAY_HEIGHT - 1, 0, i);
-        });
-    }
-    // varying width lines
-    for (disp_x_t i = 0; i < DISPLAY_WIDTH; ++i) {
-        do_test([=]() {
-            graphics_set_color(5);
-            graphics_vline(i, DISPLAY_HEIGHT - i - 1, i);
-        });
-    }
+    graphics_test([&]() {
+        for (disp_x_t i = 0; i < DISPLAY_WIDTH; ++i) {
+            do_test([=]() {
+                graphics_set_color(15);
+                graphics_vline(0, DISPLAY_HEIGHT - 1, i);
+            });
+            do_test([=]() {
+                graphics_set_color(10);
+                graphics_vline(DISPLAY_HEIGHT - 1, 0, i);
+            });
+        }
+        // varying width lines
+        for (disp_x_t i = 0; i < DISPLAY_WIDTH; ++i) {
+            do_test([=]() {
+                graphics_set_color(5);
+                graphics_vline(i, DISPLAY_HEIGHT - i - 1, i);
+            });
+        }
+    });
 }
 
 TEST_F(GraphicsTest, graphics_line) {
     graphics_set_color(DISPLAY_COLOR_WHITE);
-    // diagonal lines
-    for (int i = 0; i <= 56; i += 8) {
-        for (disp_x_t j = i; j < (disp_x_t) (DISPLAY_WIDTH - i); j += 4) {
-            uint8_t a = DISPLAY_WIDTH - i - 1;
-            uint8_t b = DISPLAY_HEIGHT - j - 1;
-            do_test([=]() { graphics_line(j, a, b, i); });  // octants 2 & 3
-            do_test([=]() { graphics_line(a, b, i, j); });  // octants 4 & 5
-            do_test([=]() { graphics_line(b, i, j, a); });  // octants 6 & 7
-            do_test([=]() { graphics_line(i, j, a, b); });  // octants 8 & 1
+    graphics_test([&]() {
+        // diagonal lines
+        for (int i = 0; i <= 56; i += 8) {
+            for (disp_x_t j = i; j < (disp_x_t) (DISPLAY_WIDTH - i); j += 4) {
+                uint8_t a = DISPLAY_WIDTH - i - 1;
+                uint8_t b = DISPLAY_HEIGHT - j - 1;
+                do_test([=]() { graphics_line(j, a, b, i); });  // octants 2 & 3
+                do_test([=]() { graphics_line(a, b, i, j); });  // octants 4 & 5
+                do_test([=]() { graphics_line(b, i, j, a); });  // octants 6 & 7
+                do_test([=]() { graphics_line(i, j, a, b); });  // octants 8 & 1
+            }
         }
-    }
-    // horizontal & vertical lines
-    for (disp_y_t i = 0; i < DISPLAY_HEIGHT; ++i) {
-        do_test([=]() { graphics_line(i, i, DISPLAY_WIDTH - i - 1, i); });
-        do_test([=]() { graphics_line(i, i, i, DISPLAY_WIDTH - i - 1); });
-    }
-    // short lines
-    do_test([=]() { graphics_line(0, 0, 0, 0); });
-    do_test([=]() { graphics_line(0, 0, 1, 1); });
-    do_test([=]() { graphics_line(0, 0, 1, 0); });
-    do_test([=]() { graphics_line(0, 0, 2, 1); });
-    do_test([=]() { graphics_line(0, 0, 1, 2); });
+        // horizontal & vertical lines
+        for (disp_y_t i = 0; i < DISPLAY_HEIGHT; ++i) {
+            do_test([=]() { graphics_line(i, i, DISPLAY_WIDTH - i - 1, i); });
+            do_test([=]() { graphics_line(i, i, i, DISPLAY_WIDTH - i - 1); });
+        }
+        // short lines
+        do_test([=]() { graphics_line(0, 0, 0, 0); });
+        do_test([=]() { graphics_line(0, 0, 1, 1); });
+        do_test([=]() { graphics_line(0, 0, 1, 0); });
+        do_test([=]() { graphics_line(0, 0, 2, 1); });
+        do_test([=]() { graphics_line(0, 0, 1, 2); });
+    });
 }
 
 template<typename T>
@@ -382,14 +414,18 @@ static void do_rect_test(GraphicsTest& test, T draw_rect) {
 }
 
 TEST_F(GraphicsTest, graphics_rect) {
-    do_rect_test(*this, graphics_rect);
+    graphics_test([&]() {
+        do_rect_test(*this, graphics_rect);
+    });
 }
 
 TEST_F(GraphicsTest, graphics_fill_rect) {
-    do_rect_test(*this, graphics_fill_rect);
+    graphics_test([&]() {
+        do_rect_test(*this, graphics_fill_rect);
+    });
 }
 
-static void do_image_test(GraphicsTest &test, const std::string &asset) {
+static void do_image_test(GraphicsTest& test, const std::string& asset) {
     auto image_data = load_asset(asset);
     auto image_ptr = data_mcu(image_data.data());
     graphics_set_color(12);
@@ -413,19 +449,27 @@ static void do_image_test(GraphicsTest &test, const std::string &asset) {
 }
 
 TEST_F(GraphicsTest, graphics_image_1bit) {
-    do_image_test(*this, "image256x256-1bit.dat");
+    graphics_test([&]() {
+        do_image_test(*this, "image256x256-1bit.dat");
+    });
 }
 
 TEST_F(GraphicsTest, graphics_image_1bit_indexed) {
-    do_image_test(*this, "image256x256-1bit-indexed.dat");
+    graphics_test([&]() {
+        do_image_test(*this, "image256x256-1bit-indexed.dat");
+    });
 }
 
 TEST_F(GraphicsTest, graphics_image_4bit) {
-    do_image_test(*this, "image256x256-4bit.dat");
+    graphics_test([&]() {
+        do_image_test(*this, "image256x256-4bit.dat");
+    });
 }
 
 TEST_F(GraphicsTest, graphics_image_4bit_indexed) {
-    do_image_test(*this, "image256x256-4bit-indexed.dat");
+    graphics_test([&]() {
+        do_image_test(*this, "image256x256-4bit-indexed.dat");
+    });
 }
 
 static void do_glyph_test(GraphicsTest& test, const std::string& asset, size_t num_chars) {
@@ -481,10 +525,12 @@ static void do_glyph_test(GraphicsTest& test, const std::string& asset, size_t n
 }
 
 TEST_F(GraphicsTest, graphics_glyph) {
-    do_glyph_test(*this, "font5x7.dat", 191);
-    do_glyph_test(*this, "font6x9.dat", 25);
-    do_glyph_test(*this, "font7x7.dat", 58);
-    do_glyph_test(*this, "font16x16.dat", 96);
+    graphics_test([&]() {
+        do_glyph_test(*this, "font5x7.dat", 191);
+        do_glyph_test(*this, "font6x9.dat", 25);
+        do_glyph_test(*this, "font7x7.dat", 58);
+        do_glyph_test(*this, "font16x16.dat", 96);
+    });
 }
 
 TEST_F(GraphicsTest, graphics_text) {
@@ -492,14 +538,16 @@ TEST_F(GraphicsTest, graphics_text) {
     graphics_set_font(data_mcu(font_data.data()));
     graphics_set_color(DISPLAY_COLOR_WHITE);
 
-    const char* text = "Hello world!";
-    for (int y = -16; y < DISPLAY_HEIGHT; y += 7) {
-        for (int x = -64; x < DISPLAY_WIDTH; x += 27) {
-            do_test([=]() {
-                graphics_text((int8_t) x, (int8_t) y, text);
-            });
+    graphics_test([&]() {
+        const char* text = "Hello world!";
+        for (int y = -16; y < DISPLAY_HEIGHT; y += 7) {
+            for (int x = -64; x < DISPLAY_WIDTH; x += 27) {
+                do_test([=]() {
+                    graphics_text((int8_t) x, (int8_t) y, text);
+                });
+            }
         }
-    }
+    });
 }
 
 TEST_F(GraphicsTest, graphics_text_wrap) {
@@ -511,16 +559,18 @@ TEST_F(GraphicsTest, graphics_text_wrap) {
                        "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "
                        "veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex "
                        "ea commodo consequat. ";
-    for (int y = -16; y < DISPLAY_HEIGHT; y += 14) {
-        for (int x = -64; x < DISPLAY_WIDTH; x += 49) {
-            int wrap_first = std::max((int) std::ceil(x / 32.0) * 32, 32);
-            for (int wrap = wrap_first; wrap <= DISPLAY_WIDTH; wrap += 32) {
-                std::ostringstream name;
-                name << y << "_" << x << "_" << wrap;
-                do_test([=]() {
-                    graphics_text_wrap((int8_t) x, (int8_t) y, (uint8_t) wrap, text);
-                }, name.str());
+    graphics_test([&]() {
+        for (int y = -16; y < DISPLAY_HEIGHT; y += 14) {
+            for (int x = -64; x < DISPLAY_WIDTH; x += 49) {
+                int wrap_first = std::max((int) std::ceil(x / 32.0) * 32, 32);
+                for (int wrap = wrap_first; wrap <= DISPLAY_WIDTH; wrap += 32) {
+                    std::ostringstream name;
+                    name << y << "_" << x << "_" << wrap;
+                    do_test([=]() {
+                        graphics_text_wrap((int8_t) x, (int8_t) y, (uint8_t) wrap, text);
+                    }, name.str());
+                }
             }
         }
-    }
+    });
 }

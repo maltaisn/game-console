@@ -22,12 +22,14 @@
 #include <stdbool.h>
 
 #ifndef DISPLAY_BUFFER_SIZE
-// Display buffer size can be increased to change update latency / RAM usage.
+// Display buffer size can be increased to change display refresh latency / RAM usage.
 // The display buffer size must be a multiple of 64 to contain only complete rows.
 // 1024 bytes: 8 pages of 128x16 px
+// 1664 bytes: 5 pages of 128x26 px, 1 page of 128x24 px
 // 2048 bytes: 4 pages of 128x32 px (default)
 // 2752 bytes: 2 pages of 128x43 px, 1 page of 128x42 px
 // 3072 bytes: 2 pages of 128x48 px, 1 page of 128x32 px
+// Should not be used in simulation since page height is a runtime value.
 #define DISPLAY_BUFFER_SIZE 2048
 #endif
 #if (DISPLAY_BUFFER_SIZE / 64 * 64 != DISPLAY_BUFFER_SIZE)
@@ -45,9 +47,22 @@
 // Display RAM size
 #define DISPLAY_SIZE ((uint16_t) (DISPLAY_NUM_COLS * DISPLAY_NUM_ROWS))
 // Number of pages given buffer size.
-#define DISPLAY_PAGES ((uint8_t) (DISPLAY_SIZE / DISPLAY_BUFFER_SIZE))
-// Height of each page in pixels.
-#define PAGE_HEIGHT (DISPLAY_HEIGHT / DISPLAY_PAGES)
+// Should not be used in simulation since page height is a runtime value.
+#define DISPLAY_PAGES ((uint8_t) ((DISPLAY_SIZE + DISPLAY_BUFFER_SIZE - 1) / DISPLAY_BUFFER_SIZE))
+
+#if (DISPLAY_NUM_COLS * DISPLAY_NUM_ROWS / DISPLAY_BUFFER_SIZE * \
+     DISPLAY_BUFFER_SIZE != DISPLAY_NUM_COLS * DISPLAY_NUM_ROWS)
+// If defined, the last page will be shorter than the other pages
+#define DISPLAY_LAST_PAGE_SHORT
+#endif
+
+// Maximum page height in pixels (sometimes last page is shorter)
+#if defined(SIMULATION)
+#include <sim/display.h>
+#define max_page_height() display_get_page_height()
+#else
+#define max_page_height() ((uint8_t) ((DISPLAY_HEIGHT - 1) / DISPLAY_PAGES + 1))
+#endif
 
 #define DISPLAY_COLOR_BLACK ((disp_color_t) 0)
 #define DISPLAY_COLOR_WHITE ((disp_color_t) 15)
@@ -63,10 +78,20 @@ typedef disp_coord_t disp_y_t;
 /** Display "color" (grayscale level). */
 typedef uint8_t disp_color_t;
 
-/** First Y coordinate for current page (inclusive). */
+/** First Y coordinate for current page (inclusive), must not be changed directly. */
 extern disp_y_t display_page_ystart;
-/** Last Y coordinate for current page (exclusive) */
+/** Last Y coordinate for current page (inclusive), must not be changed directly */
 extern disp_y_t display_page_yend;
+
+// Height of the current page, in pixels.
+#if defined(SIMULATION) || defined(DISPLAY_LAST_PAGE_SHORT)
+/** Height of the current page in pixels, must not be changed directly */
+extern uint8_t display_page_height;
+#define page_height() display_page_height
+#else
+// The page height is constant, all pages are the same height.
+#define page_height() max_page_height()
+#endif
 
 typedef enum {
     DISPLAY_GPIO_DISABLE = 0b00,

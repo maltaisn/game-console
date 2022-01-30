@@ -59,6 +59,10 @@
 disp_y_t display_page_ystart;
 disp_y_t display_page_yend;
 
+#ifdef DISPLAY_LAST_PAGE_SHORT
+disp_y_t display_page_height;
+#endif
+
 static uint8_t buffer[DISPLAY_BUFFER_SIZE];
 
 enum {
@@ -231,14 +235,23 @@ void display_clear(disp_color_t color) {
 void display_first_page(void) {
     reset_cursor();
     display_page_ystart = 0;
-    display_page_yend = PAGE_HEIGHT;
+    display_page_yend = max_page_height() - 1;
+#ifdef DISPLAY_LAST_PAGE_SHORT
+    display_page_height = max_page_height();
+#endif
 }
 
 bool display_next_page(void) {
     display_set_dc();
-    write_data(DISPLAY_BUFFER_SIZE, buffer);
-    display_page_ystart += PAGE_HEIGHT;
-    display_page_yend += PAGE_HEIGHT;
+    write_data(page_height() * DISPLAY_NUM_COLS, buffer);
+    display_page_ystart += max_page_height();
+    display_page_yend += max_page_height();
+    if (display_page_yend >= DISPLAY_HEIGHT) {
+        display_page_yend = DISPLAY_HEIGHT - 1;
+    }
+#ifdef DISPLAY_LAST_PAGE_SHORT
+    display_page_height = display_page_yend - display_page_ystart + 1;
+#endif
     return display_page_ystart < DISPLAY_HEIGHT;
 }
 

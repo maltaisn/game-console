@@ -47,7 +47,7 @@
 #define FONT_MAX_Y_OFFSET_BITS 7
 #define FONT_MIN_GLYPH_SIZE 1
 #define FONT_MAX_GLYPH_SIZE 33
-#define FONT_MAX_LINE_SPACING 15
+#define FONT_MAX_LINE_SPACING 32
 
 #define IMAGE_SIGNATURE 0xf1
 #define IMAGE_HEADER_SIZE 4
@@ -152,7 +152,7 @@ void graphics_set_font(graphics_font_t f) {
     if (font.offset_max >= (1 << font.offset_bits)) {
         trace("max offset not coherent with offset bits");
     }
-    if (font.glyph_size > FONT_MAX_LINE_SPACING) {
+    if (font.line_spacing > FONT_MAX_LINE_SPACING) {
         trace("line spacing out of bounds");
     }
 #endif
@@ -165,14 +165,14 @@ graphics_font_t graphics_get_font(void) {
 void graphics_clear(disp_color_t c) {
     c = c | c << 4;
     uint8_t* buffer = display_buffer(0, 0);
-    memset(buffer, c, DISPLAY_BUFFER_SIZE);
+    memset(buffer, c, page_height() * DISPLAY_NUM_COLS);
 }
 
 static void graphics_pixel_fast_color(const disp_x_t x, const disp_y_t y,
                                       const disp_color_t color) {
     // note: color parameter shadows global color, that's correct.
 #ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
+    if (x >= DISPLAY_WIDTH || y >= page_height()) {
         trace("drawing outside bounds");
         return;
     }
@@ -187,7 +187,7 @@ static void graphics_pixel_fast_color(const disp_x_t x, const disp_y_t y,
 
 static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
+    if (x >= DISPLAY_WIDTH || y >= page_height()) {
         trace("drawing outside bounds");
         return;
     }
@@ -207,15 +207,15 @@ void graphics_pixel(const disp_x_t x, const disp_y_t y) {
         return;
     }
 #endif
-    if (y >= display_page_ystart && y < display_page_yend) {
+    if (y >= display_page_ystart && y <= display_page_yend) {
         graphics_pixel_fast(x, y - display_page_ystart);
     }
 }
 
 static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y) {
-    // preconditions: y must be in current page, 0 <= y < PAGE_HEIGHT.
+    // preconditions: y must be in current page, 0 <= y < page_height().
 #ifdef RUNTIME_CHECKS
-    if (x1 < x0 || x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= PAGE_HEIGHT) {
+    if (x1 < x0 || x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= page_height()) {
         trace("outside of bounds");
         return;
     }
@@ -244,7 +244,7 @@ void graphics_hline(disp_x_t x0, disp_x_t x1, const disp_y_t y) {
         return;
     }
 #endif
-    if (y < display_page_ystart || y >= display_page_yend) {
+    if (y < display_page_ystart || y > display_page_yend) {
         return; // completely out of page
     }
     if (x0 > x1) {
@@ -263,11 +263,11 @@ void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
     if (y0 > y1) {
         swap(uint8_t, y0, y1);
     }
-    if (y1 < display_page_ystart || y0 >= display_page_yend) {
+    if (y1 < display_page_ystart || y0 > display_page_yend) {
         return;  // completely out of page
     }
     y0 = y0 <= display_page_ystart ? 0 : y0 - display_page_ystart;
-    y1 = y1 >= display_page_yend ? PAGE_HEIGHT - 1 : y1 - display_page_ystart;
+    y1 = y1 > display_page_yend ? page_height() - 1 : y1 - display_page_ystart;
     uint8_t* buffer = display_buffer(x, y0);
     if (x & 1) {
         // on the right side of blocks
@@ -319,7 +319,7 @@ void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
         if (swapxy) {
             // octants 2, 3, 6, 7
             const int8_t ystep = y1 > y0 ? 1 : -1;
-            for (; x0 <= x1 && x0 < display_page_yend; ++x0) {
+            for (; x0 <= x1 && x0 <= display_page_yend; ++x0) {
                 if (x0 >= display_page_ystart) {
                     graphics_pixel_fast(y0, x0 - display_page_ystart);
                 }
@@ -331,7 +331,7 @@ void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
             }
         } else if (y1 > y0) {
             // octants 1, 4
-            if (y0 < display_page_yend) {
+            if (y0 <= display_page_yend) {
                 for (; x0 <= x1; ++x0) {
                     if (y0 >= display_page_ystart) {
                         graphics_pixel_fast(x0, y0 - display_page_ystart);
@@ -339,7 +339,7 @@ void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
                     err = (int8_t) (err - dy);
                     if (err < 0) {
                         ++y0;
-                        if (y0 >= display_page_yend) {
+                        if (y0 > display_page_yend) {
                             break; // out of page
                         }
                         err = (int8_t) (err + dx);
@@ -349,7 +349,7 @@ void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
         } else if (y0 >= display_page_ystart) {
             // octants 5, 8
             for (; x0 <= x1; ++x0) {
-                if (y0 < display_page_yend) {
+                if (y0 <= display_page_yend) {
                     graphics_pixel_fast(x0, y0 - display_page_ystart);
                 }
                 err = (int8_t) (err - dy);
@@ -402,7 +402,7 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
     }
     // get coordinates within current page
     const uint8_t y0 = y <= display_page_ystart ? 0 : y - display_page_ystart;
-    y1 = y1 >= display_page_yend ? PAGE_HEIGHT : y1 - display_page_ystart;
+    y1 = y1 > display_page_yend ? page_height() : y1 - display_page_ystart;
     const uint8_t x1 = x + w - 1;
     for (uint8_t i = y0; i < y1; ++i) {
         graphics_hline_fast(x, x1, i);
@@ -425,8 +425,8 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
                                 uint8_t left, uint8_t top, uint8_t right, uint8_t bottom,
                                 uint8_t image_width, uint8_t index_gran) {
 #ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT || left > image_width ||
-        right > image_width || bottom < top || (bottom - top) >= PAGE_HEIGHT) {
+    if (x >= DISPLAY_WIDTH || y >= page_height() || left > image_width ||
+        right > image_width || bottom < top || (bottom - top) >= page_height()) {
         trace("out of bounds");
         return;
     }
@@ -512,8 +512,8 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
                                 uint8_t image_width, uint8_t index_gran) {
 
 #ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= PAGE_HEIGHT || left > image_width ||
-        right > image_width || bottom < top || (bottom - top) >= PAGE_HEIGHT) {
+    if (x >= DISPLAY_WIDTH || y >= page_height() || left > image_width ||
+        right > image_width || bottom < top || (bottom - top) >= page_height()) {
         trace("out of bounds");
         return;
     }
@@ -675,7 +675,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         bottom = height;
     }
 
-    if (y >= display_page_yend || (y + (bottom - top)) < display_page_ystart) {
+    if (y > display_page_yend || (y + (bottom - top)) < display_page_ystart) {
         // out page page, either completely before or after.
         return;
     }
@@ -716,12 +716,12 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         // to know how many rows were drawn on those pages, in order to find the first row to draw
         // on the current page.
         uint8_t page_start = 0;
-        uint8_t page_end = PAGE_HEIGHT;
+        uint8_t page_end = max_page_height() - 1;
         uint8_t index_y = 0;
         uint8_t actual_top = top;
         while (true) {
             // If y is larger than page end, then the current page is the one on which image starts.
-            if (y < page_end) {
+            if (y <= page_end) {
                 // Get the Y coordinate of the index entry immediately before the actual top position.
                 // at the same time, increment the data pointer to point to this data.
                 const uint8_t bound = saturate_sub(actual_top, index_gran);
@@ -741,7 +741,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 
                 page_y = saturate_sub(y, page_start);
                 page_top = actual_top - index_y;
-                page_bottom = page_top + min((uint8_t) (PAGE_HEIGHT - page_y - 1),
+                page_bottom = page_top + min((uint8_t) (page_end - page_start - page_y),
                                              (uint8_t) (bottom - actual_top));
 
                 if (page_end == display_page_yend) {
@@ -752,8 +752,11 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
                 actual_top = actual_bottom + 1;
             }
 
-            page_start = page_end;
-            page_end += PAGE_HEIGHT;
+            page_start += max_page_height();
+            page_end += max_page_height();
+            if (page_end >= DISPLAY_HEIGHT) {
+                page_end = DISPLAY_HEIGHT - 1;
+            }
         }
 #elif defined(RUNTIME_CHECKS)
         trace("decoding support for indexed images is disabled");
@@ -765,7 +768,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         const uint8_t first_y = max(display_page_ystart, y);
         page_y = saturate_sub(y, display_page_ystart);
         page_top = top + (first_y - y);
-        page_bottom = page_top + display_page_yend - first_y - 1;
+        page_bottom = page_top + display_page_yend - first_y;
         if (page_bottom > bottom || bottom < page_top) {
             page_bottom = bottom;
         }
@@ -812,7 +815,7 @@ void graphics_glyph(int8_t x, int8_t y, char c) {
 
     int8_t curr_x = x;
     int8_t curr_y = (int8_t) (y - display_page_ystart);
-    if (curr_y >= PAGE_HEIGHT) {
+    if (curr_y >= page_height()) {
         return;  // glyph fully out of page
     }
 
@@ -857,7 +860,7 @@ void graphics_glyph(int8_t x, int8_t y, char c) {
     uint16_t first_byte = buf[byte_pos];
     first_byte <<= font.offset_bits;
     curr_y = (int8_t) (curr_y + (first_byte >> 8));
-    if (curr_y >= PAGE_HEIGHT) {
+    if (curr_y >= page_height()) {
         // Y offset brought top of glyph outside of page.
         return;
     }
@@ -882,7 +885,7 @@ glyph_read:
                 line_left = font.width;
                 curr_x = x;
                 ++curr_y;
-                if (curr_y >= PAGE_HEIGHT) {
+                if (curr_y >= page_height()) {
                     return;  // out of page or display
                 }
             } else {
@@ -910,7 +913,7 @@ void graphics_text(int8_t x, const int8_t y, const char* text) {
         return;
     }
 #endif
-    if (y + font.height + font.offset_max < display_page_ystart || y >= display_page_yend) {
+    if (y + font.height + font.offset_max < display_page_ystart || y > display_page_yend) {
         return;  // out of page
     }
     while (*text) {
@@ -940,7 +943,7 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
 #endif
     int8_t curr_x = x;
     int8_t curr_y = y;
-    if (y >= display_page_yend) {
+    if (y > display_page_yend) {
         return;  // text fully out of page
     }
 
@@ -984,7 +987,7 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
             // wrap line
             int8_t new_y;
             bool overflow = __builtin_add_overflow(curr_y, font.line_spacing, &new_y);
-            if (overflow || new_y >= display_page_yend) {
+            if (overflow || new_y > display_page_yend) {
                 return;  // out of page or display
             }
             curr_y = new_y;
