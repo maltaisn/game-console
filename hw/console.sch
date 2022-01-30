@@ -6,7 +6,7 @@ encoding utf-8
 Sheet 1 2
 Title "Handheld game console"
 Date "2021-11-16"
-Rev "2021A"
+Rev "2021B"
 Comp ""
 Comment1 ""
 Comment2 ""
@@ -471,8 +471,6 @@ Wire Wire Line
 Text Notes 4025 5975 0    100  ~ 0
 Mechanical\n
 Wire Wire Line
-	8800 4450 9200 4450
-Wire Wire Line
 	8700 5250 9200 5250
 Connection ~ 8700 5250
 Wire Wire Line
@@ -492,8 +490,6 @@ F 3 "" H 8700 5350 50  0001 C CNN
 $EndComp
 Text Notes 7100 3200 0    100  ~ 0
 Buzzer
-Wire Wire Line
-	8200 4450 8600 4450
 $Comp
 L console:+2.8V #PWR017
 U 1 1 6147C44A
@@ -1008,17 +1004,6 @@ F 3 "" H 8100 4900 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:Buzzer BZ1
-U 1 1 60DB830D
-P 8700 4350
-F 0 "BZ1" V 8549 4273 50  0000 L CNN
-F 1 "Buzzer" V 8480 4222 50  0000 L CNN
-F 2 "console:XDCR_PS1240P02CT3" V 8675 4450 50  0001 C CNN
-F 3 "~" V 8675 4450 50  0001 C CNN
-	1    8700 4350
-	0    -1   -1   0   
-$EndComp
-$Comp
 L Mechanical:MountingHole H4
 U 1 1 61998BB0
 P 5225 6275
@@ -1348,8 +1333,6 @@ F 3 "~" H 4475 1525 50  0001 C CNN
 	1    4475 1525
 	0    -1   -1   0   
 $EndComp
-Text Notes 500  4275 0    40   ~ 0
-Active power draw: 3 mA
 Text Notes 3800 4500 2    40   ~ 0
 Active power: 9 mW\nStandby power: <3 uW
 Text Notes 3800 3150 2    40   ~ 0
@@ -1414,4 +1397,21 @@ Wire Wire Line
 	9800 5050 9800 5350
 Wire Wire Line
 	7600 5050 7600 5350
+$Comp
+L Device:Speaker LS1
+U 1 1 61E77CF1
+P 8650 4250
+F 0 "LS1" V 8300 4275 50  0000 R CNN
+F 1 "Speaker" V 8400 4350 50  0000 R CNN
+F 2 "console:Speaker" H 8650 4050 50  0001 C CNN
+F 3 "~" H 8640 4200 50  0001 C CNN
+	1    8650 4250
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	8750 4450 9200 4450
+Wire Wire Line
+	8200 4450 8650 4450
+Text Notes 8576 4701 0    40   ~ 0
+16 ohm
 $EndSCHEMATC

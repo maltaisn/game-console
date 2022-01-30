@@ -2,6 +2,7 @@
 *.bck
 *.bck
 *.*-bak
+*.FCStd?
 
 # Cache
 fp-info-cache
@@ -12,3 +13,6 @@ fp-info-cache
 
 # Netlist
 *.net
+
+# Exported STEP PCB
+console.step
