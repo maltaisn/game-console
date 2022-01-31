@@ -412,12 +412,13 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
 // The region height is at most equals to the page height.
 // `y` is a coordinate in the current page (with y=0 being display_page_ystart on display).
 // `data` is a pointer in unified data space to the start of image data (can be derived from index).
-
+// `image_width` is the width of the image in pixels, minus one.
+//
 // The functions decode image data sequentially until the top limit is reached in image,
 // then start drawing when within left and right bounds, until bottom limit is reached.
 // The decoder state is reset on an index boundary.
 // `index_gran` can be set to 0 if image is not indexed.
-
+//
 // There are separate functions for raw and mixed encodings, for performance,
 // with raw encoding being faster even when reading more data from external memory.
 
@@ -696,113 +697,117 @@ static void graphics_image_4bit_mixed(graphics_image_t data, disp_x_t x, uint8_t
     uint8_t next_index_bound = index_gran;
 #endif
 
-    uint8_t sequence_length = 0;  // the number of pixels left in current raw or RLE sequence
-    uint8_t rle_color;  // the current RLE color byte
-    uint8_t raw_color;  // the current raw color byte
-    uint8_t curr_color; // the current pixel color
+    uint8_t raw_seq_length = 0;  // if decoding raw sequence, the number of blocks left (2 px/block), otherwise 0.
+    uint8_t rle_seq_length = 0;  // if deocding rle sequence, the number of pixels left, otherwise 0.
+    uint8_t rle_color;  // the high nibble has the color of the next rle sequence if HAS_RLE_COLOR is set.
+    uint8_t raw_color;  // the high nibble has the color of the next raw sequence if HAS_RAW_COLOR is set.
 
     enum {
         HAS_RLE_COLOR = 1 << 0,
-        NEXT_IS_NOT_RLE_COLOR = 1 << 1,
-        HAS_RAW_COLOR = 1 << 2,
-        NEXT_IS_NOT_RAW_COLOR = 1 << 3,
+        HAS_RAW_COLOR = 1 << 1,
     };
-    uint8_t state = NEXT_IS_NOT_RAW_COLOR | NEXT_IS_NOT_RLE_COLOR;
+    uint8_t state = 0;
 
     uint8_t* buffer = display_buffer(x_page, y_page);
     while (true) {
-        uint8_t byte;
-        if (buf_pos == sizeof buf) {
-            // image data buffer is empty, read more data.
-            data_read(data, sizeof buf, buf);
-            data += sizeof buf;
+        if (buf_pos >= sizeof buf - 1) {
+            // Image data buffer is empty, read more data.
+            // The buffer is filled even when there's still one byte left,
+            // because 2 bytes are read at once at the start of a sequence.
+            if (buf_pos == sizeof buf - 1) {
+                buf[0] = buf[sizeof buf - 1];
+            }
+            data_read(data, buf_pos, buf + (sizeof buf - buf_pos));
+            data += buf_pos;
             buf_pos = 0;
         }
-        byte = buf[buf_pos];
 
         // decode logic
-        if (sequence_length == 0) {
-            // start of sequence: this byte is a length byte, either raw or RLE.
-            ++buf_pos;
-            sequence_length = byte & 0x7f;
-            if (byte & 0x80) {
-                // RLE byte (offset=3, but we won't decrement the count on this iteration)
-                sequence_length += 3 - 1;
-                state |= NEXT_IS_NOT_RAW_COLOR;
-                if (state & HAS_RLE_COLOR) {
-                    // use color from previous RLE color byte.
-                    curr_color = rle_color;
-                    state &= ~HAS_RLE_COLOR;
-                } else {
-                    // no RLE color remaining, use next byte.
-                    state &= ~NEXT_IS_NOT_RLE_COLOR;
-                    continue;
-                }
-            } else {
-                // raw byte (offset=1)
-                sequence_length += 1;
-                state &= ~NEXT_IS_NOT_RAW_COLOR;
-                continue;
-            }
-        } else if (!(state & NEXT_IS_NOT_RAW_COLOR)) {
-            // decoding raw sequence: this byte was marked as a raw color byte, decode it.
-            curr_color = byte & 0xf;
-            raw_color = byte >> 4;
-            state |= HAS_RAW_COLOR | NEXT_IS_NOT_RAW_COLOR;
-            ++buf_pos;
-        } else if (state & HAS_RAW_COLOR) {
-            // decoding raw sequence: use color from previous byte.
-            curr_color = raw_color;
-            state &= ~(HAS_RAW_COLOR | NEXT_IS_NOT_RAW_COLOR);
-            --sequence_length;
-        } else if (!(state & NEXT_IS_NOT_RLE_COLOR)) {
-            // decoding RLE sequence: this byte was marked as a RLE color byte, decode it.
-            curr_color = byte & 0xf;
-            rle_color = byte >> 4;
-            state |= HAS_RLE_COLOR | NEXT_IS_NOT_RLE_COLOR;
-            ++buf_pos;
+        uint8_t curr_color;
+        if (state & HAS_RAW_COLOR) {
+            // decoding raw sequence: use second color in current byte.
+            // note that at this point HAS_RLE_COLOR flag may be set.
+            state &= ~HAS_RAW_COLOR;
+            curr_color = nibble_swap(raw_color);
+            --raw_seq_length;
         } else {
-            // decoding RLE sequence
-            --sequence_length;
+            uint8_t byte = buf[buf_pos++];
+            if (raw_seq_length == rle_seq_length) {
+                // (if both lengths are equal, this means both are zero)
+                // start of sequence: this byte is a length byte, either raw or RLE.
+                uint8_t seq_length = byte & 0x7f;
+                if (byte & 0x80) {
+                    // RLE byte (offset=3, but length is decremented only after 1 iteration, so +2.
+                    // note that at this point HAS_RAW_COLOR flag is always cleared.
+                    rle_seq_length = seq_length + 2;
+                    if (state != 0) {
+                        state = 0;
+                        curr_color = nibble_swap(rle_color);
+                    } else {
+                        // no RLE color remaining, use next byte.
+                        state = HAS_RLE_COLOR;
+                        rle_color = buf[buf_pos++];
+                        curr_color = rle_color;
+                    }
+                    goto draw;
+                } else {
+                    // raw byte (offset=1)
+                    raw_seq_length = seq_length + 1;
+                    byte = buf[buf_pos++];
+                }
+            }
+            // decoding raw sequence: use first color in current byte.
+            state |= HAS_RAW_COLOR;
+            raw_color = byte;
+            curr_color = raw_color;
+            // note that buffer position is incremented when reading the first nibble in case
+            // that the second nibble is never read because of index bound.
         }
 
+draw:
         // draw logic
-        if (y_img >= top && x_img >= left && x_img <= right) {
-            set_buffer_pixel(curr_color, x_page, buffer);
-            byte = nibble_swap(byte);
-            ++x_page;
-        }
-        if (x_img == image_width) {
-            // end of scan line, go to next line
-            x_img = 0;
-            if (y_img >= top) {
-                x_page = x;
-                if (bottom == y_img) {
-                    // bottom of image reached.
-                    return;
-                }
-                ++y_page;
-                buffer = display_buffer(x_page, y_page);
+        curr_color &= 0xf;
+        do {
+            if (y_img >= top && x_img >= left && x_img <= right) {
+                set_buffer_pixel(curr_color, x_page, buffer);
+                ++x_page;
             }
-            ++y_img;
+            if (x_img == image_width) {
+                // end of scan line, go to next line
+                x_img = 0;
+                if (y_img >= top) {
+                    x_page = x;
+                    if (bottom == y_img) {
+                        // bottom of image reached.
+                        return;
+                    }
+                    ++y_page;
+                    buffer = display_buffer(x_page, y_page);
+                }
+                ++y_img;
 #ifndef GRAPHICS_NO_INDEXED_IMAGE
-            if (y_img == next_index_bound) {
-                // Index bound reached, reset decoder state. The encoder must make sure this
-                // never happens when within a raw or RLE sequence.
+                if (y_img == next_index_bound) {
+                    // Index bound reached, reset decoder state. The encoder must make sure this
+                    // never happens when within a raw or RLE sequence.
 #ifdef RUNTIME_CHECKS
-                if (sequence_length != 0 && !(state & HAS_RAW_COLOR)) {
-                    trace("index bound in middle of sequence");
-                    return;
-                }
+                    if ((rle_seq_length != 0 || raw_seq_length != 0) && !(state & HAS_RAW_COLOR)) {
+                        // if there's one raw color left that's fine since the raw sequence
+                        // length is actually twice the encoded value, and one nibble may be left
+                        // unused on an index boundary (hence the !(state & HAS_RAW_COLOR)).
+                        trace("index bound in middle of sequence");
+                        return;
+                    }
 #endif //RUNTIME_CHECKS
-                state = NEXT_IS_NOT_RAW_COLOR | NEXT_IS_NOT_RLE_COLOR;
-                sequence_length = 0;
-                next_index_bound += index_gran;
-            }
+                    state = 0;
+                    raw_seq_length = 0;
+                    next_index_bound += index_gran;
+                }
 #endif //GRAPHICS_NO_INDEXED_IMAGE
-        } else {
-            ++x_img;
-        }
+            } else {
+                ++x_img;
+            }
+        } while (rle_seq_length-- > 0);
+        rle_seq_length = 0;  // if it was already 0, undo overflow.
     }
 }
 

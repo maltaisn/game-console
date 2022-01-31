@@ -6,6 +6,7 @@ sw/.sim
 # Build files
 out/
 build/
+__pycache__/
 
 # Jetbrains
 .idea/

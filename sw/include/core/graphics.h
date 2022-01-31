@@ -61,15 +61,18 @@
  * in terms of speed, even when reading more data from external memory.
  * Raw encoding for 1-bit images is provided for completeness but doesn't provide significant
  * improvements over mixed encoding since the mixed decoding algorithm is very fast.
- * Internal images (dialog arrows, battery icons) uses mixed encoding so it should not be disabled.
+ * Built-in images (dialog arrows, battery icons) uses mixed encoding so it should not be disabled.
  *
  * Unused encodings can be disabled using these defines, to save space:
  * - GRAPHICS_NO_1BIT_IMAGE
  * - GRAPHICS_NO_1BIT_RAW_IMAGE
- * - GRAPHICS_NO_1BIT_MIXED_IMAGE (should probably not be disabled, see above)
+ * - GRAPHICS_NO_1BIT_MIXED_IMAGE (should probably not be disabled, used by built-in images)
  * - GRAPHICS_NO_4BIT_IMAGE
  * - GRAPHICS_NO_4BIT_RAW_IMAGE
  * - GRAPHICS_NO_4BIT_MIXED_IMAGE
+ *
+ * Other options:
+ * - GRAPHICS_NO_INDEXED_IMAGE: disable index support (note that no built-in image is indexed)
  *
  * INDEXING
  *
@@ -148,7 +151,7 @@
  * - 1-bit raw:   85 ms (37 cycles/px)
  * - 1-bit mixed: 82 ms (39 cycles/px)
  * - 4-bit raw:   110 ms (54 cycles/px)
- * - 4-bit mixed: 148 ms (77 cycles/px)
+ * - 4-bit mixed: 134 ms (68 cycles/px)
  */
 typedef data_ptr_t graphics_image_t;
 
