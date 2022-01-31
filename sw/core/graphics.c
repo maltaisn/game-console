@@ -858,8 +858,8 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         return;
     }
 #ifndef GRAPHICS_NO_INDEXED_IMAGE
-    if (index_gran == 0) {
-        trace("index granularity == 0");
+    if ((flags & IMAGE_FLAG_INDEXED) && index_gran == 0) {
+        trace("index granularity == 0 in indexed image");
         return;
     }
 #endif

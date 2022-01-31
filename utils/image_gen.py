@@ -131,7 +131,7 @@ class ImageData:
         data.append(self.flags)
         data.append(self.width - 1)
         data.append(self.height - 1)
-        if self.index.entries:
+        if self.flags & ImageData.FLAG_INDEXED:
             data += self.index.encode()
         data += self.data
         return data
@@ -222,6 +222,7 @@ class ImageEncoder(abc.ABC):
 
         if len(self.index.entries) == 1:
             self._indexed = False
+            self.index = None
         if self._indexed:
             self._flags |= ImageData.FLAG_INDEXED
             self.index.entries[0] = len(self.index.entries)

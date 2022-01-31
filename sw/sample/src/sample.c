@@ -39,7 +39,7 @@ void setup(void) {
 static void draw(void) {
     graphics_clear(DISPLAY_COLOR_BLACK);
     graphics_set_color(DISPLAY_COLOR_WHITE);
-    graphics_image(ASSET_IMAGE_TIGER_BIN128_RAW, 0, 0);
+    graphics_image(ASSET_IMAGE_TIGER128_MIXED, 0, 0);
 }
 
 void loop(void) {

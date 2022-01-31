@@ -151,7 +151,7 @@ public:
             if (!std::equal(expected.begin(), expected.end(), display_data())) {
                 // frame is different
                 ADD_FAILURE() << "difference in frame " << current_frame
-                              << (name.empty() ? "" : std::string(" (") + name + ")")
+                              << (name.empty() ? "" : " (" + name + ")")
                               << ", with page height " << (int) display_get_page_height();
 
                 // save error mask if max not reached
@@ -221,7 +221,11 @@ protected:
                 strm.avail_out = bytes_left;
                 strm.next_out = out_buf;
                 ret = inflate(&strm, Z_NO_FLUSH);
-                assert(ret != Z_STREAM_ERROR);
+                if (ret == Z_STREAM_ERROR || ret == Z_BUF_ERROR) {
+                    inflateEnd(&strm);
+                    throw std::runtime_error("could not decode zlib stream");
+                    return;
+                }
                 size_t count = bytes_left - strm.avail_out;
                 std::copy_n(out_buf, count, frame_it);
                 frame_it += count;
@@ -284,7 +288,7 @@ protected:
 
 static std::vector<uint8_t> load_asset(const std::string& filename) {
     std::vector<uint8_t> data;
-    std::ifstream in(std::string("assets/") + filename);
+    std::ifstream in("assets/" + filename);
     if (!in.good()) {
         throw std::runtime_error("could not load asset file");
     }
@@ -426,7 +430,7 @@ TEST_F(GraphicsTest, graphics_fill_rect) {
 }
 
 static void do_image_test(GraphicsTest& test, const std::string& asset) {
-    auto image_data = load_asset(asset);
+    const auto image_data = load_asset(asset);
     auto image_ptr = data_mcu(image_data.data());
     graphics_set_color(12);
     // 128x128 region
@@ -484,8 +488,81 @@ TEST_F(GraphicsTest, graphics_image_4bit_indexed_raw) {
     });
 }
 
+static void do_image_test_thin(GraphicsTest &test, const std::string &suffix) {
+    // 1 pixel wide or 1 pixel tall images (edge case test)
+    const auto image1x1 = load_asset("image1x1" + suffix + ".dat");
+    const auto image1x256 = load_asset("image1x256" + suffix + ".dat");
+    const auto image256x1 = load_asset("image256x1" + suffix + ".dat");
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    test.do_test([&]() {
+        for (disp_x_t i = 0; i < DISPLAY_WIDTH; ++i) {
+            graphics_image_region(data_mcu(image1x256.data()), i, i, 0, i * 2, 0, i * 2 + 127 - i);
+            graphics_image_region(data_mcu(image256x1.data()), i, i, i * 2, 0, i * 2 + 127 - i, 0);
+        }
+        graphics_image( data_mcu(image1x1.data()), 8, 3);
+    });
+}
+
+TEST_F(GraphicsTest, graphics_image_1bit_thin) {
+    graphics_test([&]() {
+        do_image_test_thin(*this, "-bin");
+    });
+}
+
+TEST_F(GraphicsTest, graphics_image_4bit_thin) {
+    graphics_test([&]() {
+        do_image_test_thin(*this, "");
+    });
+}
+
+TEST_F(GraphicsTest, graphics_image_1bit_various) {
+    // various image dimensions, coordinates & regions
+    const auto font = load_asset("font6x9-bin.dat");
+    const auto chess = load_asset("chess49x54-bin.dat");
+    const auto castle = load_asset("castle-bin.dat");
+    auto font_data = data_mcu(font.data());
+    auto chess_data = data_mcu(chess.data());
+    auto castle_data = data_mcu(castle.data());
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    graphics_test([&]() {
+        do_test([=]() {
+            graphics_image_region(font_data, 0, 10, 0, 0, 127, 10);
+            graphics_image(chess_data, 79, 74);
+            graphics_image(castle_data, 0, 68);
+        });
+        do_test([=]() {
+            graphics_image_region(font_data, 1, 3, 50, 1, 155, 7);
+            graphics_image_region(chess_data, 50, 51, 10, 11, 45, 47);
+            graphics_image_region(castle_data, 5, 80, 2, 2, 36, 49);
+        });
+    });
+}
+
+TEST_F(GraphicsTest, graphics_image_4bit_various) {
+    // various image dimensions, coordinates & regions
+    const auto logo = load_asset("logo.dat");
+    const auto chess = load_asset("chess49x54.dat");
+    const auto lena = load_asset("lena.dat");
+    auto logo_data = data_mcu(logo.data());
+    auto chess_data = data_mcu(chess.data());
+    auto lena_data = data_mcu(lena.data());
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    graphics_test([&]() {
+        do_test([=]() {
+            graphics_image(lena_data, 18, 16);
+            graphics_image(logo_data, 2, 5);
+            graphics_image(chess_data, 79, 74);
+        });
+        do_test([=]() {
+            graphics_image_region(lena_data, 1, 3, 20, 20, 89, 91);
+            graphics_image_region(chess_data, 80, 11, 10, 11, 45, 47);
+            graphics_image_region(logo_data, 5, 80, 2, 13, 120, 26);
+        });
+    });
+}
+
 static void do_glyph_test(GraphicsTest& test, const std::string& asset, size_t num_chars) {
-    auto font_data = load_asset(asset);
+    const auto font_data = load_asset(asset);
     graphics_set_font(data_mcu(font_data.data()));
     graphics_set_color(DISPLAY_COLOR_WHITE);
 
@@ -546,7 +623,7 @@ TEST_F(GraphicsTest, graphics_glyph) {
 }
 
 TEST_F(GraphicsTest, graphics_text) {
-    auto font_data = load_asset("font5x7.dat");
+    const auto font_data = load_asset("font5x7.dat");
     graphics_set_font(data_mcu(font_data.data()));
     graphics_set_color(DISPLAY_COLOR_WHITE);
 
@@ -563,7 +640,7 @@ TEST_F(GraphicsTest, graphics_text) {
 }
 
 TEST_F(GraphicsTest, graphics_text_wrap) {
-    auto font_data = load_asset("font5x7.dat");
+    const auto font_data = load_asset("font5x7.dat");
     graphics_set_font(data_mcu(font_data.data()));
     graphics_set_color(DISPLAY_COLOR_WHITE);
 
