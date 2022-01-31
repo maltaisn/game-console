@@ -39,6 +39,11 @@
 
 #define DIALOG_RESULT_NONE 0xff
 
+/** A 3x5 image used as a left arrow for number and choice items. */
+extern const uint8_t DIALOG_ARROW_LEFT[];
+/** A 3x5 image used as a right arrow for number and choice items. */
+extern const uint8_t DIALOG_ARROW_RIGHT[];
+
 typedef uint8_t dialog_result_t;
 
 typedef enum {

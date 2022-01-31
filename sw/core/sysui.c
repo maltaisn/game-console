@@ -21,10 +21,10 @@
 
 #include <sys/power.h>
 
-static const uint8_t BATTERY_OUTLINE[] = {
+__attribute__((weak)) const uint8_t SYSUI_BATTERY_OUTLINE[] = {
         0xf1, 0x01, 0x09, 0x06, 0xc1, 0x20, 0x1c, 0x03, 0x40, 0x38, 0x07, 0x00, 0xc3, 0x00
 };
-static const uint8_t BATTERY_ICONS[][7] = {
+__attribute__((weak)) const uint8_t SYSUI_BATTERY_ICONS[][SYSUI_BATTERY_ICON_SIZE] = {
         {0xf1, 0x01, 0x04, 0x02, 0x76, 0x5b, 0x40},  // unknown
         {0xf1, 0x01, 0x04, 0x02, 0x02, 0x50, 0x00},  // none
         {0xf1, 0x01, 0x04, 0x02, 0x04, 0x5a, 0x40},  // charging
@@ -69,7 +69,7 @@ void sysui_battery_overlay(void) {
     graphics_vline(120, 127, left);
     graphics_hline(left, 127, 119);
 
-    graphics_image(data_mcu(BATTERY_OUTLINE), 118, 121);
+    graphics_image(data_mcu(SYSUI_BATTERY_OUTLINE), 118, 121);
     if (status == BATTERY_DISCHARGING) {
         graphics_set_font(GRAPHICS_BUILTIN_FONT);
         char buf[4];
@@ -79,6 +79,6 @@ void sysui_battery_overlay(void) {
             graphics_fill_rect(120, 123, percent / 17, 3);
         }
     } else {
-        graphics_image(data_mcu(BATTERY_ICONS[status]), 120, 123);
+        graphics_image(data_mcu(SYSUI_BATTERY_ICONS[status]), 120, 123);
     }
 }

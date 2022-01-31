@@ -44,5 +44,8 @@ DEFINES += UART_BAUD_FAST=1000000
 # DEFINES += GRAPHICS_NO_INDEXED_IMAGE
 # DEFINES += GRAPHICS_NO_UNINDEXED_IMAGE
 
+# disables support for left & right bounded image regions, to save space & improve performance.
+# DEFINES += GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
+
 # maximum item in a dialog (items are statically allocated)
 # DEFINES += DIALOG_MAX_ITEMS

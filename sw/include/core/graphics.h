@@ -61,7 +61,9 @@
  * in terms of speed, even when reading more data from external memory.
  * Raw encoding for 1-bit images is provided for completeness but doesn't provide significant
  * improvements over mixed encoding since the mixed decoding algorithm is very fast.
- * Built-in images (dialog arrows, battery icons) uses mixed encoding so it should not be disabled.
+ *
+ * Built-in images (dialog arrows, battery icons) uses mixed 1-bit encoding.
+ * If this encoding is disabled, the icons definitions can be overriden.
  *
  * Unused encodings can be disabled using these defines, to save space:
  * - GRAPHICS_NO_1BIT_IMAGE
@@ -73,6 +75,8 @@
  *
  * Other options:
  * - GRAPHICS_NO_INDEXED_IMAGE: disable index support (note that no built-in image is indexed)
+ * - GRAPHICS_NO_UNINDEXED_IMAGE: disable support for unindexed images (built-in images will fail)
+ * - GRAPHICS_NO_HORIZONTAL_IMAGE_REGION: disable support for left & right bounded image regions.
  *
  * INDEXING
  *
@@ -268,8 +272,13 @@ void graphics_image(graphics_image_t data, disp_x_t x, disp_y_t y);
  * The right and bottom coordinates are inclusive.
  * The image region must fully fit within display bounds.
  */
+#ifndef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
 void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
                            uint8_t left, uint8_t top, uint8_t right, uint8_t bottom);
+#else
+void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
+                           uint8_t top, uint8_t bottom);
+#endif
 
 /**
  * Draw a single glyph using the current font and color.
