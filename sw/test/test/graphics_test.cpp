@@ -62,7 +62,7 @@ private:
     void save_error_mask(const Frame& expected, const uint8_t* actual) const {
         std::ostringstream filename;
         filename << "output/" << ::testing::UnitTest::GetInstance()->current_test_info()->name()
-                 << "_" << display_get_page_height() << "_" << current_frame << ".png";
+                 << "_" << (int) display_get_page_height() << "_" << current_frame << ".png";
         std::filesystem::create_directories("output/");
         FILE* out = fopen(filename.str().c_str(), "wb");
         if (!out) {
@@ -126,7 +126,7 @@ public:
         if (SAVE_REFERENCE_PNG) {
             std::ostringstream filename;
             filename << "output/" << ::testing::UnitTest::GetInstance()->current_test_info()->name()
-                     << "_" << display_get_page_height() << "_" << current_frame;
+                     << "_" << (int) display_get_page_height() << "_" << current_frame;
             if (!name.empty()) {
                 filename << "_" << name;
             }
@@ -152,7 +152,7 @@ public:
                 // frame is different
                 ADD_FAILURE() << "difference in frame " << current_frame
                               << (name.empty() ? "" : std::string(" (") + name + ")")
-                              << ", with page height " << display_get_page_height();
+                              << ", with page height " << (int) display_get_page_height();
 
                 // save error mask if max not reached
                 if (error_masks < MAX_ERROR_MASKS) {
@@ -286,7 +286,7 @@ static std::vector<uint8_t> load_asset(const std::string& filename) {
     std::vector<uint8_t> data;
     std::ifstream in(std::string("assets/") + filename);
     if (!in.good()) {
-        return data;
+        throw std::runtime_error("could not load asset file");
     }
 
     size_t read;
@@ -460,6 +460,12 @@ TEST_F(GraphicsTest, graphics_image_1bit_indexed) {
     });
 }
 
+TEST_F(GraphicsTest, graphics_image_1bit_indexed_raw) {
+    graphics_test([&]() {
+        do_image_test(*this, "image256x256-1bit-indexed-raw.dat");
+    });
+}
+
 TEST_F(GraphicsTest, graphics_image_4bit) {
     graphics_test([&]() {
         do_image_test(*this, "image256x256-4bit.dat");
@@ -469,6 +475,12 @@ TEST_F(GraphicsTest, graphics_image_4bit) {
 TEST_F(GraphicsTest, graphics_image_4bit_indexed) {
     graphics_test([&]() {
         do_image_test(*this, "image256x256-4bit-indexed.dat");
+    });
+}
+
+TEST_F(GraphicsTest, graphics_image_4bit_indexed_raw) {
+    graphics_test([&]() {
+        do_image_test(*this, "image256x256-4bit-indexed-raw.dat");
     });
 }
 

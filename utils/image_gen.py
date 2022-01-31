@@ -113,8 +113,7 @@ class ImageIndex:
 
 @dataclass
 class ImageData:
-    indexed: bool
-    binary: bool
+    flags: int
     width: int
     height: int
     index: Optional[ImageIndex]
@@ -122,24 +121,28 @@ class ImageData:
 
     SIGNATURE = 0xf1
 
-    FLAG_BINARY = 1
-    FLAG_INDEXED = 2
+    FLAG_BINARY = 1 << 0
+    FLAG_INDEXED = 1 << 1
+    FLAG_RAW = 1 << 2
 
     def encode(self) -> bytes:
         data = bytearray()
         data.append(ImageData.SIGNATURE)
-        flags = 0
-        if self.indexed:
-            flags |= ImageData.FLAG_INDEXED
-        if self.binary:
-            flags |= ImageData.FLAG_BINARY
-        data.append(flags)
+        data.append(self.flags)
         data.append(self.width - 1)
         data.append(self.height - 1)
-        if self.indexed:
+        if self.index.entries:
             data += self.index.encode()
         data += self.data
         return data
+
+
+@dataclass
+class ImageEncoding:
+    # whether the encoding is 1-bit or 4-bit, or best choice (=None)
+    binary: Optional[bool]
+    # whether the encoding is raw or mixed
+    raw: bool
 
 
 class ImageEncoder(abc.ABC):
@@ -150,7 +153,6 @@ class ImageEncoder(abc.ABC):
     index: Optional[ImageIndex]
 
     _indexed: bool
-    _binary: bool
     _data: bytearray
     _flags: int
     _run_length: int
@@ -169,7 +171,6 @@ class ImageEncoder(abc.ABC):
         self.region = Rect(0, 0, image.width - 1, image.height - 1)
         self.indexed = True
         self.index_granularity = ImageEncoder.DEFAULT_INDEX_GRANULARITY
-        self._binary = False
         self._reset()
 
     def _reset(self) -> None:
@@ -183,7 +184,7 @@ class ImageEncoder(abc.ABC):
     def _iterate_pixels(self) -> None:
         def row_cb(y: int) -> None:
             if y % self.index.granularity == 0 and self._indexed:
-                self._end_run_length(True)
+                self._end_run_length(0, True)
                 self.index.entries.append(len(self._data) - self._last_data_len)
                 self._last_data_len = len(self._data)
 
@@ -192,10 +193,10 @@ class ImageEncoder(abc.ABC):
                     and self._run_length < self._get_max_run_length():
                 self._run_length += 1
             else:
-                self._end_run_length(False)
+                self._end_run_length(color, False)
             self._last_color = color
 
-        self._end_run_length(True)
+        self._end_run_length(0, True)
 
     def encode(self) -> ImageData:
         self._reset()
@@ -222,36 +223,83 @@ class ImageEncoder(abc.ABC):
         if len(self.index.entries) == 1:
             self._indexed = False
         if self._indexed:
+            self._flags |= ImageData.FLAG_INDEXED
             self.index.entries[0] = len(self.index.entries)
             if max(self.index.entries) > ImageIndex.MAX_ENTRY:
                 raise EncodeError("cannot achieve specified index granularity (too many rows)")
 
-        return ImageData(self._indexed, self._binary,
-                         self.region.width(), self.region.height(),
+        return ImageData(self._flags, self.region.width(), self.region.height(),
                          self.index, self._data)
 
     def _get_max_run_length(self) -> int:
-        """Get the maximum run length that can be encoded by this encoder."""
+        """Get the maximum run length that can be encoded by this encoder.
+        Can return 0 to indicate that the encoder doesn't support run lengths (raw encoder)"""
         raise NotImplementedError
 
     def get_gray_levels(self) -> int:
         """Get the number of gray levels encoded by this encoder."""
         raise NotImplementedError
 
-    def _end_run_length(self, align_and_reset: bool) -> None:
+    def _end_run_length(self, color: int, align_and_reset: bool) -> None:
         """End current run length if not zero. If `align_and_reset` is true, this method
         should end the current sequence, reset the encoder state, and align on byte boundary.
         If not, then this is called when a run length ends after color changes,
         or when the run length reaches the maximum length."""
-        raise NotImplementedError
+        pass
 
     def _encode_with_granularity(self, granularity: int) -> None:
         """Encode image data using given index granularity (in number of rows),
         excluding header and index (only image data)."""
-        raise NotImplementedError
+        self._reset()
+        self.index = ImageIndex(granularity)
+        self._iterate_pixels()
 
 
-class ImageEncoderBinary(ImageEncoder):
+class ImageEncoderBinary(ImageEncoder, abc.ABC):
+    def __init__(self, image: Image):
+        super().__init__(image)
+        self._flags |= ImageData.FLAG_BINARY
+
+    def get_gray_levels(self) -> int:
+        return 2
+
+
+class ImageEncoderBinaryRaw(ImageEncoderBinary):
+    """
+    Image encoder for binary images (black or white only), raw encoding only.
+    All data is pixel data, with least significant bit of each byte coming first.
+    """
+    _color_bits: int
+    _color_byte: int
+
+    def __init__(self, image: Image):
+        super().__init__(image)
+        self._flags |= ImageData.FLAG_RAW
+
+    def _get_max_run_length(self) -> int:
+        return 0
+
+    def _reset(self) -> None:
+        super()._reset()
+        self._color_bits = 0
+        self._color_byte = 0
+
+    def _end_run_length(self, color: int, align_and_reset: bool) -> None:
+        data = self._data
+        if align_and_reset:
+            if self._color_bits != 0:
+                data.append(self._color_byte)
+                self._color_bits = 0
+        else:
+            self._color_byte |= color << self._color_bits
+            self._color_bits += 1
+            if self._color_bits == 8:
+                data.append(self._color_byte)
+                self._color_byte = 0
+                self._color_bits = 0
+
+
+class ImageEncoderBinaryMixed(ImageEncoderBinary):
     """
     Image encoder for binary images (black or white only)
     The encoding is a mix of run-length encoding and raw encoding.
@@ -267,26 +315,19 @@ class ImageEncoderBinary(ImageEncoder):
 
     RLE_OFFSET = 8
 
-    def __init__(self, image: Image):
-        super().__init__(image)
-        self._binary = True
-
     def _get_max_run_length(self) -> int:
         # - there are 6 bits to encode run length
         # - run length is encoded with offset of 8.
         # - if a raw byte is currently being encoded, it will have to be finished
         #   to encode run length. This number of bits can be added to max run length.
-        return 63 + ImageEncoderBinary.RLE_OFFSET + \
+        return 63 + ImageEncoderBinaryMixed.RLE_OFFSET + \
                (0 if not self._color_bits else (7 - self._color_bits))
-
-    def get_gray_levels(self) -> int:
-        return 2
 
     def _reset(self) -> None:
         super()._reset()
         self._color_bits = 0
 
-    def _end_run_length(self, align_and_reset: bool) -> None:
+    def _end_run_length(self, color: int, align_and_reset: bool) -> None:
         while self._run_length > 0 and (self._color_bits != 0 or self._run_length <= 7):
             # Raw encoding (either finish current byte then encode as RLE byte
             # or continue encoding as raw if run length is too small)
@@ -310,7 +351,7 @@ class ImageEncoderBinary(ImageEncoder):
             # RLE encoding (only better if run length is 8 or more)
             assert self._run_length >= 8
             self._data.append(0x80 | (self._last_color << 6) |
-                              (self._run_length - ImageEncoderBinary.RLE_OFFSET))
+                              (self._run_length - ImageEncoderBinaryMixed.RLE_OFFSET))
 
         if align_and_reset:
             self._run_length = 0
@@ -322,13 +363,49 @@ class ImageEncoderBinary(ImageEncoder):
         else:
             self._run_length = 1
 
-    def _encode_with_granularity(self, granularity: int) -> None:
-        self._reset()
-        self.index = ImageIndex(granularity)
-        self._iterate_pixels()
+
+class ImageEncoderGray(ImageEncoder, abc.ABC):
+    def get_gray_levels(self) -> int:
+        return 16
 
 
-class ImageEncoderGray(ImageEncoder):
+class ImageEncoderGrayRaw(ImageEncoderGray):
+    """
+    Image encoder for 4-bit gray images, raw encoding only.
+    All data is pixel data, with least significant nibble coming first.
+    Each nibble in a byte encodes data for 2 pixels.
+    """
+    _color_bits: int
+    _color_byte: int
+
+    def __init__(self, image: Image):
+        super().__init__(image)
+        self._flags |= ImageData.FLAG_RAW
+
+    def _get_max_run_length(self) -> int:
+        return 0
+
+    def _reset(self) -> None:
+        super()._reset()
+        self._color_bits = 0
+        self._color_byte = 0
+
+    def _end_run_length(self, color: int, align_and_reset: bool) -> None:
+        data = self._data
+        if align_and_reset:
+            if self._color_bits != 0:
+                data.append(self._color_byte)
+                self._color_bits = 0
+        elif self._color_bits == 0:
+            self._color_byte = color
+            self._color_bits = 4
+        else:
+            self._color_byte |= color << 4
+            data.append(self._color_byte)
+            self._color_bits = 0
+
+
+class ImageEncoderGrayMixed(ImageEncoderGray):
     """
     Image encoder for 4-bit gray images.
     The encoding is a mix of run-length encoding and raw encoding.
@@ -361,10 +438,7 @@ class ImageEncoderGray(ImageEncoder):
     RLE_OFFSET = 3
 
     def _get_max_run_length(self) -> int:
-        return 127 + ImageEncoderGray.RLE_OFFSET
-
-    def get_gray_levels(self) -> int:
-        return 16
+        return 127 + ImageEncoderGrayMixed.RLE_OFFSET
 
     def _reset(self) -> None:
         super()._reset()
@@ -375,11 +449,11 @@ class ImageEncoderGray(ImageEncoder):
     def _end_raw_sequence(self) -> None:
         if self._raw_length_pos != -1:
             self._data[self._raw_length_pos] = len(self._data) - self._raw_length_pos - \
-                                               ImageEncoderGray.RAW_OFFSET - 1
+                                               ImageEncoderGrayMixed.RAW_OFFSET - 1
             self._raw_length_pos = -1
             self._raw_color_nibble = 0
 
-    def _end_run_length(self, align_and_reset: bool) -> None:
+    def _end_run_length(self, color: int, align_and_reset: bool) -> None:
         data = self._data
         if self._run_length == 0:
             return
@@ -391,7 +465,7 @@ class ImageEncoderGray(ImageEncoder):
                 self._run_length -= 1
             self._end_raw_sequence()
 
-            data.append(0x80 | (self._run_length - ImageEncoderGray.RLE_OFFSET))
+            data.append(0x80 | (self._run_length - ImageEncoderGrayMixed.RLE_OFFSET))
             if self._rle_color_pos == -1:
                 self._rle_color_pos = len(data)
                 data.append(self._last_color)
@@ -413,7 +487,7 @@ class ImageEncoderGray(ImageEncoder):
                     # -1 since raw_length_pos is the byte before the start of sequence,
                     # and another -1 since the sequence length has an offset of 1.
                     raw_seq_length = len(data) - self._raw_length_pos - \
-                                     ImageEncoderGray.RAW_OFFSET - 1
+                                     ImageEncoderGrayMixed.RAW_OFFSET - 1
                     if raw_seq_length == 127:
                         self._end_raw_sequence()
                 self._run_length -= 1
@@ -449,7 +523,7 @@ class Config:
     region: Rect
     indexed: bool
     index_granularity: IndexGranularity
-    binary: bool
+    encoding: ImageEncoding
     verbose: bool
 
 
@@ -478,10 +552,26 @@ def create_config(args: argparse.Namespace) -> Config:
         except ValueError as e:
             raise EncodeError(f"invalid index granularity: {e}")
 
+    binary = None
+    if args.force_1bit:
+        binary = True
+    if args.force_4bit:
+        if args.force_1bit:
+            raise EncodeError("cannot specify both --binary (-1) and --gray (-4)")
+        binary = False
+
+    raw = False
+    if args.force_raw:
+        raw = True
+    if args.force_4bit:
+        if args.force_1bit:
+            raise EncodeError("cannot specify both --mixed (-M) and --raw (-R)")
+        raw = False
+
     verbose = output_file != STD_IO
 
     return Config(input_file, output_file, region, not args.no_index,
-                  index_granularity, args.binary, verbose)
+                  index_granularity, ImageEncoding(binary, raw), verbose)
 
 
 parser = argparse.ArgumentParser(description="Image encoding utility for game console")
@@ -506,8 +596,17 @@ parser.add_argument(
     "-I", "--no-index", action="store_true", dest="no_index",
     help="Do not include include index in encoded image. Reduces size but increases drawing time.")
 parser.add_argument(
-    "-b", "--binary", action="store_true", dest="binary",
-    help="Force 1-bit encoding (can be used if the input image is not binary)")
+    "-1", "--binary", action="store_true", dest="force_1bit",
+    help="Force 1-bit encoding (overrides default if the input image is not binary)")
+parser.add_argument(
+    "-4", "--gray", action="store_true", dest="force_4bit",
+    help="Force 4-bit encoding (overrides default if the input image is binary)")
+parser.add_argument(
+    "-M", "--mixed", action="store_true", dest="force_mixed",
+    help="Force mixed encoding (this has no effect since default is mixed)")
+parser.add_argument(
+    "-R", "--raw", action="store_true", dest="force_raw",
+    help="Force raw encoding (overrides default mixed encoding)")
 
 
 def create_image_data(config: Config) -> ImageData:
@@ -525,21 +624,29 @@ def create_image_data(config: Config) -> ImageData:
         # this will also convert palette images to 8-bit gray
         image = image.convert("L")
 
-    # if binary was not forced, check all pixels in case image is binary
-    # binary images encoding is much terser.
-    if not config.binary:
-        config.binary = True
+    # if color encoding was not forced, check all pixels in case image is binary
+    # binary image encoding is preferable due to its smaller size.
+    if config.encoding.binary is None:
+        config.encoding.binary = True
         levels = ImageEncoderGray(image).get_gray_levels()
         for px in pixel_iterator(image, levels, config.region):
             if px != 0 and px != levels - 1:
-                config.binary = False
+                config.encoding.binary = False
                 break
 
-    # encode image
-    if config.binary:
-        encoder = ImageEncoderBinary(image)
+    # choose encoder class for chosen encoding
+    if config.encoding.binary:
+        if config.encoding.raw:
+            encoder = ImageEncoderBinaryRaw(image)
+        else:
+            encoder = ImageEncoderBinaryMixed(image)
     else:
-        encoder = ImageEncoderGray(image)
+        if config.encoding.raw:
+            encoder = ImageEncoderGrayRaw(image)
+        else:
+            encoder = ImageEncoderGrayMixed(image)
+
+    # encode image
     encoder.region = config.region
     encoder.index_granularity = config.index_granularity
     encoder.indexed = config.indexed
@@ -554,10 +661,11 @@ def main():
 
     # print information on encoded image
     if config.verbose:
-        nbit = 1 if config.binary else 4
+        nbit = 1 if config.encoding.binary else 4
+        raw_mixed = 'raw' if config.encoding.raw else 'mixed'
         print(f"Image is {config.region.width()} x {config.region.height()} px, "
-              f"{nbit}-bit, encoded in {len(data)} bytes")
-        if image_data.indexed:
+              f"{raw_mixed} {nbit}-bit, encoded in {len(data)} bytes")
+        if image_data.flags & ImageData.FLAG_INDEXED:
             print(f"Indexed every {image_data.index.granularity} rows "
                   f"(max {max(image_data.index.entries[1:])} bytes between entries)")
         else:

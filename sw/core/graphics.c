@@ -30,7 +30,9 @@
  * only in the simulator, or if RUNTIME_CHECKS is explicitly defined.
  */
 #ifdef RUNTIME_CHECKS
+
 #include <ctype.h>
+
 #endif
 
 #define FONT_SIGNATURE 0xf0
@@ -57,11 +59,14 @@
 #define IMAGE_INDEX_HEADER_SIZE 0
 #endif
 
-#define IMAGE_FLAG_BINARY 0x1
-#define IMAGE_FLAG_INDEXED 0x2
-
 #define IMAGE_INDEX_BUFFER_SIZE 8
 #define IMAGE_BUFFER_SIZE 16
+
+enum {
+    IMAGE_FLAG_BINARY = (1 << 0),
+    IMAGE_FLAG_INDEXED = (1 << 1),
+    IMAGE_FLAG_RAW = (1 << 2),
+};
 
 // currently selected color, black by default.
 static disp_color_t color;
@@ -93,9 +98,20 @@ const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
 };
 
 
-#define set_block_left(block) ((block) = ((block) & 0xf0) | color)
-#define set_block_right(block) ((block) = ((block) & 0xf) | color << 4)
-#define set_block_both(block) ((block) = (color | color << 4))
+#define set_block_left(c, block) ((block) = ((block) & 0xf0) | (c))
+#define set_block_right(c, block) ((block) = ((block) & 0xf) | (c) << 4)
+#define set_block_both(c, block) ((block) = ((c) | (c) << 4))
+
+// set the pixel in a display buffer row, handling left & right block cases given x.
+// increments the buffer if right block was written.
+#define set_buffer_pixel(c, x, buffer) do { \
+        if ((x) & 1) {                      \
+            set_block_right(c, *(buffer));  \
+            ++(buffer);                     \
+        } else {                            \
+            set_block_left(c, *(buffer));   \
+        }                                   \
+    } while (0);
 
 #define swap(T, a, b) do { \
         T temp = (a);      \
@@ -107,6 +123,10 @@ const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
 #define max(a, b) ((a) <= (b) ? (b) : (a))
 
 #define saturate_sub(a, b) ((a) <= (b) ? 0 : ((a) - (b)))
+
+// nibble swap is implemented as a single instruction on AVR
+// can be used as a quick >> 4 when the most significant nibble is not important.
+#define nibble_swap(a) ((a) >> 4 | (a) << 4)
 
 void graphics_set_color(disp_color_t c) {
 #ifdef RUNTIME_CHECKS
@@ -168,23 +188,6 @@ void graphics_clear(disp_color_t c) {
     memset(buffer, c, page_height() * DISPLAY_NUM_COLS);
 }
 
-static void graphics_pixel_fast_color(const disp_x_t x, const disp_y_t y,
-                                      const disp_color_t color) {
-    // note: color parameter shadows global color, that's correct.
-#ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= page_height()) {
-        trace("drawing outside bounds");
-        return;
-    }
-#endif
-    uint8_t* buffer = display_buffer(x, y);
-    if (x & 1) {
-        set_block_right(*buffer);
-    } else {
-        set_block_left(*buffer);
-    }
-}
-
 static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= page_height()) {
@@ -193,11 +196,7 @@ static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
     }
 #endif
     uint8_t* buffer = display_buffer(x, y);
-    if (x & 1) {
-        set_block_right(*buffer);
-    } else {
-        set_block_left(*buffer);
-    }
+    set_buffer_pixel(color, x, buffer);
 }
 
 void graphics_pixel(const disp_x_t x, const disp_y_t y) {
@@ -223,17 +222,17 @@ static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y
     uint8_t* buffer = display_buffer(x0, y);
     if (x0 & 1) {
         // handle half block at the start
-        set_block_right(*buffer);
+        set_block_right(color, *buffer);
         ++buffer;
         ++x0;
     }
     for (disp_x_t x = x0; x < x1; x += 2) {
-        set_block_both(*buffer);
+        set_block_both(color, *buffer);
         ++buffer;
     }
     if (!(x1 & 1)) {
         // handle half block at the end
-        set_block_left(*buffer);
+        set_block_left(color, *buffer);
     }
 }
 
@@ -272,13 +271,13 @@ void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
     if (x & 1) {
         // on the right side of blocks
         for (uint8_t y = y0; y <= y1; ++y) {
-            set_block_right(*buffer);
+            set_block_right(color, *buffer);
             buffer += DISPLAY_NUM_COLS;
         }
     } else {
         // on the left side of blocks
         for (uint8_t y = y0; y <= y1; ++y) {
-            set_block_left(*buffer);
+            set_block_left(color, *buffer);
             buffer += DISPLAY_NUM_COLS;
         }
     }
@@ -419,11 +418,92 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
 // The decoder state is reset on an index boundary.
 // `index_gran` can be set to 0 if image is not indexed.
 
+// There are separate functions for raw and mixed encodings, for performance,
+// with raw encoding being faster even when reading more data from external memory.
+
 #ifndef GRAPHICS_NO_1BIT_IMAGE
 
-static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
-                                uint8_t left, uint8_t top, uint8_t right, uint8_t bottom,
-                                uint8_t image_width, uint8_t index_gran) {
+#ifndef GRAPHICS_NO_1BIT_RAW_IMAGE
+
+static void graphics_image_1bit_raw(graphics_image_t data, disp_x_t x, disp_y_t y,
+                                    uint8_t left, uint8_t top, uint8_t right, uint8_t bottom,
+                                    uint8_t image_width, uint8_t index_gran) {
+#ifdef RUNTIME_CHECKS
+    if (x >= DISPLAY_WIDTH || y >= page_height() || left > image_width ||
+        right > image_width || bottom < top || (bottom - top) >= page_height()) {
+        trace("out of bounds");
+        return;
+    }
+#endif
+
+    uint8_t buf[IMAGE_BUFFER_SIZE];
+
+    // current coordinates within the image
+    uint8_t x_img = 0;
+    uint8_t y_img = 0;
+    // current coordinates within the page
+    uint8_t x_page = x;
+    uint8_t y_page = y;
+
+#ifndef GRAPHICS_NO_INDEXED_IMAGE
+    uint8_t next_index_bound = index_gran;
+#endif
+
+    uint8_t* buffer = display_buffer(x_page, y_page);
+    while (true) {
+        // fill buffer
+        data_read(data, sizeof buf, buf);
+        data += sizeof buf;
+
+        // draw all pixels in buffer
+        uint8_t buf_pos = 0;
+        while (buf_pos < sizeof buf) {
+            uint8_t shift_reg = buf[buf_pos++];
+            for (uint8_t i = 0; i < 8; ++i) {
+                if (y_img >= top && x_img >= left && x_img <= right) {
+                    if (shift_reg & 1) {
+                        set_buffer_pixel(color, x_page, buffer);
+                    } else if (x_page & 1) {
+                        ++buffer;
+                    }
+                    ++x_page;
+                }
+                shift_reg >>= 1;
+                if (x_img == image_width) {
+                    // end of scan line, go to next line
+                    x_img = 0;
+                    if (y_img >= top) {
+                        x_page = x;
+                        if (bottom == y_img) {
+                            // bottom of image reached.
+                            return;
+                        }
+                        ++y_page;
+                        buffer = display_buffer(x_page, y_page);
+                    }
+                    ++y_img;
+#ifndef GRAPHICS_NO_INDEXED_IMAGE
+                    if (y_img == next_index_bound) {
+                        // Index bound reached, reset decoder state.
+                        next_index_bound += index_gran;
+                        break;
+                    }
+#endif //GRAPHICS_NO_INDEXED_IMAGE
+                } else {
+                    ++x_img;
+                }
+            }
+        }
+    }
+}
+
+#endif //GRAPHICS_NO_1BIT_RAW_IMAGE
+
+#ifndef GRAPHICS_NO_1BIT_MIXED_IMAGE
+
+static void graphics_image_1bit_mixed(graphics_image_t data, disp_x_t x, disp_y_t y,
+                                      uint8_t left, uint8_t top, uint8_t right, uint8_t bottom,
+                                      uint8_t image_width, uint8_t index_gran) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= page_height() || left > image_width ||
         right > image_width || bottom < top || (bottom - top) >= page_height()) {
@@ -446,6 +526,7 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
     uint8_t next_index_bound = index_gran;
 #endif
 
+    uint8_t* buffer = display_buffer(x_page, y_page);
     while (true) {
         if (buf_pos == sizeof buf) {
             // image data buffer is empty, read more data.
@@ -463,7 +544,9 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
                 if (shift_reg & 0x40) {
                     // 0x40 is both the color bit mask if byte is a RLE byte,
                     // and the next pixel mask if byte is raw byte.
-                    graphics_pixel_fast(x_page, y_page);
+                    set_buffer_pixel(color, x_page, buffer);
+                } else if (x_page & 1) {
+                    ++buffer;
                 }
                 ++x_page;
             }
@@ -480,6 +563,7 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
                         return;
                     }
                     ++y_page;
+                    buffer = display_buffer(x_page, y_page);
                 }
                 ++y_img;
 #ifndef GRAPHICS_NO_INDEXED_IMAGE
@@ -503,13 +587,92 @@ static void graphics_image_1bit(graphics_image_t data, disp_x_t x, disp_y_t y,
     }
 }
 
+#endif //GRAPHICS_NO_1BIT_MIXED_IMAGE
+
 #endif //GRAPHICS_NO_1BIT_IMAGE
 
 #ifndef GRAPHICS_NO_4BIT_IMAGE
 
-static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
-                                uint8_t left, uint8_t top, uint8_t right, uint8_t bottom,
-                                uint8_t image_width, uint8_t index_gran) {
+#ifndef GRAPHICS_NO_4BIT_RAW_IMAGE
+
+static void graphics_image_4bit_raw(graphics_image_t data, disp_x_t x, uint8_t y,
+                                    uint8_t left, uint8_t top, uint8_t right, uint8_t bottom,
+                                    uint8_t image_width, uint8_t index_gran) {
+
+#ifdef RUNTIME_CHECKS
+    if (x >= DISPLAY_WIDTH || y >= page_height() || left > image_width ||
+        right > image_width || bottom < top || (bottom - top) >= page_height()) {
+        trace("out of bounds");
+        return;
+    }
+#endif
+
+    uint8_t buf[IMAGE_BUFFER_SIZE];
+
+    // current coordinates within the image
+    uint8_t x_img = 0;
+    uint8_t y_img = 0;
+    // current coordinates within the page
+    uint8_t x_page = x;
+    uint8_t y_page = y;
+
+#ifndef GRAPHICS_NO_INDEXED_IMAGE
+    uint8_t next_index_bound = index_gran;
+#endif
+
+    uint8_t* buffer = display_buffer(x_page, y_page);
+    while (true) {
+        // fill buffer
+        data_read(data, sizeof buf, buf);
+        data += sizeof buf;
+
+        // draw all pixels in buffer
+        uint8_t buf_pos = 0;
+        while (buf_pos < sizeof buf) {
+            uint8_t byte = buf[buf_pos++];
+            for (uint8_t i = 0; i < 2; ++i) {
+                if (y_img >= top && x_img >= left && x_img <= right) {
+                    const uint8_t c = byte & 0xf;
+                    set_buffer_pixel(c, x_page, buffer);
+                    byte = nibble_swap(byte);
+                    ++x_page;
+                }
+                if (x_img == image_width) {
+                    // end of scan line, go to next line
+                    x_img = 0;
+                    if (y_img >= top) {
+                        x_page = x;
+                        if (bottom == y_img) {
+                            // bottom of image reached.
+                            return;
+                        }
+                        ++y_page;
+                        buffer = display_buffer(x_page, y_page);
+                    }
+                    ++y_img;
+#ifndef GRAPHICS_NO_INDEXED_IMAGE
+                    if (y_img == next_index_bound) {
+                        // Index bound reached, reset decoder state:
+                        // if i == 0, ignore second nibble and go to next byte.
+                        next_index_bound += index_gran;
+                        break;
+                    }
+#endif //GRAPHICS_NO_INDEXED_IMAGE
+                } else {
+                    ++x_img;
+                }
+            }
+        }
+    }
+}
+
+#endif //GRAPHICS_NO_4BIT_RAW_IMAGE
+
+#ifndef GRAPHICS_NO_4BIT_MIXED_IMAGE
+
+static void graphics_image_4bit_mixed(graphics_image_t data, disp_x_t x, uint8_t y,
+                                      uint8_t left, uint8_t top, uint8_t right, uint8_t bottom,
+                                      uint8_t image_width, uint8_t index_gran) {
 
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= page_height() || left > image_width ||
@@ -533,10 +696,10 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
     uint8_t next_index_bound = index_gran;
 #endif
 
-    uint8_t sequence_length = 0;  // if decoding a RLE byte: the number of pixels left
-    uint8_t rle_color;
-    uint8_t raw_color;
-    uint8_t curr_color;
+    uint8_t sequence_length = 0;  // the number of pixels left in current raw or RLE sequence
+    uint8_t rle_color;  // the current RLE color byte
+    uint8_t raw_color;  // the current raw color byte
+    uint8_t curr_color; // the current pixel color
 
     enum {
         HAS_RLE_COLOR = 1 << 0,
@@ -546,6 +709,7 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
     };
     uint8_t state = NEXT_IS_NOT_RAW_COLOR | NEXT_IS_NOT_RLE_COLOR;
 
+    uint8_t* buffer = display_buffer(x_page, y_page);
     while (true) {
         uint8_t byte;
         if (buf_pos == sizeof buf) {
@@ -604,7 +768,8 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
 
         // draw logic
         if (y_img >= top && x_img >= left && x_img <= right) {
-            graphics_pixel_fast_color(x_page, y_page, curr_color);
+            set_buffer_pixel(curr_color, x_page, buffer);
+            byte = nibble_swap(byte);
             ++x_page;
         }
         if (x_img == image_width) {
@@ -617,6 +782,7 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
                     return;
                 }
                 ++y_page;
+                buffer = display_buffer(x_page, y_page);
             }
             ++y_img;
 #ifndef GRAPHICS_NO_INDEXED_IMAGE
@@ -639,6 +805,8 @@ static void graphics_image_4bit(graphics_image_t data, disp_x_t x, uint8_t y,
         }
     }
 }
+
+#endif //GRAPHICS_NO_4BIT_MIXED_IMAGE
 
 #endif //GRAPHICS_NO_4BIT_IMAGE
 
@@ -783,16 +951,54 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
     // decode selected image data and draw image on page
     if (flags & IMAGE_FLAG_BINARY) {
 #ifndef GRAPHICS_NO_1BIT_IMAGE
-        graphics_image_1bit(data, x, page_y, left, page_top, right, page_bottom, width, index_gran);
+
+        if (flags & IMAGE_FLAG_RAW) {
+#ifndef GRAPHICS_NO_1BIT_RAW_IMAGE
+            graphics_image_1bit_raw(data, x, page_y, left, page_top, right,
+                                    page_bottom, width, index_gran);
+#elif defined(RUNTIME_CHECKS)
+            trace("decoding support for 1-bit raw images is disabled");
+#endif //GRAPHICS_NO_1BIT_RAW_IMAGE
+
+        } else {
+
+#ifndef GRAPHICS_NO_1BIT_MIXED_IMAGE
+            graphics_image_1bit_mixed(data, x, page_y, left, page_top, right,
+                                      page_bottom, width, index_gran);
+#elif defined(RUNTIME_CHECKS)
+            trace("decoding support for 1-bit mixed images is disabled");
+#endif //GRAPHICS_NO_1BIT_MIXED_IMAGE
+        }
 #elif defined(RUNTIME_CHECKS)
         trace("decoding support for 1-bit images is disabled");
+
 #endif //GRAPHICS_NO_1BIT_IMAGE
     } else {
 #ifndef GRAPHICS_NO_4BIT_IMAGE
-        graphics_image_4bit(data, x, page_y, left, page_top, right, page_bottom, width, index_gran);
+
+        if (flags & IMAGE_FLAG_RAW) {
+#ifndef GRAPHICS_NO_4BIT_RAW_IMAGE
+            graphics_image_4bit_raw(data, x, page_y, left, page_top, right,
+                                    page_bottom, width, index_gran);
+#elif defined(RUNTIME_CHECKS)
+            trace("decoding support for 4-bit raw images is disabled");
+#endif //GRAPHICS_NO_4BIT_RAW_IMAGE
+
+        } else {
+
+#ifndef GRAPHICS_NO_4BIT_MIXED_IMAGE
+            graphics_image_4bit_mixed(data, x, page_y, left, page_top, right,
+                                      page_bottom, width, index_gran);
+#elif defined(RUNTIME_CHECKS)
+            trace("decoding support for 4-bit mixed images is disabled");
+#endif //GRAPHICS_NO_4BIT_MIXED_IMAGE
+
+        }
+
 #elif defined(RUNTIME_CHECKS)
         trace("decoding support for 1-bit images is disabled");
 #endif //GRAPHICS_NO_4BIT_IMAGE
+
     }
 }
 

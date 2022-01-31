@@ -22,16 +22,27 @@
 #include <stdbool.h>
 
 #ifndef DISPLAY_BUFFER_SIZE
+
 // Display buffer size can be increased to change display refresh latency / RAM usage.
 // The display buffer size must be a multiple of 64 to contain only complete rows.
-// 1024 bytes: 8 pages of 128x16 px
-// 1664 bytes: 5 pages of 128x26 px, 1 page of 128x24 px
-// 2048 bytes: 4 pages of 128x32 px (default)
-// 2752 bytes: 2 pages of 128x43 px, 1 page of 128x42 px
-// 3072 bytes: 2 pages of 128x48 px, 1 page of 128x32 px
-// Should not be used in simulation since page height is a runtime value.
+//
+// A few examples:
+// - 1024 bytes: 8 pages of 128x16 px
+// - 1664 bytes: 5 pages of 128x26 px, 1 page of 128x24 px
+// - 2048 bytes: 4 pages of 128x32 px (default)
+// - 2752 bytes: 2 pages of 128x43 px, 1 page of 128x42 px
+// - 3072 bytes: 2 pages of 128x48 px, 1 page of 128x32 px
+//
+// The relation between page height and refresh latency is not linear. For example,
+// when only drawing an indexed image, doubling the buffer size will change almost nothing.
+// However, larger buffer size will always result in lower refresh latency, if not always by much.
+// All drawing functions are optimized to return when out of page, which explains this.
+//
+// This macro should not be used in simulation since page height is a runtime value.
 #define DISPLAY_BUFFER_SIZE 2048
-#endif
+
+#endif // DISPLAY_BUFFER_SIZE
+
 #if (DISPLAY_BUFFER_SIZE / 64 * 64 != DISPLAY_BUFFER_SIZE)
 #error "Display buffer size must be a multiple of 64"
 #endif

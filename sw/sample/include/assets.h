@@ -4,20 +4,22 @@
 
 #include <sys/data.h>
 
-#define ASSET_IMAGE_TIGER128  data_flash(0x0000)
-#define ASSET_IMAGE_TIGER     data_flash(0x2b34)
-#define ASSET_IMAGE_TIGER_BIN data_flash(0x8be4)
+#define ASSET_IMAGE_TIGER128_MIXED     data_flash(0x0000)
+#define ASSET_IMAGE_TIGER128_RAW       data_flash(0x1978)
+#define ASSET_IMAGE_TIGER_BIN128_MIXED data_flash(0x3a00)
+#define ASSET_IMAGE_TIGER_BIN128_RAW   data_flash(0x3f7c)
+#define ASSET_IMAGE_TIGER              data_flash(0x5960)
 
-#define ASSET_SOUND_MUSIC0    data_flash(0x1978)
-#define ASSET_SOUND_MUSIC1    data_flash(0x1f5c)
-#define ASSET_SOUND_MUSIC2    data_flash(0x20a0)
-#define ASSET_SOUND_EFFECT0   data_flash(0x234c)
+#define ASSET_SOUND_MUSIC0             data_flash(0x47a4)
+#define ASSET_SOUND_MUSIC1             data_flash(0x4d88)
+#define ASSET_SOUND_MUSIC2             data_flash(0x4ecc)
+#define ASSET_SOUND_EFFECT0            data_flash(0x5178)
 
-#define ASSET_FONT_FONT3X5    data_flash(0x235c)
-#define ASSET_FONT_FONT5X7    data_flash(0x2420)
-#define ASSET_FONT_FONT6X9    data_flash(0x27e4)
-#define ASSET_FONT_FONT7X7    data_flash(0x289c)
+#define ASSET_FONT_FONT3X5             data_flash(0x5188)
+#define ASSET_FONT_FONT5X7             data_flash(0x524c)
+#define ASSET_FONT_FONT6X9             data_flash(0x5610)
+#define ASSET_FONT_FONT7X7             data_flash(0x56c8)
 
-#define ASSET_RAW_TEXT        0x9d10
+#define ASSET_RAW_TEXT                 0xba10
 
 #endif

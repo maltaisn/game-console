@@ -46,16 +46,34 @@
 /**
  * An image is just an address to the image data in unified data space.
  *
- * There are two defined image formats, one for 1-bit images and another for 4-bit images.
- * In both cases, the encoding is a mix of raw data and run-length encoded data.
- * This limits the worst case overhead (an image with no run lengths, only raw data) and
+ * The supported bit depths are 1-bit and 4-bit.
+ * Two encodings are supported for each:
+ * - Raw: only packed pixel data.
+ * - Mixed: mix of raw data and run-length encoded data.
+ *
+ * Mixed encoding limits the worst case overhead (an image with no run lengths, only raw data) and
  * allows significant size savings on images with long run lengths.
- * Compression is not really an option here since the image must be indexed and compression
+ * "Real" compression is not really an option here since the image must be indexed and compression
  * algorithms often require continuous decoding, with a window for back references.
+ *
+ * Raw encoding is provided mainly for 4-bit images, since the mixed decoding algorithm is
+ * heavier than for 1-bit images and raw encoding will almost always outperform mixed encoding
+ * in terms of speed, even when reading more data from external memory.
+ * Raw encoding for 1-bit images is provided for completeness but doesn't provide significant
+ * improvements over mixed encoding since the mixed decoding algorithm is very fast.
+ * Internal images (dialog arrows, battery icons) uses mixed encoding so it should not be disabled.
+ *
+ * Unused encodings can be disabled using these defines, to save space:
+ * - GRAPHICS_NO_1BIT_IMAGE
+ * - GRAPHICS_NO_1BIT_RAW_IMAGE
+ * - GRAPHICS_NO_1BIT_MIXED_IMAGE (should probably not be disabled, see above)
+ * - GRAPHICS_NO_4BIT_IMAGE
+ * - GRAPHICS_NO_4BIT_RAW_IMAGE
+ * - GRAPHICS_NO_4BIT_MIXED_IMAGE
  *
  * INDEXING
  *
- * Both format have an index after the header to skip parts of the image quickly.
+ * All formats can have an index after the header to skip parts of the image quickly.
  * Indeed, since the display is refreshed in many pages, there would be a huge performance
  * loss having to iterate over an image to skip parts that are not drawn. This is especially
  * important with images stored in external memory since reading each byte takes several cycles.
@@ -74,8 +92,9 @@
  * The header format is:
  * [0]: signature byte, 0xf1
  * [1]: image flags:
- *      - 0x1: 1-bit format (4-bit if not set)
- *      - 0x2: indexed
+ *      - 0x1: bit depth (1-bit if set, 4-bit otherwise)
+ *      - 0x2: indexed (indexed if set, unindexed otherwise)
+ *      - 0x4: encoding (raw if set, mixed otherwise)
  *      - others: unused
  * [2]: image width, -1 (width is from 1 to 256)
  * [3]: image height, -1 (height is from 1 to 256)
@@ -92,7 +111,11 @@
  * The data is encoded differently depending on the encoding indicated by the flag byte.
  * Important: the state of the encoder and decoder is reset on index boundaries!
  *
- * 1-bit encoding:
+ * 1-bit raw encoding:
+ * Each byte encode 8 pixels, with the LSB being the leftmost pixel.
+ * Pixel data in a byte is not allowed to cross an index boundary.
+ *
+ * 1-bit mixed encoding:
  * The MSB of each byte determines its type:
  * - Raw byte: MSB is not set. The remaining 7 bits is raw data for the next pixels.
  *             The data is encoded from MSB (bit 6) to LSB (bit 0). (0=transparent, 1=color).
@@ -101,7 +124,11 @@
  *             Thus the run length can be from 8 to 71.
  * Neither sequence type is allowed to cross an index boundary.
  *
- * 4-bit encoding:
+ * 4-bit raw encoding:
+ * Each byte encode 2 pixels, with the least significant nibble being the leftmost pixel.
+ * Pixel data in a byte is not allowed to cross an index boundary.
+ *
+ * 4-bit mixed encoding:
  * - Raw sequence: starts with a byte indicating the number of "raw" color bytes that follow.
  *     The MSB on the length byte is 0. The remaining bits indicated the length, minus one.
  *     Thus a raw sequence can have a length of 1 to 128.
@@ -114,12 +141,16 @@
  * The first byte can be either a raw sequence length byte or a RLE byte.
  * No sequence can cross an index boundary. The RLE color byte is reset on index boundary.
  * A raw sequence can exceptionnally encode an odd number of pixels if crossing an index boundary.
+ *
+ * BENCHMARKS
+ * Very rough benchmark done with tiger128.png & tiger-bin128.png, stored in flash memory.
+ * Clearing only the display takes 21 ms per frame, which was subtracted from the measured time.
+ * - 1-bit raw:   85 ms (37 cycles/px)
+ * - 1-bit mixed: 82 ms (39 cycles/px)
+ * - 4-bit raw:   110 ms (54 cycles/px)
+ * - 4-bit mixed: 148 ms (77 cycles/px)
  */
 typedef data_ptr_t graphics_image_t;
-
-// These can be defined to disable support for 1-bit or 4-bit image encoding and save some space.
-//#define GRAPHICS_NO_1BIT_IMAGE
-//#define GRAPHICS_NO_4BIT_IMAGE
 
 /**
  * A font is just an address to the font data in the unified data space.

@@ -32,9 +32,13 @@ DEFINES += UART_BAUD_FAST=1000000
 # enables runtime checks (in core/ modules)
 # DEFINES += RUNTIME_CHECKS
 
-# disables support for 1-bit or 4-bit images, to save space
+# disables support for 1-bit or 4-bit images, or only specific encodings, to save space
 # DEFINES += GRAPHICS_NO_1BIT_IMAGE
+# DEFINES += GRAPHICS_NO_1BIT_RAW_IMAGE
+# DEFINES += GRAPHICS_NO_1BIT_MIXED_IMAGE
 # DEFINES += GRAPHICS_NO_4BIT_IMAGE
+# DEFINES += GRAPHICS_NO_4BIT_RAW_IMAGE
+# DEFINES += GRAPHICS_NO_4BIT_MIXED_IMAGE
 
 # disables support for indexed or unindexed images, to save space
 # DEFINES += GRAPHICS_NO_INDEXED_IMAGE

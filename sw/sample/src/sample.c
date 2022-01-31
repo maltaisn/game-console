@@ -17,20 +17,13 @@
 #include <assets.h>
 
 #include <sys/main.h>
-#include <sys/input.h>
 #include <sys/display.h>
 #include <sys/time.h>
-#include <sys/power.h>
 
 #include <core/graphics.h>
-#include <core/sound.h>
-#include <core/sysui.h>
-#include <core/trace.h>
-#include <core/dialog.h>
 #include <core/debug.h>
 
 #include <sim/flash.h>
-#include <sim/power.h>
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -43,45 +36,21 @@ void setup(void) {
 #endif
 }
 
-static const char* STATUS_NAMES[] = {
-        "unknown",
-        "none",
-        "charging",
-        "charged",
-        "discharging",
-};
-
 static void draw(void) {
     graphics_clear(DISPLAY_COLOR_BLACK);
-
-    if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
-        sound_set_output_enabled(false);
-        sysui_battery_sleep();
-        return;
-    }
-
-    sysui_battery_overlay();
-
-    char buf[32];
-    graphics_set_font(ASSET_FONT_FONT5X7);
-    sprintf(buf, "status = %s", STATUS_NAMES[power_get_battery_status()]);
-    graphics_text(5, 10, buf);
-    sprintf(buf, "level = %d%%", power_get_battery_percent());
-    graphics_text(5, 20, buf);
-    sprintf(buf, "voltage = %d mV", power_get_battery_voltage());
-    graphics_text(5, 30, buf);
-    sprintf(buf, "time = %" PRIu32, (uint32_t) time_get());
-    graphics_text(5, 40, buf);
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    graphics_image(ASSET_IMAGE_TIGER_BIN128_RAW, 0, 0);
 }
 
 void loop(void) {
-    systime_t time = time_get();
-    while (time_get() - time < millis_to_ticks(20));
-
     // drawing
+    systime_t start = time_get();
     display_first_page();
     do {
         draw();
     } while (display_next_page());
+    systime_t end = time_get();
+    char buf[32];
+    sprintf(buf, "time = %d ms\n", (uint16_t) ((end - start) * 1000 / 256));
+    debug_print(buf);
 }
-

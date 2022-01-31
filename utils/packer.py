@@ -26,7 +26,7 @@ import font_gen
 import image_gen
 import sound_gen
 from font_gen import FontData
-from image_gen import ImageData, Rect, ImageEncoder, IndexGranularity
+from image_gen import ImageData, Rect, ImageEncoder, IndexGranularity, ImageEncoding
 from sound_gen import SoundData
 
 
@@ -68,8 +68,9 @@ class ImagePackResult(PackResult):
         d = self.image_data
         s = super().__repr__()
         s += f", {d.width}x{d.height} px, "
-        s += ("1-bit" if d.binary else "4-bit") + ", "
-        if d.indexed:
+        s += ("raw" if d.flags & ImageData.FLAG_RAW else "mixed") + " "
+        s += ("1-bit" if d.flags & ImageData.FLAG_BINARY else "4-bit") + ", "
+        if d.flags & ImageData.FLAG_INDEXED:
             s += f"indexed every {d.index.granularity} rows, " \
                  f"max {max(d.index.entries[1:])} bytes between entries"
         else:
@@ -82,7 +83,7 @@ class ImageObject(FileObject):
     region: Optional[Rect]
     indexed: bool
     index_granularity: str
-    force_binary: bool
+    encoding: ImageEncoding
 
     def pack(self, addr: int) -> ImagePackResult:
         try:
@@ -90,7 +91,7 @@ class ImageObject(FileObject):
         except ValueError as e:
             raise PackError(f"invalid index granularity: {e}")
         config = image_gen.Config(self.file, "", self.region, self.indexed,
-                                  index_granularity, self.force_binary, False)
+                                  index_granularity, self.encoding, False)
 
         try:
             image_data = image_gen.create_image_data(config)
@@ -272,7 +273,7 @@ class CodeGenerator:
     class Macro:
         name: str
         args: List[str]
-        value: int
+        value: str
 
     @dataclass
     class Array:
@@ -485,7 +486,8 @@ class Packer:
 
     def image(self, filename: str, group: str = "image", *,
               region: Optional[Tuple[int, int, int, int]] = None, indexed: bool = None,
-              index_granularity: Optional[str] = None, force_binary: bool = False,
+              index_granularity: Optional[str] = None,
+              binary: Optional[bool] = None, raw: bool = False,
               name: Optional[str] = None) -> None:
         """Add an image file to the data to pack. See image_gen.py for more info on parameters."""
         self._check_not_packed()
@@ -496,7 +498,7 @@ class Packer:
             None if region is None else Rect(*region),
             self.default_indexed if indexed is None else indexed,
             self.default_index_granularity if index_granularity is None else index_granularity,
-            force_binary
+            ImageEncoding(binary, raw),
         ))
 
     def sound(self, filename: str, group: str = "sound", *, tempo: int, octave_adjust: int = 0,
