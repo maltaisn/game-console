@@ -63,6 +63,10 @@ disp_y_t display_page_yend;
 disp_y_t display_page_height;
 #endif
 
+// see core/graphics.c
+#define nibble_swap(a) ((a) >> 4 | (a) << 4)
+#define nibble_copy(a) ((a) >> 4 | nibble_swap(a))
+
 static uint8_t buffer[DISPLAY_BUFFER_SIZE];
 
 enum {
@@ -218,7 +222,7 @@ static void reset_cursor(void) {
 
 void display_clear(disp_color_t color) {
     // fill 256 bytes buffer with color to use for transfer
-    color = color | color << 4;
+    color = nibble_copy(color);
     uint8_t i = 0;
     do {
         buffer[i++] = color;

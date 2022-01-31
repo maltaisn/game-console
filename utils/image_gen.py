@@ -201,7 +201,10 @@ class ImageEncoder(abc.ABC):
     def encode(self) -> ImageData:
         self._reset()
         granularity = 0
-        if self._indexed and self.index_granularity.mode == IndexGranularityMode.MAX_SIZE:
+        if self._flags & ImageData.FLAG_RAW:
+            # implicitly indexed raw image, reset state at the end of each row
+            granularity = 1
+        elif self._indexed and self.index_granularity.mode == IndexGranularityMode.MAX_SIZE:
             # increase row granularity until size spec is exceeded
             while True:
                 self._encode_with_granularity(granularity + 1)
@@ -220,7 +223,7 @@ class ImageEncoder(abc.ABC):
 
         self._encode_with_granularity(granularity)
 
-        if len(self.index.entries) == 1:
+        if len(self.index.entries) == 1 or self._flags & ImageData.FLAG_RAW:
             self._indexed = False
             self.index = None
         if self._indexed:
@@ -568,6 +571,9 @@ def create_config(args: argparse.Namespace) -> Config:
         if args.force_1bit:
             raise EncodeError("cannot specify both --mixed (-M) and --raw (-R)")
         raw = False
+
+    if raw and index_granularity != ImageEncoder.DEFAULT_INDEX_GRANULARITY:
+        raise EncodeError("cannot specify index granularity for raw image")
 
     verbose = output_file != STD_IO
 

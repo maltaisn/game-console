@@ -97,10 +97,18 @@ const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
         0x4e, 0xe5
 };
 
+// nibble swap is implemented as a single instruction on AVR
+// can be used as a quick >> 4 when the most significant nibble is not important,
+// or a quick << 4 when the least significant nibble is not important.
+#define nibble_swap(a) ((a) >> 4 | (a) << 4)
+
+// copy the least significant nibble to the most significant nibble, assuming
+// most significant nibble is already zero.
+#define nibble_copy(a) (nibble_swap(a) | (a))
 
 #define set_block_left(c, block) ((block) = ((block) & 0xf0) | (c))
-#define set_block_right(c, block) ((block) = ((block) & 0xf) | (c) << 4)
-#define set_block_both(c, block) ((block) = ((c) | (c) << 4))
+#define set_block_right(c, block) ((block) = ((block) & 0xf) | nibble_swap(c))
+#define set_block_both(c, block) ((block) = nibble_copy(c))
 
 // set the pixel in a display buffer row, handling left & right block cases given x.
 // increments the buffer if right block was written.
@@ -123,10 +131,6 @@ const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
 #define max(a, b) ((a) <= (b) ? (b) : (a))
 
 #define saturate_sub(a, b) ((a) <= (b) ? 0 : ((a) - (b)))
-
-// nibble swap is implemented as a single instruction on AVR
-// can be used as a quick >> 4 when the most significant nibble is not important.
-#define nibble_swap(a) ((a) >> 4 | (a) << 4)
 
 void graphics_set_color(disp_color_t c) {
 #ifdef RUNTIME_CHECKS
@@ -183,7 +187,13 @@ graphics_font_t graphics_get_font(void) {
 }
 
 void graphics_clear(disp_color_t c) {
-    c = c | c << 4;
+#ifdef RUNTIME_CHECKS
+    if (c > DISPLAY_COLOR_WHITE) {
+        trace("invalid color");
+        return;
+    }
+#endif
+    c = nibble_copy(c);
     uint8_t* buffer = display_buffer(0, 0);
     memset(buffer, c, page_height() * DISPLAY_NUM_COLS);
 }
@@ -428,6 +438,10 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
 #define within_region() (y_img >= top)
 #endif
 
+#if defined(GRAPHICS_NO_4BIT_RAW_IMAGE) && defined(GRAPHICS_NO_1BIT_RAW_IMAGE)
+#define GRAPHICS_NO_RAW_IMAGE
+#endif
+
 static void graphics_image_checks(disp_x_t x, disp_y_t y, uint8_t left, uint8_t top,
                                   uint8_t right, uint8_t bottom, uint8_t image_width) {
 #ifdef RUNTIME_CHECKS
@@ -446,7 +460,7 @@ static void graphics_image_checks(disp_x_t x, disp_y_t y, uint8_t left, uint8_t 
 static void graphics_image_1bit_raw(graphics_image_t data, const disp_x_t x, const disp_y_t y,
                                     const uint8_t left, const uint8_t top,
                                     const uint8_t right, const uint8_t bottom,
-                                    const uint8_t image_width, const uint8_t index_gran) {
+                                    const uint8_t image_width) {
     graphics_image_checks(x, y, left, top, right, bottom, image_width);
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
@@ -457,10 +471,6 @@ static void graphics_image_1bit_raw(graphics_image_t data, const disp_x_t x, con
     // current coordinates within the page
     uint8_t x_page = x;
     uint8_t y_page = y;
-
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-    uint8_t next_index_bound = index_gran;
-#endif
 
     uint8_t* buffer = display_buffer(x_page, y_page);
     while (true) {
@@ -495,13 +505,8 @@ static void graphics_image_1bit_raw(graphics_image_t data, const disp_x_t x, con
                         buffer = display_buffer(x_page, y_page);
                     }
                     ++y_img;
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-                    if (y_img == next_index_bound) {
-                        // Index bound reached, reset decoder state.
-                        next_index_bound += index_gran;
-                        break;
-                    }
-#endif //GRAPHICS_NO_INDEXED_IMAGE
+                    // data in byte cannot cross rows
+                    break;
                 } else {
                     ++x_img;
                 }
@@ -606,7 +611,7 @@ static void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, c
 static void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, const disp_y_t y,
                                     const uint8_t left, const uint8_t top,
                                     const uint8_t right, const uint8_t bottom,
-                                    const uint8_t image_width, const uint8_t index_gran) {
+                                    const uint8_t image_width) {
     graphics_image_checks(x, y, left, top, right, bottom, image_width);
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
@@ -617,10 +622,6 @@ static void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, con
     // current coordinates within the page
     uint8_t x_page = x;
     uint8_t y_page = y;
-
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-    uint8_t next_index_bound = index_gran;
-#endif
 
     uint8_t* buffer = display_buffer(x_page, y_page);
     while (true) {
@@ -652,14 +653,8 @@ static void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, con
                         buffer = display_buffer(x_page, y_page);
                     }
                     ++y_img;
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-                    if (y_img == next_index_bound) {
-                        // Index bound reached, reset decoder state:
-                        // if i == 0, ignore second nibble and go to next byte.
-                        next_index_bound += index_gran;
-                        break;
-                    }
-#endif //GRAPHICS_NO_INDEXED_IMAGE
+                    // data in byte cannot cross rows
+                    break;
                 } else {
                     ++x_img;
                 }
@@ -845,7 +840,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         bottom = height;
     }
 
-    if (y > display_page_yend || (y + (bottom - top)) < display_page_ystart) {
+    if (y > display_page_yend || (uint8_t) (y + (bottom - top)) < display_page_ystart) {
         // out page page, either completely before or after.
         return;
     }
@@ -863,9 +858,13 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         return;
     }
 #ifndef GRAPHICS_NO_INDEXED_IMAGE
-    if ((flags & IMAGE_FLAG_INDEXED) && index_gran == 0) {
-        trace("index granularity == 0 in indexed image");
-        return;
+    if (flags & IMAGE_FLAG_INDEXED) {
+        if (flags & IMAGE_FLAG_RAW) {
+            trace("indexed flag is ignored for raw image");
+        } else if (index_gran == 0) {
+            trace("index granularity == 0 in indexed image");
+            return;
+        }
     }
 #endif
 #endif //RUNTIME_CHECKS
@@ -893,7 +892,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         uint8_t index_y = 0;
         uint8_t actual_top = top;
         while (true) {
-            // If y is larger than page end, then the current page is the one on which image starts.
+            // If y is smaller than page end, then the current page is the one on which image starts.
             if (y <= page_end) {
                 // Get the Y coordinate of the index entry immediately before the actual top position.
                 // at the same time, increment the data pointer to point to this data.
@@ -935,8 +934,10 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         trace("decoding support for indexed images is disabled");
         return;
 #endif //GRAPHICS_NO_INDEXED_IMAGE
+
     } else {
-#ifndef GRAPHICS_NO_UNINDEXED_IMAGE
+
+#if !defined(GRAPHICS_NO_UNINDEXED_IMAGE) || !defined(GRAPHICS_NO_RAW_IMAGE)
         // Not indexed: the whole image data is iterated on for every page.
         const uint8_t first_y = max(display_page_ystart, y);
         page_y = saturate_sub(y, display_page_ystart);
@@ -945,12 +946,31 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         if (page_bottom > bottom || bottom < page_top) {
             page_bottom = bottom;
         }
-        // set to zero to make sure the state of the decoder in never reset on index bound.
-        index_gran = 0;
-#elif defined(RUNTIME_CHECKS)
+        if (flags & IMAGE_FLAG_RAW) {
+#ifndef GRAPHICS_NO_RAW_IMAGE
+            // Image has raw encoding, skipping rows in data is trivial without need for an index.
+#ifdef GRAPHICS_NO_1BIT_IMAGE
+            uint8_t bytes_per_row = width / 2 + 1;  // 4-bit image, 2 px per byte
+#elif defined(GRAPHICS_NO_4BIT_IMAGE)
+            uint8_t bytes_per_row = width / 8 + 1;  // 1-bit image, 8 px per byte
+#else
+            uint8_t bytes_per_row = width / (flags & IMAGE_FLAG_BINARY ? 8 : 2) + 1;
+#endif
+            data += page_top * bytes_per_row;
+            page_bottom -= page_top;
+            page_top = 0;
+#endif
+        } else {
+#ifndef GRAPHICS_NO_UNINDEXED_IMAGE
+            // set to zero to make sure the state of the decoder in never reset on index bound.
+            index_gran = 0;
+#endif
+        }
+#elif defined(GRAPHICS_NO_UNINDEXED_IMAGE) && defined(RUNTIME_CHECKS)
         trace("decoding support for unindexed images is disabled");
         return;
 #endif //GRAPHICS_NO_UNINDEXED_IMAGE
+
     }
 
     // decode selected image data and draw image on page
@@ -961,7 +981,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 #ifndef GRAPHICS_NO_1BIT_RAW_IMAGE
             graphics_image_1bit_raw(data, x, page_y,
                                     left, page_top, right, page_bottom,
-                                    width, index_gran);
+                                    width);
 #elif defined(RUNTIME_CHECKS)
             trace("decoding support for 1-bit raw images is disabled");
 #endif //GRAPHICS_NO_1BIT_RAW_IMAGE
@@ -987,7 +1007,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 #ifndef GRAPHICS_NO_4BIT_RAW_IMAGE
             graphics_image_4bit_raw(data, x, page_y,
                                     left, page_top, right, page_bottom,
-                                    width, index_gran);
+                                    width);
 #elif defined(RUNTIME_CHECKS)
             trace("decoding support for 4-bit raw images is disabled");
 #endif //GRAPHICS_NO_4BIT_RAW_IMAGE

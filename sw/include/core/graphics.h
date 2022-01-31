@@ -80,7 +80,7 @@
  *
  * INDEXING
  *
- * All formats can have an index after the header to skip parts of the image quickly.
+ * Both formats can have an index after the header to skip parts of the image quickly.
  * Indeed, since the display is refreshed in many pages, there would be a huge performance
  * loss having to iterate over an image to skip parts that are not drawn. This is especially
  * important with images stored in external memory since reading each byte takes several cycles.
@@ -93,6 +93,9 @@
  * The current state of the encoder and decoder is also reset on an index bound, to make it
  * possible to jump to the location pointed by the index without knowing the prior state.
  * This fact may also increase the image size slightly.
+ *
+ * The raw encoding cannot have an index. In fact, the encoder state is reset on each row for the
+ * raw encoding, which makes any raw image implicitly indexed. The indexed flag will be ignored.
  *
  * FORMAT DESCRIPTION
  *

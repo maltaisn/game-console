@@ -124,6 +124,12 @@ void display_clear_reset(void) {
 }
 
 void display_clear(disp_color_t color) {
+#ifdef RUNTIME_CHECKS
+    if (color > DISPLAY_COLOR_WHITE) {
+        trace("invalid color");
+        return;
+    }
+#endif
     lock_display_mutex();
     memset(display.data, color | color << 4, DISPLAY_SIZE);
     unlock_display_mutex();

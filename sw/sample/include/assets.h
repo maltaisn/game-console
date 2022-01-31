@@ -6,20 +6,20 @@
 
 #define ASSET_IMAGE_TIGER128_MIXED     data_flash(0x0000)
 #define ASSET_IMAGE_TIGER128_RAW       data_flash(0x1978)
-#define ASSET_IMAGE_TIGER_BIN128_MIXED data_flash(0x3a00)
-#define ASSET_IMAGE_TIGER_BIN128_RAW   data_flash(0x3f7c)
-#define ASSET_IMAGE_TIGER              data_flash(0x5960)
+#define ASSET_IMAGE_TIGER_BIN128_MIXED data_flash(0x397c)
+#define ASSET_IMAGE_TIGER_BIN128_RAW   data_flash(0x3ef8)
+#define ASSET_IMAGE_TIGER              data_flash(0x58b8)
 
-#define ASSET_SOUND_MUSIC0             data_flash(0x47a4)
-#define ASSET_SOUND_MUSIC1             data_flash(0x4d88)
-#define ASSET_SOUND_MUSIC2             data_flash(0x4ecc)
-#define ASSET_SOUND_EFFECT0            data_flash(0x5178)
+#define ASSET_SOUND_MUSIC0             data_flash(0x46fc)
+#define ASSET_SOUND_MUSIC1             data_flash(0x4ce0)
+#define ASSET_SOUND_MUSIC2             data_flash(0x4e24)
+#define ASSET_SOUND_EFFECT0            data_flash(0x50d0)
 
-#define ASSET_FONT_FONT3X5             data_flash(0x5188)
-#define ASSET_FONT_FONT5X7             data_flash(0x524c)
-#define ASSET_FONT_FONT6X9             data_flash(0x5610)
-#define ASSET_FONT_FONT7X7             data_flash(0x56c8)
+#define ASSET_FONT_FONT3X5             data_flash(0x50e0)
+#define ASSET_FONT_FONT5X7             data_flash(0x51a4)
+#define ASSET_FONT_FONT6X9             data_flash(0x5568)
+#define ASSET_FONT_FONT7X7             data_flash(0x5620)
 
-#define ASSET_RAW_TEXT                 0xba10
+#define ASSET_RAW_TEXT                 0xb968
 
 #endif

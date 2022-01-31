@@ -464,9 +464,9 @@ TEST_F(GraphicsTest, graphics_image_1bit_indexed) {
     });
 }
 
-TEST_F(GraphicsTest, graphics_image_1bit_indexed_raw) {
+TEST_F(GraphicsTest, graphics_image_1bit_raw) {
     graphics_test([&]() {
-        do_image_test(*this, "image256x256-1bit-indexed-raw.dat");
+        do_image_test(*this, "image256x256-1bit-raw.dat");
     });
 }
 
@@ -482,9 +482,9 @@ TEST_F(GraphicsTest, graphics_image_4bit_indexed) {
     });
 }
 
-TEST_F(GraphicsTest, graphics_image_4bit_indexed_raw) {
+TEST_F(GraphicsTest, graphics_image_4bit_raw) {
     graphics_test([&]() {
-        do_image_test(*this, "image256x256-4bit-indexed-raw.dat");
+        do_image_test(*this, "image256x256-4bit-raw.dat");
     });
 }
 
