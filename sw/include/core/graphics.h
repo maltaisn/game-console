@@ -77,6 +77,7 @@
  * - GRAPHICS_NO_INDEXED_IMAGE: disable index support (note that no built-in image is indexed)
  * - GRAPHICS_NO_UNINDEXED_IMAGE: disable support for unindexed images (built-in images will fail)
  * - GRAPHICS_NO_HORIZONTAL_IMAGE_REGION: disable support for left & right bounded image regions.
+ * - GRAPHICS_NO_TRANSPARENT_IMAGE: disable support for transparent 4-bit images.
  *
  * INDEXING
  *
@@ -102,12 +103,18 @@
  * The header format is:
  * [0]: signature byte, 0xf1
  * [1]: image flags:
- *      - 0x1: bit depth (1-bit if set, 4-bit otherwise)
- *      - 0x2: indexed (indexed if set, unindexed otherwise)
- *      - 0x4: encoding (raw if set, mixed otherwise)
+ *      - [0..3]: alpha color
+ *      - [4]: bit depth    (0: 4-bit, 1: 4-bit)
+ *      - [5]: encoding     (0: mixed, 1: raw)
+ *      - [6]: transparency (0: no, 1: yes)
+ *      - [7]: indexed      (0: no, 1: yes)
  *      - others: unused
  * [2]: image width, -1 (width is from 1 to 256)
  * [3]: image height, -1 (height is from 1 to 256)
+ *
+ * The alpha color is the color to be treated as transparent if transparency is enabled.
+ * This means an image with transparency cannot use all gray levels.
+ * Transparency only works with 4-bit images, not 1-bit.
  *
  * If not indexed, index section is omitted completely.
  * If indexed index format is:

@@ -40,6 +40,7 @@ static void draw(void) {
     graphics_clear(DISPLAY_COLOR_BLACK);
     graphics_set_color(DISPLAY_COLOR_WHITE);
     graphics_image(ASSET_IMAGE_TIGER128_RAW, 0, 0);
+    graphics_image(ASSET_IMAGE_LOGO_ALPHA, 2, 48);
 }
 
 void loop(void) {

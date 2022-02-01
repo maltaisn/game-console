@@ -27,5 +27,7 @@ p.image("tiger.png")
 str = "Hello world!"
 p.raw(str.encode("ascii"), name="text")
 
+p.image("logo-alpha.png")
+
 p.pack("sample/assets.dat")
 p.create_header("sample/include/assets.h", "sample/src/assets.c")

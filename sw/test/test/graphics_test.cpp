@@ -561,6 +561,18 @@ TEST_F(GraphicsTest, graphics_image_4bit_various) {
     });
 }
 
+TEST_F(GraphicsTest, graphics_image_4bit_alpha) {
+    // various image dimensions, coordinates & regions
+    const auto background = load_asset("image256x256-4bit-raw.dat");
+    const auto overlay = load_asset("logo-alpha.dat");
+    graphics_test([&]() {
+        do_test([&]() {
+            graphics_image_region(data_mcu(background.data()), 0, 0, 64, 64, 191, 191);
+            graphics_image(data_mcu(overlay.data()), 2, 48);
+        });
+    });
+}
+
 static void do_glyph_test(GraphicsTest& test, const std::string& asset, size_t num_chars) {
     const auto font_data = load_asset(asset);
     graphics_set_font(data_mcu(font_data.data()));

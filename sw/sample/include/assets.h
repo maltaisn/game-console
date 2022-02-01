@@ -9,6 +9,7 @@
 #define ASSET_IMAGE_TIGER_BIN128_MIXED data_flash(0x397c)
 #define ASSET_IMAGE_TIGER_BIN128_RAW   data_flash(0x3ef8)
 #define ASSET_IMAGE_TIGER              data_flash(0x58b8)
+#define ASSET_IMAGE_LOGO_ALPHA         data_flash(0xb974)
 
 #define ASSET_SOUND_MUSIC0             data_flash(0x46fc)
 #define ASSET_SOUND_MUSIC1             data_flash(0x4ce0)

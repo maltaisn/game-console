@@ -83,6 +83,9 @@ class Rect:
         return self.bottom - self.top + 1
 
 
+TRANSPARENT_COLOR = 0xff
+
+
 def pixel_iterator(image: Image, levels: int, rect: Optional[Rect] = None,
                    row_cb: Optional[Callable[[int], None]] = None) -> Generator[int, None, None]:
     if not rect:
@@ -91,8 +94,11 @@ def pixel_iterator(image: Image, levels: int, rect: Optional[Rect] = None,
         if row_cb:
             row_cb(y)
         for x in range(rect.left, rect.right + 1):
-            pixel = image.getpixel((x, y))
-            yield math.floor((pixel / 256) * levels)
+            color, alpha = image.getpixel((x, y))
+            if alpha < 128:
+                yield TRANSPARENT_COLOR
+            else:
+                yield math.floor((color / 256) * levels)
 
 
 @dataclass
@@ -114,6 +120,7 @@ class ImageIndex:
 @dataclass
 class ImageData:
     flags: int
+    alpha_color: int
     width: int
     height: int
     index: Optional[ImageIndex]
@@ -121,14 +128,16 @@ class ImageData:
 
     SIGNATURE = 0xf1
 
-    FLAG_BINARY = 1 << 0
-    FLAG_INDEXED = 1 << 1
-    FLAG_RAW = 1 << 2
+    FLAG_BINARY = 1 << 4
+    FLAG_RAW = 1 << 5
+    FLAG_ALPHA = 1 << 6
+    FLAG_INDEXED = 1 << 7
 
     def encode(self) -> bytes:
+        alpha_color = self.alpha_color if self.flags & ImageData.FLAG_ALPHA else 0
         data = bytearray()
         data.append(ImageData.SIGNATURE)
-        data.append(self.flags)
+        data.append(self.flags & 0xf0 | alpha_color & 0xf)
         data.append(self.width - 1)
         data.append(self.height - 1)
         if self.flags & ImageData.FLAG_INDEXED:
@@ -148,6 +157,7 @@ class ImageEncoding:
 class ImageEncoder(abc.ABC):
     image: Image
     region: Rect
+    alpha_color: int
     indexed: bool
     index_granularity: IndexGranularity
     index: Optional[ImageIndex]
@@ -163,6 +173,9 @@ class ImageEncoder(abc.ABC):
 
     DEFAULT_INDEX_GRANULARITY = IndexGranularity(IndexGranularityMode.MAX_SIZE, 64)
 
+    # used to ignore alpha color and treat it as black.
+    ALPHA_COLOR_NONE = -1
+
     _LAST_COLOR_NONE = -1
 
     def __init__(self, image: Image):
@@ -171,6 +184,7 @@ class ImageEncoder(abc.ABC):
         self.region = Rect(0, 0, image.width - 1, image.height - 1)
         self.indexed = True
         self.index_granularity = ImageEncoder.DEFAULT_INDEX_GRANULARITY
+        self.alpha_color = ImageEncoder.ALPHA_COLOR_NONE
         self._reset()
 
     def _reset(self) -> None:
@@ -189,6 +203,13 @@ class ImageEncoder(abc.ABC):
                 self._last_data_len = len(self._data)
 
         for color in pixel_iterator(self.image, self.get_gray_levels(), self.region, row_cb):
+            if color == TRANSPARENT_COLOR:
+                if self.alpha_color == ImageEncoder.ALPHA_COLOR_NONE:
+                    color = 0
+                else:
+                    self._flags |= ImageData.FLAG_ALPHA
+                    color = self.alpha_color
+
             if (self._last_color == ImageEncoder._LAST_COLOR_NONE or color == self._last_color) \
                     and self._run_length < self._get_max_run_length():
                 self._run_length += 1
@@ -232,7 +253,8 @@ class ImageEncoder(abc.ABC):
             if max(self.index.entries) > ImageIndex.MAX_ENTRY:
                 raise EncodeError("cannot achieve specified index granularity (too many rows)")
 
-        return ImageData(self._flags, self.region.width(), self.region.height(),
+        return ImageData(self._flags, self.alpha_color,
+                         self.region.width(), self.region.height(),
                          self.index, self._data)
 
     def _get_max_run_length(self) -> int:
@@ -240,7 +262,8 @@ class ImageEncoder(abc.ABC):
         Can return 0 to indicate that the encoder doesn't support run lengths (raw encoder)"""
         raise NotImplementedError
 
-    def get_gray_levels(self) -> int:
+    @classmethod
+    def get_gray_levels(cls) -> int:
         """Get the number of gray levels encoded by this encoder."""
         raise NotImplementedError
 
@@ -264,7 +287,8 @@ class ImageEncoderBinary(ImageEncoder, abc.ABC):
         super().__init__(image)
         self._flags |= ImageData.FLAG_BINARY
 
-    def get_gray_levels(self) -> int:
+    @classmethod
+    def get_gray_levels(cls) -> int:
         return 2
 
 
@@ -369,7 +393,8 @@ class ImageEncoderBinaryMixed(ImageEncoderBinary):
 
 
 class ImageEncoderGray(ImageEncoder, abc.ABC):
-    def get_gray_levels(self) -> int:
+    @classmethod
+    def get_gray_levels(cls) -> int:
         return 16
 
 
@@ -528,6 +553,7 @@ class Config:
     indexed: bool
     index_granularity: IndexGranularity
     encoding: ImageEncoding
+    opaque: bool
     verbose: bool
 
 
@@ -578,7 +604,7 @@ def create_config(args: argparse.Namespace) -> Config:
     verbose = output_file != STD_IO
 
     return Config(input_file, output_file, region, not args.no_index,
-                  index_granularity, ImageEncoding(binary, raw), verbose)
+                  index_granularity, ImageEncoding(binary, raw), args.force_opaque, verbose)
 
 
 parser = argparse.ArgumentParser(description="Image encoding utility for game console")
@@ -598,7 +624,7 @@ parser.add_argument(
          "(can be ignored if it cannot be encoded). "
          "The granularity the number of rows between each index entry. "
          "Can be a number of rows (<n>r) or a maximum number of bytes (<n>b). "
-         "Default is '64b'.")
+         f"Default is '{ImageEncoder.DEFAULT_INDEX_GRANULARITY}'.")
 parser.add_argument(
     "-I", "--no-index", action="store_true", dest="no_index",
     help="Do not include include index in encoded image. Reduces size but increases drawing time.")
@@ -614,6 +640,9 @@ parser.add_argument(
 parser.add_argument(
     "-R", "--raw", action="store_true", dest="force_raw",
     help="Force raw encoding (overrides default mixed encoding)")
+parser.add_argument(
+    "-o", "--opaque", action="store_true", dest="force_opaque",
+    help="Treat transparency as black if image has an alpha channel")
 
 
 def create_image_data(config: Config) -> ImageData:
@@ -626,20 +655,35 @@ def create_image_data(config: Config) -> ImageData:
             config.region.top >= image.height or config.region.bottom >= image.height:
         raise EncodeError("region exceeds image dimensions")
 
-    if image.mode != "L":
-        # convert image to grayscale if not already
+    if image.mode != "LA":
+        # convert image to grayscale + alpha if not already
         # this will also convert palette images to 8-bit gray
-        image = image.convert("L")
+        image = image.convert("LA")
 
     # if color encoding was not forced, check all pixels in case image is binary
     # binary image encoding is preferable due to its smaller size.
-    if config.encoding.binary is None:
+    # transparent is treated as black during this check.
+    # also list colors present in image to choose color to treat as alpha.
+    levels = ImageEncoderGray.get_gray_levels()
+    colors = set()
+    has_alpha = False
+    auto_bit_depth = (config.encoding.binary is None)
+    if auto_bit_depth:
         config.encoding.binary = True
-        levels = ImageEncoderGray(image).get_gray_levels()
-        for px in pixel_iterator(image, levels, config.region):
-            if px != 0 and px != levels - 1:
-                config.encoding.binary = False
-                break
+    for px in pixel_iterator(image, levels, config.region):
+        if px == TRANSPARENT_COLOR:
+            has_alpha = True
+            continue
+        if not config.opaque:
+            colors.add(px)
+        if auto_bit_depth and px != 0 and px != levels - 1:
+            config.encoding.binary = False
+
+    alpha_color = ImageEncoder.ALPHA_COLOR_NONE
+    if has_alpha and not config.opaque and not config.encoding.binary:
+        alpha_color = next((i for i in range(levels) if i not in colors), None)
+        if alpha_color is None:
+            raise EncodeError("cannot pick color for alpha, all colors are used")
 
     # choose encoder class for chosen encoding
     if config.encoding.binary:
@@ -657,6 +701,7 @@ def create_image_data(config: Config) -> ImageData:
     encoder.region = config.region
     encoder.index_granularity = config.index_granularity
     encoder.indexed = config.indexed
+    encoder.alpha_color = alpha_color
     return encoder.encode()
 
 
@@ -669,9 +714,10 @@ def main():
     # print information on encoded image
     if config.verbose:
         nbit = 1 if config.encoding.binary else 4
-        raw_mixed = 'raw' if config.encoding.raw else 'mixed'
+        raw_mixed = "raw" if image_data.flags & ImageData.FLAG_RAW else "mixed"
+        alpha = " with alpha" if image_data.flags & ImageData.FLAG_ALPHA else ""
         print(f"Image is {config.region.width()} x {config.region.height()} px, "
-              f"{raw_mixed} {nbit}-bit, encoded in {len(data)} bytes")
+              f"{raw_mixed} {nbit}-bit{alpha}, encoded in {len(data)} bytes")
         if image_data.flags & ImageData.FLAG_INDEXED:
             print(f"Indexed every {image_data.index.granularity} rows "
                   f"(max {max(image_data.index.entries[1:])} bytes between entries)")

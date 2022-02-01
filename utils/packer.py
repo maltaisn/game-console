@@ -67,9 +67,10 @@ class ImagePackResult(PackResult):
     def __repr__(self) -> str:
         d = self.image_data
         s = super().__repr__()
-        s += f", {d.width}x{d.height} px, "
+        s += f", {d.width}x{d.height} px,\n"
         s += ("raw" if d.flags & ImageData.FLAG_RAW else "mixed") + " "
-        s += ("1-bit" if d.flags & ImageData.FLAG_BINARY else "4-bit") + ", "
+        s += ("1-bit" if d.flags & ImageData.FLAG_BINARY else "4-bit")
+        s += (" with alpha" if d.flags & ImageData.FLAG_ALPHA else "") + ", "
         if d.flags & ImageData.FLAG_INDEXED:
             s += f"indexed every {d.index.granularity} rows, " \
                  f"max {max(d.index.entries[1:])} bytes between entries"
@@ -84,6 +85,7 @@ class ImageObject(FileObject):
     indexed: bool
     index_granularity: str
     encoding: ImageEncoding
+    opaque: bool
 
     def pack(self, addr: int) -> ImagePackResult:
         try:
@@ -91,7 +93,7 @@ class ImageObject(FileObject):
         except ValueError as e:
             raise PackError(f"invalid index granularity: {e}")
         config = image_gen.Config(self.file, "", self.region, self.indexed,
-                                  index_granularity, self.encoding, False)
+                                  index_granularity, self.encoding, self.opaque, False)
 
         try:
             image_data = image_gen.create_image_data(config)
@@ -485,9 +487,10 @@ class Packer:
         ))
 
     def image(self, filename: str, group: str = "image", *,
-              region: Optional[Tuple[int, int, int, int]] = None, indexed: bool = None,
-              index_granularity: Optional[str] = None,
+              region: Optional[Tuple[int, int, int, int]] = None,
               binary: Optional[bool] = None, raw: bool = False,
+              opaque: bool = False, indexed: bool = None,
+              index_granularity: Optional[str] = None,
               name: Optional[str] = None) -> None:
         """Add an image file to the data to pack. See image_gen.py for more info on parameters."""
         self._check_not_packed()
@@ -499,6 +502,7 @@ class Packer:
             self.default_indexed if indexed is None else indexed,
             self.default_index_granularity if index_granularity is None else index_granularity,
             ImageEncoding(binary, raw),
+            opaque,
         ))
 
     def sound(self, filename: str, group: str = "sound", *, tempo: int, octave_adjust: int = 0,

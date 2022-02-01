@@ -62,10 +62,13 @@
 #define IMAGE_INDEX_BUFFER_SIZE 8
 #define IMAGE_BUFFER_SIZE 16
 
+#define IMAGE_ALPHA_COLOR_NONE 0xff
+
 enum {
-    IMAGE_FLAG_BINARY = (1 << 0),
-    IMAGE_FLAG_INDEXED = (1 << 1),
-    IMAGE_FLAG_RAW = (1 << 2),
+    IMAGE_FLAG_BINARY = (1 << 4),
+    IMAGE_FLAG_RAW = (1 << 5),
+    IMAGE_FLAG_ALPHA = (1 << 6),
+    IMAGE_FLAG_INDEXED = (1 << 7),
 };
 
 // currently selected color, black by default.
@@ -429,8 +432,8 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
 // The decoder state is reset on an index boundary.
 // `index_gran` can be set to 0 if image is not indexed.
 //
-// There are separate functions for raw and mixed encodings, for performance,
-// with raw encoding being faster even when reading more data from external memory.
+// For 4-bit images, `alpha_color` can be set to the color to treat as alpha, or a non-color
+// value to draw a fully opaque image (e.g. IMAGE_ALPHA_COLOR_NONE).
 
 #ifndef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
 #define within_region() (y_img >= top && x_img >= left && x_img <= right)
@@ -611,7 +614,7 @@ static void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, c
 static void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, const disp_y_t y,
                                     const uint8_t left, const uint8_t top,
                                     const uint8_t right, const uint8_t bottom,
-                                    const uint8_t image_width) {
+                                    const uint8_t image_width, const uint8_t alpha_color) {
     graphics_image_checks(x, y, left, top, right, bottom, image_width);
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
@@ -636,7 +639,15 @@ static void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, con
             for (uint8_t i = 0; i < 2; ++i) {
                 if (within_region()) {
                     const uint8_t c = byte & 0xf;
-                    set_buffer_pixel(c, x_page, buffer);
+#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
+                    if (c != alpha_color) {
+#endif
+                        set_buffer_pixel(c, x_page, buffer);
+#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
+                    } else if (x_page & 1) {
+                        ++buffer;
+                    }
+#endif
                     byte = nibble_swap(byte);
                     ++x_page;
                 }
@@ -670,7 +681,8 @@ static void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, con
 static void graphics_image_4bit_mixed(graphics_image_t data, const disp_x_t x, const disp_y_t y,
                                       const uint8_t left, const uint8_t top,
                                       const uint8_t right, const uint8_t bottom,
-                                      const uint8_t image_width, const uint8_t index_gran) {
+                                      const uint8_t image_width, const uint8_t index_gran,
+                                      const uint8_t alpha_color) {
     graphics_image_checks(x, y, left, top, right, bottom, image_width);
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
@@ -759,7 +771,15 @@ draw:
         curr_color &= 0xf;
         do {
             if (within_region()) {
-                set_buffer_pixel(curr_color, x_page, buffer);
+#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
+                if (curr_color != alpha_color) {
+#endif
+                    set_buffer_pixel(curr_color, x_page, buffer);
+#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
+                } else if (x_page & 1) {
+                    ++buffer;
+                }
+#endif
                 ++x_page;
             }
             if (x_img == image_width) {
@@ -831,6 +851,25 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 #else
     uint8_t index_gran = 0;
 #endif
+
+    uint8_t alpha_color = IMAGE_ALPHA_COLOR_NONE;
+#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
+    if (flags & IMAGE_FLAG_ALPHA) {
+        alpha_color = flags & 0xf;
+#ifdef RUNTIME_CHECKS
+        if (flags & IMAGE_FLAG_BINARY) {
+            trace("binary images do not support transparency");
+            return;
+        }
+#endif
+    }
+#elif defined(RUNTIME_CHECKS)
+    if (flags & IMAGE_FLAG_ALPHA) {
+        trace("decoding support for transparent images is disabled");
+        return;
+    }
+#endif //GRAPHICS_NO_TRANSPARENT_IMAGE
+
     data += IMAGE_HEADER_SIZE;
 
     if (full) {
@@ -1007,7 +1046,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 #ifndef GRAPHICS_NO_4BIT_RAW_IMAGE
             graphics_image_4bit_raw(data, x, page_y,
                                     left, page_top, right, page_bottom,
-                                    width);
+                                    width, alpha_color);
 #elif defined(RUNTIME_CHECKS)
             trace("decoding support for 4-bit raw images is disabled");
 #endif //GRAPHICS_NO_4BIT_RAW_IMAGE
@@ -1017,7 +1056,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
 #ifndef GRAPHICS_NO_4BIT_MIXED_IMAGE
             graphics_image_4bit_mixed(data, x, page_y,
                                       left, page_top, right, page_bottom,
-                                      width, index_gran);
+                                      width, index_gran, alpha_color);
 #elif defined(RUNTIME_CHECKS)
             trace("decoding support for 4-bit mixed images is disabled");
 #endif //GRAPHICS_NO_4BIT_MIXED_IMAGE
@@ -1036,10 +1075,12 @@ void graphics_image(const graphics_image_t data, const disp_x_t x, const disp_y_
 }
 
 #ifndef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
+
 void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
                            uint8_t left, uint8_t top, uint8_t right, uint8_t bottom) {
     graphics_image_internal(data, x, y, left, top, right, bottom, false);
 }
+
 #else
 
 void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
