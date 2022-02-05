@@ -2,6 +2,7 @@
 *.bck
 *.bck
 *.*-bak
+*-backups/
 *.FCStd?
 
 # Cache
@@ -14,5 +15,3 @@ fp-info-cache
 # Netlist
 *.net
 
-# Exported STEP PCB
-console.step
