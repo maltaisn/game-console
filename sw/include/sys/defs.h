@@ -34,4 +34,11 @@ typedef __int24 int24_t;
 typedef int32_t int24_t;
 #endif
 
+// Global data that is not zero initialized.
+#define NO_INIT __attribute__((section(".noinit")))
+
+// Temporary data placed alongside display buffer, to save RAM.
+// This data must not be used across or during display refresh.
+#define SHARED_DISP_BUF __attribute__((section(".shared_disp_buf")))
+
 #endif //SYS_DEFS_H

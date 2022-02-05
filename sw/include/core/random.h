@@ -25,6 +25,7 @@
 
 /**
  * Set the random 16-bit seed.
+ * This *must* be called before generating random numbers.
  */
 void random_seed(uint16_t seed);
 

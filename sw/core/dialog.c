@@ -33,7 +33,7 @@ __attribute__((weak)) const uint8_t DIALOG_ARROW_RIGHT[] =
 static const char TEXT_FIELD_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-*!";
 #define TEXT_FIELD_CHARS_COUNT 30
 
-dialog_t dialog;
+NO_INIT dialog_t dialog;
 
 void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height) {
     dialog.flags = 0;

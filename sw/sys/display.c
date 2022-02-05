@@ -15,7 +15,7 @@
  */
 
 #include <sys/display.h>
-
+#include <sys/defs.h>
 #include <sys/spi.h>
 
 #include <avr/io.h>
@@ -56,25 +56,25 @@
 #define FUNC_SEL_A_INTERNAL_VDD_DISABLE 0x00
 #define FUNC_SEL_A_INTERNAL_VDD_ENABLE 0x01
 
-disp_y_t display_page_ystart;
-disp_y_t display_page_yend;
+NO_INIT disp_y_t display_page_ystart;
+NO_INIT disp_y_t display_page_yend;
 
 #ifdef DISPLAY_LAST_PAGE_SHORT
-disp_y_t display_page_height;
+NO_INIT disp_y_t display_page_height;
 #endif
 
 // see core/graphics.c
 #define nibble_swap(a) ((a) >> 4 | (a) << 4)
 #define nibble_copy(a) ((a) >> 4 | nibble_swap(a))
 
-static uint8_t buffer[DISPLAY_BUFFER_SIZE];
+static __attribute__((section(".disp_buf"))) uint8_t buffer[DISPLAY_BUFFER_SIZE];
 
 enum {
     STATE_DIMMED = 1 << 0,
 };
 
-static uint8_t display_state;
-static uint8_t display_contrast;
+static NO_INIT uint8_t display_state;
+static NO_INIT uint8_t display_contrast;
 
 // Initialization sequence, see datasheet and examples
 // OLED display model number is ER-OLED015-3, with a SSD1327 controller.
@@ -98,7 +98,6 @@ static const uint8_t INIT_SEQUENCE[] = {
         DISPLAY_SET_CONTRAST, DISPLAY_DEFAULT_CONTRAST,
         DISPLAY_SET_GRAYSCALE, 0, 1, 2, 3, 4, 5, 7, 9, 11, 13, 15, 17, 20, 23, 26, 30,
 //      DISPLAY_GPIO, 0x02,
-//      DISPLAY_SET_GRAYSCALE_DEFAULT,
 };
 
 static const uint8_t RESET_CURSOR_SEQUENCE[] = {
@@ -112,6 +111,7 @@ static void reset_display(void) {
         _delay_ms(1);
         PORTC.OUTTGL = PIN2_bm;
     }
+    display_state = 0;
     display_contrast = DISPLAY_DEFAULT_CONTRAST;
 }
 

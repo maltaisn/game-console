@@ -17,7 +17,7 @@
 
 #include <core/random.h>
 
-static uint16_t seed;
+static NO_INIT uint16_t seed;
 
 void random_seed(uint16_t s) {
     seed = s;

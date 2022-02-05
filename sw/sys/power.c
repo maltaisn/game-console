@@ -67,12 +67,12 @@ enum {
 };
 
 static volatile uint8_t power_state;
-static volatile sampler_state_t sampler_state;
-static volatile battery_status_t battery_status;
-static volatile uint8_t battery_percent;
+static volatile sampler_state_t sampler_state;  // STATE_DONE at startup
+static volatile battery_status_t battery_status;  // UNKNOWN at startup
+static volatile NO_INIT uint8_t battery_percent;
 
 // sampling is done every second and accumulated in buffer for averaging.
-static uint16_t battery_level_buf[BATTERY_BUFFER_SIZE];
+static NO_INIT uint16_t battery_level_buf[BATTERY_BUFFER_SIZE];
 static uint8_t battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
 
 // sleeping

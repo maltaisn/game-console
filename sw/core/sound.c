@@ -96,7 +96,7 @@ typedef struct {
 } track_t;
 
 // Sound tracks, one per channel.
-static track_t tracks[SOUND_CHANNELS_COUNT];
+static NO_INIT track_t tracks[SOUND_CHANNELS_COUNT];
 // Bitfield indicating which tracks are currently started and playing.
 // - 0:2 indicate whether tracks have been started.
 // - 3:5 indicate whether tracks have finished playing.

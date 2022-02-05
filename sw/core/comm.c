@@ -44,9 +44,9 @@ enum {
     IO_DISP_RES = 1 << 1,
 };
 
-// TODO eventually, put this in the same data space as display buffer since
-//  both aren't used at the same time, using linker script.
-uint8_t comm_payload_buf[PAYLOAD_MAX_SIZE];
+// When a packet is being received, the comm_receive function will block until the packet has been
+// fully received. Hence, the payload buffer can share memory with the display buffer.
+SHARED_DISP_BUF uint8_t comm_payload_buf[PAYLOAD_MAX_SIZE];
 
 static void handle_packet_version(void) {
     comm_payload_buf[0] = VERSION_MAJOR;

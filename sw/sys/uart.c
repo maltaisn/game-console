@@ -15,6 +15,7 @@
  */
 
 #include <sys/uart.h>
+#include <sys/defs.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>

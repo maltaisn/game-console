@@ -15,11 +15,12 @@
  */
 
 #include <sys/led.h>
+#include <sys/defs.h>
 
 #include <avr/io.h>
 
-static uint8_t blink_period;
-static uint8_t blink_counter;
+static uint8_t blink_period;  // LED_BLINK_NONE at startup
+static NO_INIT uint8_t blink_counter;
 
 void led_set(void) {
     VPORTC.OUT |= PIN0_bm;

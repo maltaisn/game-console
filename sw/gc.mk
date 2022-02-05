@@ -10,18 +10,20 @@ include common.mk
 CC := avr-gcc
 OBJCOPY := avr-objcopy
 OBJDUMP := avr-objdump
-SIZE := avr-size
+SIZE := utils/gc-size.py
 
 # ATmega toolchain directory for targeting newer parts.
 # It can be downloaded as atpack on Microchip website.
 ATMEGA_TOOLCHAIN_DIR := /opt/avr/Atmel.ATmega_DFP
 INCLUDE_DIRS += $(ATMEGA_TOOLCHAIN_DIR)/include
 
+MAP_FILE := $(BUILD_DIR)/$(BUILD_TARGET).map
+
 DEFINES += F_CPU=$(F_CPU)
 
 CFLAGS += -mmcu=$(MCU) -Os \
           -ffunction-sections -fdata-sections -fshort-enums -fpack-struct -flto \
-          -B$(ATMEGA_TOOLCHAIN_DIR)/gcc/dev/$(MCU)
+          -B$(ATMEGA_TOOLCHAIN_DIR)/gcc/dev/$(MCU) -Wl,-T,gc.ld -Wl,-Map=$(MAP_FILE)
 
 all: $(MAIN_TARGET).hex size
 
@@ -44,7 +46,7 @@ endif
 	$(E)$(OBJDUMP) -D $< > $(MAIN_TARGET).S
 
 size: $(MAIN_TARGET).elf
-	$(E)$(SIZE) --mcu=$(MCU) -B $^
+	$(E)$(SIZE) $(MAP_FILE)
 
 # ==== UPLOADING ====
 # Programming is done via UPDI pin on the debug port, and using a serial adapter and pymcuprog.
@@ -61,5 +63,5 @@ PROG_FLAGS := -t uart -u $(PROG_PORT) -d $(PROG_MCU) -c $(PROG_BAUD)
 .PHONY: upload
 
 upload: $(MAIN_TARGET).hex
-	$(E)pymcuprog erase $(PROG_FLAGS)
+	$(E)pymcuprog erase -m flash $(PROG_FLAGS)
 	$(E)pymcuprog write -f $(MAIN_TARGET).hex $(PROG_FLAGS)
