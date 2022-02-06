@@ -26,12 +26,12 @@
 #define WRITE_BUFFER_SIZE 8192
 #define ERASE_BYTE 0xff
 
-static uint8_t eeprom[EEPROM_SIZE];
+static uint8_t eeprom[EXTERNAL_EEPROM_SIZE];
 
 void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[static length]) {
-    if (address + length > EEPROM_SIZE) {
+    if (address + length > EXTERNAL_EEPROM_SIZE) {
         // wrap around the end
-        uint16_t wrap_after = EEPROM_SIZE - address;
+        uint16_t wrap_after = EXTERNAL_EEPROM_SIZE - address;
         memcpy(dest, &eeprom[address], wrap_after);
         memcpy(&dest[wrap_after], eeprom, length - wrap_after);
     } else {
@@ -40,9 +40,9 @@ void eeprom_read(eeprom_t address, uint16_t length, uint8_t dest[static length])
 }
 
 void eeprom_write(eeprom_t address, uint16_t length, const uint8_t src[static length]) {
-    if (address + length > EEPROM_SIZE) {
+    if (address + length > EXTERNAL_EEPROM_SIZE) {
         // wrap around the end
-        uint16_t wrap_after = EEPROM_SIZE - address;
+        uint16_t wrap_after = EXTERNAL_EEPROM_SIZE - address;
         memcpy(&eeprom[address], src, wrap_after);
         memcpy(eeprom, &src[wrap_after], length - wrap_after);
     } else {
@@ -55,8 +55,8 @@ const uint8_t* eeprom_at(eeprom_t address) {
 }
 
 void eeprom_load(size_t length, const uint8_t data[static length]) {
-    if (length > EEPROM_SIZE) {
-        length = EEPROM_SIZE;
+    if (length > EXTERNAL_EEPROM_SIZE) {
+        length = EXTERNAL_EEPROM_SIZE;
     }
     memcpy(eeprom, data, length);
 }
@@ -68,8 +68,8 @@ void eeprom_load_file(FILE* file) {
     uint8_t* ptr = eeprom;
     while (true) {
         size_t n = READ_BUFFER_SIZE;
-        if (ptr + n >= eeprom + EEPROM_SIZE) {
-            n = (size_t) (EEPROM_SIZE - (ptrdiff_t) ptr + eeprom);
+        if (ptr + n >= eeprom + EXTERNAL_EEPROM_SIZE) {
+            n = (size_t) (EXTERNAL_EEPROM_SIZE - (ptrdiff_t) ptr + eeprom);
         }
         size_t read = fread(ptr, 1, n, file);
         ptr += read;
@@ -77,17 +77,17 @@ void eeprom_load_file(FILE* file) {
             // end of file reached, short count.
             break;
         }
-        if (ptr >= eeprom + EEPROM_SIZE) {
+        if (ptr >= eeprom + EXTERNAL_EEPROM_SIZE) {
             // end of EEPROM reached.
             break;
         }
     }
     // erase the rest of memory
-    memset(ptr, ERASE_BYTE, EEPROM_SIZE - (ptr - eeprom));
+    memset(ptr, ERASE_BYTE, EXTERNAL_EEPROM_SIZE - (ptr - eeprom));
 }
 
 void eeprom_load_erased(void) {
-    memset(eeprom, ERASE_BYTE, EEPROM_SIZE);
+    memset(eeprom, ERASE_BYTE, EXTERNAL_EEPROM_SIZE);
 }
 
 void eeprom_save(FILE* file) {
@@ -96,7 +96,7 @@ void eeprom_save(FILE* file) {
     }
 
     size_t write_size = 0;
-    for (size_t i = 0; i < EEPROM_SIZE; ++i) {
+    for (size_t i = 0; i < EXTERNAL_EEPROM_SIZE; ++i) {
         if (eeprom[i] != ERASE_BYTE) {
             write_size = i + 1;
         }
@@ -114,7 +114,7 @@ void eeprom_save(FILE* file) {
             break;
         }
         ptr += written;
-        if (ptr >= eeprom + EEPROM_SIZE) {
+        if (ptr >= eeprom + EXTERNAL_EEPROM_SIZE) {
             // end of EEPROM reached.
             break;
         }

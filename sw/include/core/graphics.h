@@ -160,12 +160,21 @@
  * A raw sequence can exceptionnally encode an odd number of pixels if crossing an index boundary.
  *
  * BENCHMARKS
- * Very rough benchmark done with tiger128.png & tiger-bin128.png, stored in flash memory.
+ *
+ * Very rough benchmark done with tiger128.png & tiger-bin128.png, stored in external flash memory.
  * Clearing only the display takes 21 ms per frame, which was subtracted from the measured time.
- * - 1-bit raw:   85 ms (37 cycles/px)
- * - 1-bit mixed: 82 ms (39 cycles/px)
- * - 4-bit raw:   110 ms (54 cycles/px)
- * - 4-bit mixed: 134 ms (68 cycles/px)
+ *
+ * Default settings (everything enabled):
+ * - 1-bit raw:   56 ms  (33 cycles/px)
+ * - 1-bit mixed: 62 ms  (37 cycles/px)
+ * - 4-bit raw:   101 ms (61 cycles/px)
+ * - 4-bit mixed: 119 ms (72 cycles/px)
+ *
+ * Minimal settings (single enabled encoding, no transparency, no region, etc):
+ * - 1-bit raw:   56 ms  (33 cycles/px)
+ * - 1-bit mixed: 60 ms  (36 cycles/px)
+ * - 4-bit raw:   89 ms  (54 cycles/px)
+ * - 4-bit mixed: 106 ms (64 cycles/px)
  */
 typedef data_ptr_t graphics_image_t;
 

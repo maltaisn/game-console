@@ -23,11 +23,11 @@
 
 // dialog-arrow-left.png, 3x5, 1-bit mixed, unindexed.
 __attribute__((weak)) const uint8_t DIALOG_ARROW_LEFT[] =
-        {0xf1, 0x01, 0x02, 0x04, 0x17, 0x6c, 0x40};
+        {0xf1, 0x10, 0x02, 0x04, 0x17, 0x6c, 0x40};
 
 // dialog-arrow-right.png, 3x5, 1-bit mixed, unindexed.
 __attribute__((weak)) const uint8_t DIALOG_ARROW_RIGHT[] =
-        {0xf1, 0x01, 0x02, 0x04, 0x4d, 0x7a, 0x00};
+        {0xf1, 0x10, 0x02, 0x04, 0x4d, 0x7a, 0x00};
 
 // characters allowed in text fields
 static const char TEXT_FIELD_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-*!";

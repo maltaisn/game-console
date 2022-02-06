@@ -82,17 +82,23 @@
 
 /** Display generic coordinate. */
 typedef uint8_t disp_coord_t;
-/** Display X coordinate. */
+/** Display X coordinate, 0 to (DISPLAY_WIDTH-1). */
 typedef disp_coord_t disp_x_t;
-/** Display Y coordinate. */
+/** Display Y coordinate, 0 to (DISPLAY_HEIGHT-1). */
 typedef disp_coord_t disp_y_t;
 /** Display "color" (grayscale level). */
 typedef uint8_t disp_color_t;
 
+#ifdef SIMULATION
 /** First Y coordinate for current page (inclusive), must not be changed directly. */
 extern disp_y_t display_page_ystart;
 /** Last Y coordinate for current page (inclusive), must not be changed directly */
 extern disp_y_t display_page_yend;
+#else
+#include <avr/io.h>
+#define display_page_ystart (*((disp_y_t*) &GPIOR1))
+#define display_page_yend (*((disp_y_t*) &GPIOR2))
+#endif
 
 // Height of the current page, in pixels.
 #if defined(SIMULATION) || defined(DISPLAY_LAST_PAGE_SHORT)

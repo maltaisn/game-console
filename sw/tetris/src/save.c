@@ -45,12 +45,15 @@ static void set_default_options(void) {
     game.leaderboard.size = 0;
 }
 
+#define EEPROM_SAVE_SIZE (sizeof GAME_HEADER + sizeof game.options + \
+                          sizeof tetris.options + sizeof game.leaderboard)
+
+static SHARED_DISP_BUF uint8_t save_buf[EEPROM_SAVE_SIZE];
+
 void load_from_eeprom(void) {
     // use display buffer as temporary memory to write data
-    // TODO use section attribute to share buffer and decouple from display
-    uint8_t* buf = display_buffer(0, 0);
-    eeprom_read(0, sizeof GAME_HEADER + sizeof game.options +
-                   sizeof tetris.options + sizeof game.leaderboard, buf);
+    eeprom_read(0, EEPROM_SAVE_SIZE, save_buf);
+    uint8_t* buf = save_buf;
 
     // read header and check version & signature first
     if (memcmp(buf, &GAME_HEADER, sizeof GAME_HEADER) != 0) {
@@ -66,13 +69,12 @@ void load_from_eeprom(void) {
     buf += sizeof tetris.options;
 
     memcpy(&game.leaderboard, buf, sizeof game.leaderboard);
+    //buf += sizeof game.leaderboard;
 }
 
 void save_to_eeprom(void) {
     // use display buffer as temporary memory to write data
-    // TODO use section attribute to share buffer and decouple from display
-    uint8_t* buf = display_buffer(0, 0);
-    uint8_t* buf_start = buf;
+    uint8_t* buf = save_buf;
 
     // header
     memcpy(buf, &GAME_HEADER, sizeof GAME_HEADER);
@@ -86,9 +88,9 @@ void save_to_eeprom(void) {
 
     // leaderboard
     memcpy(buf, &game.leaderboard, sizeof game.leaderboard);
-    buf += sizeof game.leaderboard;
+    //buf += sizeof game.leaderboard;
 
-    eeprom_write(0, buf - buf_start, buf_start);
+    eeprom_write(0, EEPROM_SAVE_SIZE, save_buf);
 
 #ifdef SIMULATION
     FILE* eeprom = fopen("eeprom.dat", "wb");

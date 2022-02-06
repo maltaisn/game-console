@@ -20,7 +20,7 @@
 
 #include <stdint.h>
 
-#define EEPROM_SIZE ((eeprom_t) 0x1000)  // 4 KB
+#define EXTERNAL_EEPROM_SIZE ((eeprom_t) 0x1000)  // 4 KB
 
 /** Address in EEPROM (12-bit). */
 typedef uint16_t eeprom_t;

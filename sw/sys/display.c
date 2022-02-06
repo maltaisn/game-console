@@ -56,8 +56,10 @@
 #define FUNC_SEL_A_INTERNAL_VDD_DISABLE 0x00
 #define FUNC_SEL_A_INTERNAL_VDD_ENABLE 0x01
 
-NO_INIT disp_y_t display_page_ystart;
-NO_INIT disp_y_t display_page_yend;
+#ifdef SIMULATION
+disp_y_t display_page_ystart;
+disp_y_t display_page_yend;
+#endif
 
 #ifdef DISPLAY_LAST_PAGE_SHORT
 NO_INIT disp_y_t display_page_height;

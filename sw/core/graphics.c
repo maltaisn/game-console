@@ -72,7 +72,12 @@ enum {
 };
 
 // currently selected color, black by default.
+#ifdef SIMULATION
 static disp_color_t color;
+#else
+#include <avr/io.h>
+#define color (*((disp_color_t*) &GPIOR3))
+#endif
 
 // font specs of currently selected font
 static struct {
@@ -852,6 +857,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
     uint8_t index_gran = 0;
 #endif
 
+#ifndef GRAPHICS_NO_4BIT_IMAGE
     uint8_t alpha_color = IMAGE_ALPHA_COLOR_NONE;
 #ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
     if (flags & IMAGE_FLAG_ALPHA) {
@@ -869,6 +875,7 @@ static void graphics_image_internal(graphics_image_t data, const disp_x_t x, con
         return;
     }
 #endif //GRAPHICS_NO_TRANSPARENT_IMAGE
+#endif
 
     data += IMAGE_HEADER_SIZE;
 

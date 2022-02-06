@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+#define EXTERNAL_FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
 
 /** Address in flash (20-bit). */
 typedef uint24_t flash_t;
