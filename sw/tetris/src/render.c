@@ -38,15 +38,15 @@
 
 #define CONTROLS_COUNT 8
 
-// outer color, inner color, tile I to Z
-static const disp_color_t TILE_COLORS[] = {
-        15, 1,  // I
-        4, 1,  // J
-        7, 10, // L
-        10, 7,  // O
-        6, 1,  // S
-        15, 12, // T
-        12, 15, // Z
+// outer color (low nibble), inner color (high nibble), tile I to Z
+static const disp_color_t TILE_COLORS[PIECES_COUNT] = {
+        0x1f,  // I
+        0x07,  // J
+        0xa7,  // L
+        0x7a,  // O
+        0xa5,  // S
+        0xcf,  // T
+        0xfc,  // Z
 };
 
 static const char* CONTROL_NAMES[CONTROLS_COUNT] = {
@@ -75,17 +75,17 @@ static void draw_tile_block(disp_x_t x, disp_y_t y, tetris_piece piece) {
         graphics_set_color(6);
         graphics_image(ASSET_IMAGE_TILE_GHOST, x, y);
     } else {
-        graphics_set_color(TILE_COLORS[piece * 2]);
+        graphics_set_color(TILE_COLORS[piece] & 0xf);
         graphics_fill_rect(x, y, TILE_WIDTH, TILE_HEIGHT);
-        graphics_set_color(TILE_COLORS[piece * 2 + 1]);
+        graphics_set_color(TILE_COLORS[piece] >> 4);
         graphics_rect(x + 1, y + 1, TILE_WIDTH - 2, TILE_HEIGHT - 2);
     }
 }
 
 static void draw_tile_block_part(disp_x_t x, tetris_piece piece) {
-    graphics_set_color(TILE_COLORS[piece * 2]);
+    graphics_set_color(TILE_COLORS[piece] & 0xf);
     graphics_fill_rect(x, 0, TILE_WIDTH, 2);
-    graphics_set_color(TILE_COLORS[piece * 2 + 1]);
+    graphics_set_color(TILE_COLORS[piece] >> 4);
     graphics_hline(x + 1, x + TILE_WIDTH - 2, 0);
 }
 

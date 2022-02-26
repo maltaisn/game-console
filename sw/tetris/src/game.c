@@ -177,7 +177,9 @@ static game_state_t game_state_update(uint8_t dt) {
         } else if (s == GAME_STATE_GAME_OVER) {
             open_game_over_dialog();
         } else if (s == GAME_STATE_OPTIONS) {
-            open_options_dialog();
+            open_options_dialog(RESULT_SAVE_OPTIONS, RESULT_CANCEL_OPTIONS);
+        } else if (s == GAME_STATE_OPTIONS_PLAY) {
+            open_options_dialog(RESULT_SAVE_OPTIONS_PLAY, RESULT_CANCEL_OPTIONS_PLAY);
         } else if (s == GAME_STATE_OPTIONS_EXTRA) {
             open_extra_options_dialog();
         } else if (s == GAME_STATE_CONTROLS) {

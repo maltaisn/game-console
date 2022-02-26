@@ -46,7 +46,7 @@ game_state_t game_handle_input_dialog(void) {
     dialog_result_t res = dialog_handle_input(last_input_state, preprocess_input_state());
     last_input_state = input_get_state();
 
-    if (game.state == GAME_STATE_OPTIONS) {
+    if (game.state == GAME_STATE_OPTIONS || game.state == GAME_STATE_OPTIONS_PLAY) {
         // apply options as they are changed
         // this will have to be undone if options dialog is cancelled.
         update_sound_volume(dialog.items[0].number.value);
@@ -82,7 +82,12 @@ game_state_t game_handle_input_dialog(void) {
         game.old_features = game.options.features;
         return GAME_STATE_OPTIONS;
 
+    } else if (res == RESULT_OPEN_OPTIONS_PLAY) {
+        game.old_features = game.options.features;
+        return GAME_STATE_OPTIONS_PLAY;
+
     } else if (res == RESULT_OPEN_OPTIONS_EXTRA) {
+        save_dialog_options(false);  // save changes or they will be lost!
         return GAME_STATE_OPTIONS_EXTRA;
 
     } else if (res == RESULT_OPEN_CONTROLS) {
@@ -102,14 +107,21 @@ game_state_t game_handle_input_dialog(void) {
         return save_highscore();
 
     } else if (res == RESULT_SAVE_OPTIONS) {
-        save_dialog_options();
+        save_dialog_options(false);
 
-    } else if (res == RESULT_CANCEL_OPTIONS) {
+    } else if (res == RESULT_SAVE_OPTIONS_PLAY) {
+        save_dialog_options(true);
+        return GAME_STATE_PAUSE;
+
+    } else if (res == RESULT_CANCEL_OPTIONS || res == RESULT_CANCEL_OPTIONS_PLAY) {
         // restore old options changed by preview feature
         game.options.features = game.old_features;
         update_sound_volume(game.options.volume);
         update_display_contrast(game.options.contrast);
         update_music_enabled();
+        if (res == RESULT_CANCEL_OPTIONS_PLAY) {
+            return GAME_STATE_PAUSE;
+        }
     }
 
     game_music_start(ASSET_MUSIC_MENU, MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);

@@ -112,7 +112,7 @@ game_state_t save_highscore(void) {
     return GAME_STATE_LEADERBOARD_PLAY;
 }
 
-void save_dialog_options(void) {
+void save_dialog_options(bool in_play) {
     uint8_t features = 0;
     if (dialog.items[1].choice.selection) {
         features |= GAME_FEATURE_MUSIC;
@@ -123,14 +123,17 @@ void save_dialog_options(void) {
 
     uint8_t volume = dialog.items[0].number.value;
     uint8_t contrast = dialog.items[3].number.value;
-    uint8_t preview_pieces = dialog.items[4].number.value;
 
     game.options = (game_options_t) {
             .features = features,
             .volume = volume,
             .contrast = contrast,
     };
-    tetris.options.preview_pieces = preview_pieces;
+
+    if (!in_play) {
+        uint8_t preview_pieces = dialog.items[4].number.value;
+        tetris.options.preview_pieces = preview_pieces;
+    }
 
     // contrast, volume and music enabled were already changed during preview
 
@@ -172,7 +175,8 @@ void update_sound_volume(uint8_t volume) {
 
 void update_music_enabled(void) {
     if (game.options.features & GAME_FEATURE_MUSIC) {
-        game_music_start(ASSET_MUSIC_MENU, MUSIC_FLAG_LOOP);
+        game_music_start(game.state == GAME_STATE_OPTIONS_PLAY ?
+                         ASSET_MUSIC_THEME : ASSET_MUSIC_MENU, MUSIC_FLAG_LOOP);
     } else {
         game_music_stop();
     }

@@ -45,7 +45,7 @@ void open_main_menu_dialog(void) {
 }
 
 void open_pause_dialog(void) {
-    dialog_init_centered(96, 68);
+    dialog_init_centered(96, 81);
     dialog.title = "GAME PAUSED";
     dialog.dismiss_result = RESULT_RESUME_GAME;
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
@@ -54,16 +54,18 @@ void open_pause_dialog(void) {
     dialog_add_item_button("RESUME", RESULT_RESUME_GAME);
     dialog_add_item_button("NEW GAME", RESULT_NEW_GAME);
     dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_CONTROLS_PLAY);
+    dialog_add_item_button("OPTIONS", RESULT_OPEN_OPTIONS_PLAY);
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
 }
 
-void open_options_dialog(void) {
-    dialog_init_hcentered(11, 108, 107);
+void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
+    uint8_t height = (result_pos == RESULT_SAVE_OPTIONS ? 107 : 80);
+    dialog_init_centered(108, height);
     dialog.title = "GAME OPTIONS";
     dialog.pos_btn = "OK";
     dialog.neg_btn = "Cancel";
-    dialog.pos_result = RESULT_SAVE_OPTIONS;
-    dialog.neg_result = RESULT_CANCEL_OPTIONS;
+    dialog.pos_result = result_pos;
+    dialog.neg_result = result_neg;
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = 0;
 
@@ -74,12 +76,14 @@ void open_options_dialog(void) {
     dialog_add_item_choice("GAME MUSIC", music_enabled, 2, CHOICES_ON_OFF);
     dialog_add_item_choice("SOUND EFFECTS", sound_enabled, 2, CHOICES_ON_OFF);
     dialog_add_item_number("DISPLAY CONTRAST", 0, 10, 10, game.options.contrast);
-    dialog_add_item_number("PREVIEW PIECES", 0, 5, 1, tetris.options.preview_pieces);
-    dialog_add_item_button("MORE OPTIONS", RESULT_OPEN_OPTIONS_EXTRA);
+    if (result_pos == RESULT_SAVE_OPTIONS) {
+        dialog_add_item_number("PREVIEW PIECES", 0, 5, 1, tetris.options.preview_pieces);
+        dialog_add_item_button("MORE OPTIONS", RESULT_OPEN_OPTIONS_EXTRA);
+    }
 }
 
 void open_extra_options_dialog(void) {
-    dialog_init_hcentered(38, 108, 80);
+    dialog_init_hcentered(37, 108, 80);
     dialog.title = "EXTRA OPTIONS";
     dialog.pos_btn = "OK";
     dialog.neg_btn = "Cancel";

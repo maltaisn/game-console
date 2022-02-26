@@ -108,7 +108,6 @@
  *      - [5]: encoding     (0: mixed, 1: raw)
  *      - [6]: transparency (0: no, 1: yes)
  *      - [7]: indexed      (0: no, 1: yes)
- *      - others: unused
  * [2]: image width, -1 (width is from 1 to 256)
  * [3]: image height, -1 (height is from 1 to 256)
  *
@@ -123,6 +122,7 @@
  *             The first index entry is the offset from position 5 to the start of image data.
  *             The following entries are offsets from the previous entry.
  *             If granularity is greater or equal to image height, n = 0 and there are no entries.
+ *             1 is subtracted from all offset so that offsets can span 1 to 256 bytes.
  *
  * The image data starts at position 4 if not indexed and at position (n+5) if indexed.
  * The data is encoded differently depending on the encoding indicated by the flag byte.

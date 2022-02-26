@@ -130,18 +130,6 @@ static void track_fill_buffer(track_t* track, uint8_t start) {
 }
 
 /**
- * Enable or disable buzzer output depending on volume level and whether there's any track playing.
- * This allows to save CPU time (no timer interrupts) and reduce current consumption.
- */
-static void update_output_state(void) {
-    uint8_t tracks_state = tracks_on;
-    bool any_tracks_active = (tracks_state & TRACK0_ACTIVE) == TRACK0_ACTIVE ||
-                             (tracks_state & TRACK1_ACTIVE) == TRACK1_ACTIVE ||
-                             (tracks_state & TRACK2_ACTIVE) == TRACK2_ACTIVE;
-    sound_set_output_enabled(sound_get_volume() != SOUND_VOLUME_OFF && any_tracks_active);
-}
-
-/**
  * Read the next note in track data and set it as current note with its duration.
  * Preconditions: track->duration_left == 0, track is playing.
  * On simulator, this is called from the systick thread and on AVR it's called from an interrupt.
@@ -160,7 +148,7 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
         // no more notes in track, done playing.
         track->note = SOUND_NO_NOTE;
         tracks_on &= ~track_playing_mask;
-        update_output_state();
+        sound_update_output_state();
         return;
     }
 
@@ -295,7 +283,15 @@ void sound_load(sound_t address) {
 #endif
         tracks_on |= new_tracks_on;
     }
-    update_output_state();
+    sound_update_output_state();
+}
+
+void sound_update_output_state(void) {
+    uint8_t tracks_state = tracks_on;
+    bool any_tracks_active = (tracks_state & TRACK0_ACTIVE) == TRACK0_ACTIVE ||
+                             (tracks_state & TRACK1_ACTIVE) == TRACK1_ACTIVE ||
+                             (tracks_state & TRACK2_ACTIVE) == TRACK2_ACTIVE;
+    sound_set_output_enabled(sound_get_volume() != SOUND_VOLUME_OFF && any_tracks_active);
 }
 
 void sound_start(uint8_t t) {
@@ -306,16 +302,40 @@ void sound_start(uint8_t t) {
     }
 #endif
     ATOMIC_BLOCK_IMPL {
+        // start playing current note on started tracks, if they are playing.
+        uint8_t track = TRACK0_ACTIVE;
+        for (uint8_t i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
+            if ((t & track) && (tracks_on & track)) {
+                sound_play_note(tracks[i].note, i);
+            }
+            track <<= 1;
+        }
+
         tracks_on |= t;
     }
-    update_output_state();
+    sound_update_output_state();
 }
 
 void sound_stop(uint8_t t) {
+#ifdef RUNTIME_CHECKS
+    if ((t & ~TRACKS_STARTED_ALL) != 0) {
+        trace("invalid track stop flags");
+        return;
+    }
+#endif
     ATOMIC_BLOCK_IMPL {
         tracks_on &= ~t;
+
+        // stop playing current note on stopped tracks
+        uint8_t track = TRACK0_STARTED;
+        for (uint8_t i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
+            if (t & track) {
+                sound_play_note(SOUND_NO_NOTE, i);
+            }
+            track <<= 1;
+        }
     }
-    update_output_state();
+    sound_update_output_state();
 }
 
 bool sound_check_tracks(uint8_t t) {
@@ -334,7 +354,7 @@ void sound_set_volume(sound_volume_t volume) {
     // should be in atomic block but won't affect sound noticeably.
     if (volume != sound_get_volume_impl()) {
         sound_set_volume_impl(volume);
-        update_output_state();
+        sound_update_output_state();
     }
 }
 

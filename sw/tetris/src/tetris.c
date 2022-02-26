@@ -515,7 +515,7 @@ void tetris_init(void) {
     tetris.drop_delay = 0;
     tetris.lock_delay = 0;
     tetris.entry_delay = 0;
-    tetris.level_drop_delay = LEVELS_DROP_DELAY[tetris.level];
+    tetris.level_drop_delay = LEVELS_DROP_DELAY[0];
     tetris.lock_moves = 0;
 
     tetris.score = 0;

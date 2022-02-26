@@ -59,20 +59,22 @@ void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
     dialog.item_font = item_font;
 }
 
-static bool dialog_add_item_check(void) {
 #ifdef RUNTIME_CHECKS
+static bool dialog_add_item_check(void) {
     if (dialog.item_count == DIALOG_MAX_ITEMS) {
         trace("dialog already reached maximum number of items.");
         return false;
     }
-#endif
     return true;
 }
+#endif
 
 void dialog_add_item_button(const char* name, dialog_result_t result) {
+#ifdef RUNTIME_CHECKS
     if (!dialog_add_item_check()) {
         return;
     }
+#endif
     dialog_item_t* item = &dialog.items[dialog.item_count];
     item->type = DIALOG_ITEM_BUTTON;
     item->name = name;
@@ -82,9 +84,11 @@ void dialog_add_item_button(const char* name, dialog_result_t result) {
 
 void dialog_add_item_choice(const char* name, uint8_t selection,
                             uint8_t choices_count, const char** choices) {
+#ifdef RUNTIME_CHECKS
     if (!dialog_add_item_check()) {
         return;
     }
+#endif
     dialog_item_t* item = &dialog.items[dialog.item_count];
     item->type = DIALOG_ITEM_CHOICE;
     item->name = name;
@@ -154,7 +158,7 @@ static void trim_text_field(dialog_text_t* item) {
 static uint8_t trim_text_field_end(dialog_text_t* item) {
     char* text = item->text;
     uint8_t length = strlen(text);
-    while (text[length - 1] == ' ') {
+    while (length && text[length - 1] == ' ') {
         --length;
     }
     text[length] = '\0';

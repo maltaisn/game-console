@@ -24,7 +24,7 @@ void open_main_menu_dialog(void);
 
 void open_pause_dialog(void);
 
-void open_options_dialog(void);
+void open_options_dialog(uint8_t result_pos, uint8_t result_neg);
 
 void open_extra_options_dialog(void);
 

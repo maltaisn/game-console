@@ -29,9 +29,9 @@
 #define ASSET_SOUND_CLEAR(n)     data_flash(ASSET_SOUND_CLEAR_ADDR + (n) * ASSET_SOUND_CLEAR_OFFSET)
 
 #define ASSET_IMAGE_MENU         data_flash(0x1052fL)
-#define ASSET_IMAGE_TILE_GHOST   data_flash(0x113fdL)
+#define ASSET_IMAGE_TILE_GHOST   data_flash(0x1140fL)
 
-#define ASSET_FONT_5X7           data_flash(0x11407L)
-#define ASSET_FONT_7X7           data_flash(0x115cfL)
+#define ASSET_FONT_5X7           data_flash(0x11419L)
+#define ASSET_FONT_7X7           data_flash(0x115e1L)
 
 #endif

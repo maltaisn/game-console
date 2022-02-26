@@ -134,13 +134,21 @@ void sound_fill_track_buffers(void);
 void sound_load(sound_t address);
 
 /**
- * Start playback for given tracks. (using TRACKn_ACTIVE masks)
+ * Enable or disable buzzer output depending on volume level and whether there's any track playing.
+ * This allows to save CPU time (no timer interrupts) and reduce current consumption.
+ */
+void sound_update_output_state(void);
+
+/**
+ * Start playback for given tracks. (using TRACKn_STARTED masks)
  * The "started" state of the tracks is set.
+ * If any of these tracks were playing prior to being stopped, playback is resumed.
+ * Must not be called from an interrupt.
  */
 void sound_start(uint8_t tracks);
 
 /**
- * Stop playback for given tracks. (using TRACKn_ACTIVE masks)
+ * Stop playback for given tracks. (using TRACKn_STARTED masks)
  * The "started" state of the tracks is unset.
  * Must not be called from an interrupt.
  */

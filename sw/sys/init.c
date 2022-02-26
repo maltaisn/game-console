@@ -25,6 +25,8 @@
 #include <sys/reset.h>
 #include <sys/flash.h>
 
+#include <core/sound.h>
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
@@ -179,6 +181,8 @@ void init_wakeup(void) {
 
     input_update_state_immediate();
     input_reset_inactivity();
+
+    sound_update_output_state();
 
     flash_wakeup();
 
