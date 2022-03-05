@@ -25,6 +25,30 @@
 #define MAX_WALL_KICKS 5
 #define LAST_ROT_NONE 0xff
 
+// delay in game ticks between the time piece is locked and next piece is spawned.
+#define ENTRY_DELAY 10
+// delay in game ticks after which piece at bottom is locked.
+#define LOCK_DELAY 32
+// number of moves after which piece at bottom is locked.
+#define LOCK_MOVES 15
+
+#define LINES_PER_LEVEL 10
+
+#define LEVELS_COUNT 21
+
+#define GRID_SPAWN_ROW 20
+#define SPAWN_PIECE_OFFSET 2
+
+#define SOFT_DROP_PTS_PER_CELL 1
+#define HARD_DROP_PTS_PER_CELL 2
+#define COMBO_POINTS 50
+#define DIFFICULT_CLEAR_MIN_LINES 4
+#define BACK_TO_BACK_MULTIPLIER(pts) ((pts) * 3 / 2)  // *1.5
+
+// all bonuses below are multiplied by this number
+// bonuses values are defined in tetris.c
+#define TETRIS_BONUS_MUL 100
+
 // piece data is encoded using 4 bytes per piece, per rotation.
 // each byte encodes the (X,Y) position of the blocks in each nibble,
 // (X=0xf0, Y=0x0f), relative to the bottom left of 5x5 grid.
@@ -109,22 +133,27 @@ static const uint8_t T_PIECE_CORNERS[4] = {
 // last value is used for level > LEVELS_COUNT.
 static const uint8_t LEVELS_DROP_DELAY[LEVELS_COUNT] = {
         57, 52, 48, 44, 39, 35, 30, 23, 18, 12,
-        11, 10, 9, 7, 6, 6, 5, 5, 4, 3, 3,
+        11, 10, 9, 7, 6, 6, 5, 5, 4, 3, 2,
 };
 
+// points awarded for various actions, /100.
+
+// points awarded for clearing (i+1) lines
 static const uint8_t TETRIS_LINE_CLEAR_PTS[] = {
         1, 3, 5, 8,
 };
 // additional points awarded for clearing (i+1) lines, leaving play field empty
+// this gets added to the corresponding TETRIS_LINE_CLEAR_PTS entry.
 static const uint8_t TETRIS_LINE_PERFECT_CLEAR_PTS[] = {
         7, 9, 13, 12,
 };
-// additional points awarded for doing a (mini) T-spin, clearing (i) lines.
+// additional points awarded for doing a proper T-spin, clearing (i) lines (<=3)
 static const uint8_t TETRIS_T_SPIN_PTS[] = {
-        4, 7, 9, 11
+        4, 7, 9, 11,
 };
+// additional points awarded for doing a mini T-spin, clearing (i) lines (<=2).
 static const uint8_t TETRIS_MINI_T_SPIN_PTS[] = {
-        2, 3, 3, 3
+        1, 1, 1,
 };
 
 tetris_t tetris;
@@ -139,7 +168,8 @@ static const uint8_t* get_curr_piece_data(void) {
  * All info about the last points made is stored for printing it.
  */
 static void tetris_update_score(tetris_tspin tspin, uint8_t lines_cleared) {
-    // maximum points that can be achieved in one shot is 130k (but not realistically achievable)
+    // Maximum points that can be achieved in one shot is by doing a back-to-back
+    // four lines perfect clear, awarding (3000 * level) points. So 24-bit is plenty.
     uint24_t pts = 0;
     bool difficult;
     if (tspin != TETRIS_TSPIN_NONE) {
@@ -181,6 +211,18 @@ static void tetris_update_score(tetris_tspin tspin, uint8_t lines_cleared) {
         }
     }
 
+    // back-to-back difficult multiplier
+    if (difficult) {
+        if (tetris.flags & TETRIS_FLAG_LAST_DIFFICULT) {
+            // back-to-back difficult line clear, use multiplier.
+            pts = BACK_TO_BACK_MULTIPLIER(pts);
+        }
+        tetris.flags |= TETRIS_FLAG_LAST_DIFFICULT;
+    } else if (tspin == TETRIS_TSPIN_NONE) {
+        // T-spin with no lines cleared does not clear the back-to-back difficult flag.
+        tetris.flags &= ~TETRIS_FLAG_LAST_DIFFICULT;
+    }
+
     // combo
     if (lines_cleared == 0) {
         tetris.combo_count = 0;
@@ -195,21 +237,10 @@ static void tetris_update_score(tetris_tspin tspin, uint8_t lines_cleared) {
     // level multiplier
     pts *= tetris.level + 1;
 
-    // back-to-back multiplier
-    if (difficult && (tetris.flags & TETRIS_FLAG_LAST_DIFFICULT)) {
-        // back-to-back difficult line clear, use multiplier.
-        pts = BACK_TO_BACK_MULTIPLIER(pts);
-    }
-
-    tetris.flags &= ~(TETRIS_FLAG_LAST_DIFFICULT | TETRIS_FLAG_LAST_PERFECT);
-    if (tspin != TETRIS_TSPIN_NONE && difficult) {
-        // only normal clears are considered for back-to-back multiplier.
-        tetris.flags |= TETRIS_FLAG_LAST_DIFFICULT;
-    }
-
     tetris.last_lines_cleared = lines_cleared;
     tetris.last_tspin = tspin;
     tetris.last_points = pts;
+    tetris.flags &= ~TETRIS_FLAG_LAST_PERFECT;
     if (perfect_clear) {
         tetris.flags |= TETRIS_FLAG_LAST_PERFECT;
     }
@@ -567,7 +598,7 @@ void tetris_update(uint8_t dt) {
         } else {
             // drop delay elapsed, drop piece one block.
             tetris.drop_delay = tetris.level_drop_delay;
-            tetris_move_piece_down(true);
+            tetris_move_piece_down(false);
         }
     }
 }
@@ -604,7 +635,7 @@ void tetris_move_right(void) {
 
 
 void tetris_move_down(void) {
-    tetris_move_piece_down(false);
+    tetris_move_piece_down(true);
 }
 
 void tetris_hard_drop(void) {

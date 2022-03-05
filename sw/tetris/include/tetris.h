@@ -23,35 +23,14 @@
 #include <sys/defs.h>
 #include <sys/time.h>
 
-// delay in game ticks between the time piece is locked and next piece is spawned.
-#define ENTRY_DELAY 10
-// delay in game ticks after which piece at bottom is locked.
-#define LOCK_DELAY 32
-// number of moves after which piece at bottom is locked.
-#define LOCK_MOVES 15
-
-#define LINES_PER_LEVEL 10
+#define GRID_WIDTH 10
+#define GRID_HEIGHT 22
 
 #define PIECES_COUNT 7
 #define BLOCKS_PER_PIECE 4
 #define ROTATIONS_COUNT 4
-#define LEVELS_COUNT 21
 
-#define GRID_WIDTH 10
-#define GRID_HEIGHT 22
-#define GRID_SPAWN_ROW 20
 #define PIECE_GRID_SIZE 5
-#define SPAWN_PIECE_OFFSET 2
-
-#define SOFT_DROP_PTS_PER_CELL 1
-#define HARD_DROP_PTS_PER_CELL 2
-#define COMBO_POINTS 50
-#define DIFFICULT_CLEAR_MIN_LINES 4
-#define BACK_TO_BACK_MULTIPLIER(pts) ((pts) * 3 / 2)  // *1.5
-
-// all bonuses below are multiplied by this number
-// bonuses values are defined in tetris.c
-#define TETRIS_BONUS_MUL 100
 
 extern const uint8_t TETRIS_PIECES_DATA[];
 

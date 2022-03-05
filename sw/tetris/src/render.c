@@ -150,6 +150,36 @@ static void write_last_clear_info(char buf[static 16]) {
 }
 
 /**
+ * Format a score value to a 8-digit string, stored in a buffer.
+ * The string will be padded with the given character.
+ */
+static void format_points(char buf[9], uint32_t pts, char pad) {
+    char *ptr = buf;
+    ptr[8] = '\0';
+    ptr += 8;
+    if (pts >= 100000000) {
+        // can't fit in 8 digits, use exponent
+        uint8_t exponent = 0;
+        while (pts >= 1000000) {
+            pts /= 10;
+            ++exponent;
+        }
+        ptr -= 2;
+        ptr[0] = 'E';
+        ptr[1] = (char) (exponent + '0');
+    }
+    // format number (or mantissa)
+    do {
+        *(--ptr) = (char) (pts % 10 + '0');
+        pts /= 10;
+    } while (pts);
+    // pad
+    while (ptr != buf) {
+        *(--ptr) = pad;
+    }
+}
+
+/**
  * Draw the game screen.
  * When unbounded FPS vary between 15 (full grid + dialog) and 20 (empty grid).
  */
@@ -159,7 +189,7 @@ static void draw_game(void) {
     bool hold_piece = tetris.options.features & TETRIS_FEATURE_HOLD;
 
     // score
-    sprintf(buf, "%08" PRIu32, tetris.score);
+    format_points(buf, tetris.score, '0');
     graphics_set_color(11);
     graphics_set_font(ASSET_FONT_7X7);
     graphics_text(65, 2, buf);
@@ -296,7 +326,7 @@ static void draw_leaderboard_overlay(void) {
     graphics_set_color(13);
     y = 24;
     for (uint8_t i = 0; i < game.leaderboard.size; ++i) {
-        sprintf(score_buf, "%8" PRIu32, game.leaderboard.entries[i].score);
+        format_points(score_buf, game.leaderboard.entries[i].score, ' ');
         graphics_text(68, (int8_t) y, score_buf);
         y += 8;
     }
