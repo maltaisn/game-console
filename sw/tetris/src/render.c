@@ -356,7 +356,7 @@ void draw(void) {
     }
 
     game_state_t s = game.state;
-    if (s < GAME_STATE_PLAY) {
+    if (s <= GAME_STATE_LEADERBOARD) {
         draw_main_menu();
     } else {
         draw_game();

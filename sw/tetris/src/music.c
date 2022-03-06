@@ -15,14 +15,23 @@
  * limitations under the License.
  */
 
+#include <assets.h>
 #include <music.h>
 #include <game.h>
+#include <tetris.h>
 
 #include <core/sound.h>
 
 static sound_t current_music;
 static sound_t loop_music;
 static uint8_t music_start_delay;
+
+// Encoded tempo value for each level, this corresponds to 60 BPM for first level and
+// 120 BPM for last level, with 3 BPM increase by level, as much as encoding allows.
+static uint8_t LEVEL_TEMPO[] = {
+        16, 15, 15, 14, 13, 13, 12, 12, 11, 11,
+        11, 10, 10, 10, 9, 9, 9, 9, 8, 8, 8,
+};
 
 void game_music_start(sound_t music, uint8_t flags) {
     if (current_music != music && (game.options.features & GAME_FEATURE_MUSIC)) {
@@ -71,4 +80,14 @@ void game_music_update(uint8_t dt) {
     }
     sound_load(current_music);
     sound_start(MUSIC_TRACKS_STARTED);
+}
+
+void game_music_update_tempo(void) {
+    uint8_t tempo;
+    if (game.state >= GAME_STATE_PLAY) {
+        tempo = LEVEL_TEMPO[tetris.level > 20 ? 20 : tetris.level];
+    } else {
+        tempo = encode_bpm_tempo(ASSET_SOUND_TEMPO);
+    }
+    sound_set_tempo(tempo);
 }

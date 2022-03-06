@@ -60,4 +60,9 @@ void game_music_stop(void);
  */
 void game_music_update(uint8_t dt);
 
+/**
+ * Update music (and sound effects) tempo according to current game state.
+ */
+void game_music_update_tempo(void);
+
 #endif //TETRIS_MUSIC_H

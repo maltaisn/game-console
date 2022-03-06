@@ -50,13 +50,13 @@ typedef enum {
     GAME_STATE_CONTROLS,
     GAME_STATE_LEADERBOARD,
     // states with game background
+    GAME_STATE_GAME_OVER,
+    GAME_STATE_HIGH_SCORE,
     GAME_STATE_PLAY,
     GAME_STATE_OPTIONS_PLAY,
     GAME_STATE_CONTROLS_PLAY,
     GAME_STATE_LEADERBOARD_PLAY,
     GAME_STATE_PAUSE,
-    GAME_STATE_GAME_OVER,
-    GAME_STATE_HIGH_SCORE,
 } game_state_t;
 
 // all dialog result codes

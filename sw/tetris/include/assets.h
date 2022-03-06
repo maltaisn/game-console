@@ -6,32 +6,32 @@
 
 #define GAME_VERSION_MAJOR       0
 #define GAME_VERSION_MINOR       5
-#define ASSET_SOUND_TEMPO        120
+#define ASSET_SOUND_TEMPO        60
 
 #define ASSET_OFFSET             0x10000L
 
 #define ASSET_RAW_HEADER         0x10000L
 
 #define ASSET_MUSIC_THEME        data_flash(0x10003L)
-#define ASSET_MUSIC_MENU         data_flash(0x10320L)
-#define ASSET_MUSIC_GAME_OVER    data_flash(0x103a8L)
-#define ASSET_MUSIC_HIGH_SCORE   data_flash(0x103d2L)
+#define ASSET_MUSIC_MENU         data_flash(0x10343L)
+#define ASSET_MUSIC_GAME_OVER    data_flash(0x103c4L)
+#define ASSET_MUSIC_HIGH_SCORE   data_flash(0x103eeL)
 
-#define ASSET_SOUND_HARD_DROP    data_flash(0x104a7L)
-#define ASSET_SOUND_HOLD         data_flash(0x104b2L)
-#define ASSET_SOUND_COMBO        data_flash(0x104bdL)
-#define ASSET_SOUND_PERFECT      data_flash(0x104c8L)
-#define ASSET_SOUND_TSPIN        data_flash(0x104e3L)
+#define ASSET_SOUND_HARD_DROP    data_flash(0x104b1L)
+#define ASSET_SOUND_HOLD         data_flash(0x104bcL)
+#define ASSET_SOUND_COMBO        data_flash(0x104c7L)
+#define ASSET_SOUND_PERFECT      data_flash(0x104d2L)
+#define ASSET_SOUND_TSPIN        data_flash(0x104edL)
 
-#define ASSET_SOUND_CLEAR_ADDR   data_flash(0x104f3L)
+#define ASSET_SOUND_CLEAR_ADDR   data_flash(0x104fdL)
 #define ASSET_SOUND_CLEAR_OFFSET 15
 #define ASSET_SOUND_CLEAR_SIZE   4
 #define ASSET_SOUND_CLEAR(n)     data_flash(ASSET_SOUND_CLEAR_ADDR + (n) * ASSET_SOUND_CLEAR_OFFSET)
 
-#define ASSET_IMAGE_MENU         data_flash(0x1052fL)
-#define ASSET_IMAGE_TILE_GHOST   data_flash(0x1140fL)
+#define ASSET_IMAGE_MENU         data_flash(0x10539L)
+#define ASSET_IMAGE_TILE_GHOST   data_flash(0x11419L)
 
-#define ASSET_FONT_5X7           data_flash(0x11419L)
-#define ASSET_FONT_7X7           data_flash(0x115e1L)
+#define ASSET_FONT_5X7           data_flash(0x11423L)
+#define ASSET_FONT_7X7           data_flash(0x115ebL)
 
 #endif

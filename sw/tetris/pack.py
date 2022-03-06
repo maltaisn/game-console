@@ -5,7 +5,7 @@ from packer import Packer, ArrayType
 version_major = 0
 version_minor = 5
 
-tempo = 120
+tempo = 60
 
 p = Packer(assets_directory="tetris/assets", offset=0x10000)
 

@@ -73,7 +73,6 @@ void setup(void) {
         for (;;);
     }
 
-    sound_set_tempo(encode_bpm_tempo(ASSET_SOUND_TEMPO));
     sound_set_channel_volume(2, SOUND_CHANNEL2_VOLUME1);
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
 
@@ -102,6 +101,7 @@ void loop(void) {
     game_led_update(dt);
     game_music_update(dt);
     game_sound_update(dt);
+    game_music_update_tempo();
     game.state = game_state_update(dt);
 
     if (time - last_draw_time > millis_to_ticks(1000.0 / DISPLAY_MAX_FPS)) {
