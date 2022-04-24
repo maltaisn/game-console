@@ -87,7 +87,7 @@ game_state_t game_handle_input_dialog(void) {
         return GAME_STATE_OPTIONS_PLAY;
 
     } else if (res == RESULT_OPEN_OPTIONS_EXTRA) {
-        save_dialog_options(false);  // save changes or they will be lost!
+        save_dialog_options();  // save changes or they will be lost!
         return GAME_STATE_OPTIONS_EXTRA;
 
     } else if (res == RESULT_OPEN_CONTROLS) {
@@ -107,10 +107,10 @@ game_state_t game_handle_input_dialog(void) {
         return save_highscore();
 
     } else if (res == RESULT_SAVE_OPTIONS) {
-        save_dialog_options(false);
+        save_dialog_options();
 
     } else if (res == RESULT_SAVE_OPTIONS_PLAY) {
-        save_dialog_options(true);
+        save_dialog_options();
         return GAME_STATE_PAUSE;
 
     } else if (res == RESULT_CANCEL_OPTIONS || res == RESULT_CANCEL_OPTIONS_PLAY) {

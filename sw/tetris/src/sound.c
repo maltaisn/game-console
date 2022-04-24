@@ -27,6 +27,12 @@ static struct {
     bool was_not_emptied;
 } scheduler;
 
+void game_sound_clear(void) {
+    scheduler.tail = scheduler.head;
+    scheduler.delay = 0;
+    scheduler.was_not_emptied = false;
+}
+
 void game_sound_push(sound_t sound) {
     if (game.options.features & GAME_FEATURE_SOUND_EFFECTS) {
         scheduler.data[scheduler.head] = sound;

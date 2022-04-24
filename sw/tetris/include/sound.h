@@ -28,6 +28,11 @@
 #define SOUND_TRACKS_STARTED (TRACK2_STARTED)
 
 /**
+ * Clear the sound effect queue.
+ */
+void game_sound_clear(void);
+
+/**
  * Schedule a new sound to be played next (on channel 2 only).
  * Maximum 4 sounds can be scheduled before the currently playing one finishes.
  */

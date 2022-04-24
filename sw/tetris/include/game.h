@@ -42,6 +42,9 @@
 // maximum number of entries in leaderboard
 #define LEADERBOARD_MAX_SIZE 10
 
+// delay in game ticks to wait before showing dialog after game over.
+#define GAME_OVER_DELAY 48
+
 typedef enum {
     // states with art background
     GAME_STATE_MAIN_MENU,
@@ -122,6 +125,7 @@ typedef struct {
     game_leaderboard_t leaderboard;
 
     game_state_t state;
+    uint8_t state_delay;
     uint8_t new_highscore_pos;
     uint8_t old_features;
     bool dialog_shown;

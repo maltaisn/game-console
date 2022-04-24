@@ -84,7 +84,7 @@ void game_music_update(uint8_t dt) {
 
 void game_music_update_tempo(void) {
     uint8_t tempo;
-    if (game.state >= GAME_STATE_PLAY) {
+    if (game.state == GAME_STATE_PLAY) {
         tempo = LEVEL_TEMPO[tetris.level > 20 ? 20 : tetris.level];
     } else {
         tempo = encode_bpm_tempo(ASSET_SOUND_TEMPO);

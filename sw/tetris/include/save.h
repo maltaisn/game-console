@@ -26,7 +26,7 @@ void save_to_eeprom(void);
 
 game_state_t save_highscore(void);
 
-void save_dialog_options(bool in_play);
+void save_dialog_options(void);
 
 void save_dialog_extra_options(void);
 

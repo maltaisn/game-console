@@ -112,7 +112,7 @@ game_state_t save_highscore(void) {
     return GAME_STATE_LEADERBOARD_PLAY;
 }
 
-void save_dialog_options(bool in_play) {
+void save_dialog_options(void) {
     uint8_t features = 0;
     if (dialog.items[1].choice.selection) {
         features |= GAME_FEATURE_MUSIC;
@@ -130,28 +130,26 @@ void save_dialog_options(bool in_play) {
             .contrast = contrast,
     };
 
-    if (!in_play) {
-        uint8_t preview_pieces = dialog.items[4].number.value;
-        tetris.options.preview_pieces = preview_pieces;
-    }
-
     // contrast, volume and music enabled were already changed during preview
 
     save_to_eeprom();
 }
 
 void save_dialog_extra_options(void) {
+    uint8_t preview_pieces = dialog.items[0].number.value;
+    tetris.options.preview_pieces = preview_pieces;
+
     uint8_t features = 0;
-    if (dialog.items[0].choice.selection) {
+    if (dialog.items[1].choice.selection) {
         features |= TETRIS_FEATURE_GHOST;
     }
-    if (dialog.items[1].choice.selection) {
+    if (dialog.items[2].choice.selection) {
         features |= TETRIS_FEATURE_HOLD;
     }
-    if (dialog.items[2].choice.selection) {
+    if (dialog.items[3].choice.selection) {
         features |= TETRIS_FEATURE_WALL_KICKS;
     }
-    if (dialog.items[3].choice.selection) {
+    if (dialog.items[4].choice.selection) {
         features |= TETRIS_FEATURE_TSPINS;
     }
     tetris.options.features = features;

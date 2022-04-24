@@ -372,7 +372,7 @@ static void tetris_lock_piece(void) {
  * Place the current piece on the grid, as well as the ghost piece if enabled.
  * Also updates lock conditions and gravity drop delay.
  */
-static void tetris_place_piece(void) {
+static void tetris_place_piece(bool has_moved) {
     const uint8_t* piece_data = get_curr_piece_data();
     bool ghost_enabled = (tetris.options.features & TETRIS_FEATURE_GHOST) != 0;
 
@@ -418,12 +418,14 @@ static void tetris_place_piece(void) {
     }
 
     if (tetris.flags & TETRIS_FLAG_PIECE_AT_BOTTOM) {
-        // update lock conditions
-        tetris.lock_delay = LOCK_DELAY;
-        --tetris.lock_moves;
-        if (tetris.lock_moves == 0) {
-            // all moves exhausted while piece was at bottom, lock.
-            tetris_lock_piece();
+        if (has_moved) {
+            // update lock conditions if piece was moved successfully
+            tetris.lock_delay = LOCK_DELAY;
+            --tetris.lock_moves;
+            if (tetris.lock_moves == 0) {
+                // all moves exhausted while piece was at bottom, lock.
+                tetris_lock_piece();
+            }
         }
     } else if (piece_was_at_bottom) {
         // piece was at bottom but now isn't (can happen with due to wall kicks)
@@ -454,7 +456,7 @@ static void tetris_remove_piece(void) {
 static bool tetris_try_move(void) {
     if (tetris_can_place_piece()) {
         // replace piece, which was removed before move.
-        tetris_place_piece();
+        tetris_place_piece(true);
         return true;
     }
     return false;
@@ -474,7 +476,7 @@ static void tetris_move_piece_down(bool is_soft_drop) {
     if (!tetris_try_move()) {
         // couldn't move down, lock piece, replace piece.
         ++tetris.curr_piece_y;
-        tetris_place_piece();
+        tetris_place_piece(false);
         tetris_lock_piece();
     } else if (is_soft_drop) {
         tetris.score += SOFT_DROP_PTS_PER_CELL;
@@ -511,7 +513,7 @@ static void tetris_spawn_piece(tetris_piece piece) {
     tetris.lock_moves = LOCK_MOVES;
     tetris.flags &= ~(TETRIS_FLAG_PIECE_AT_BOTTOM | TETRIS_FLAG_PIECE_SWAPPED);
     if (tetris_can_place_piece()) {
-        tetris_place_piece();
+        tetris_place_piece(true);
     } else {
         // can't place piece at spawn pos, game over.
         tetris.flags |= TETRIS_FLAG_GAME_OVER;
@@ -613,7 +615,7 @@ void tetris_move_left(void) {
     if (!tetris_try_move()) {
         // couldn't move left, undo move, replace piece.
         ++tetris.curr_piece_x;
-        tetris_place_piece();
+        tetris_place_piece(false);
     }
     tetris.last_rot_offset = LAST_ROT_NONE;
 }
@@ -628,7 +630,7 @@ void tetris_move_right(void) {
     if (!tetris_try_move()) {
         // couldn't move left, undo move, replace piece.
         --tetris.curr_piece_x;
-        tetris_place_piece();
+        tetris_place_piece(false);
     }
     tetris.last_rot_offset = LAST_ROT_NONE;
 }
@@ -657,7 +659,7 @@ void tetris_hard_drop(void) {
     ++tetris.curr_piece_y;
     tetris.last_rot_offset = LAST_ROT_NONE;
     tetris.score += (cells_dropped - 1) * HARD_DROP_PTS_PER_CELL;
-    tetris_place_piece();
+    tetris_place_piece(true);
     tetris_lock_piece();
 }
 
@@ -706,7 +708,7 @@ void tetris_rotate_piece(tetris_rot_dir direction) {
     tetris.curr_piece_rot = old_rot;
     tetris.curr_piece_x = old_x;
     tetris.curr_piece_y = old_y;
-    tetris_place_piece();
+    tetris_place_piece(false);
 }
 
 void tetris_hold_or_swap_piece(void) {

@@ -156,6 +156,8 @@ static game_state_t update_tetris_state(uint8_t dt) {
     if (tetris.flags & TETRIS_FLAG_GAME_OVER) {
         game_led_start(32, 128);
         game_music_start(ASSET_MUSIC_GAME_OVER, MUSIC_FLAG_DELAYED);
+        game_sound_clear();
+        game.state_delay = GAME_OVER_DELAY;
         return update_leaderboard_for_score();
     }
 
@@ -164,6 +166,13 @@ static game_state_t update_tetris_state(uint8_t dt) {
 
 static game_state_t game_state_update(uint8_t dt) {
     game_state_t s = game.state;
+
+    if (game.state_delay > dt) {
+        // wait in between state change.
+        game.state_delay -= dt;
+        return s;
+    }
+
     if (s == GAME_STATE_PLAY) {
         return update_tetris_state(dt);
     } else if (!game.dialog_shown) {
