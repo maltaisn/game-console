@@ -4736,9 +4736,6 @@
     (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-000061d7d39e"
       (reference "#PWR0132") (unit 1) (value "GND") (footprint "")
     )
-    (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-000061e6cef6"
-      (reference "#PWR0133") (unit 1) (value "GND") (footprint "")
-    )
     (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-000061e85065"
       (reference "#PWR0134") (unit 1) (value "VBAT") (footprint "")
     )
@@ -4949,6 +4946,9 @@
     (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-000061c61ef0"
       (reference "R26") (unit 1) (value "100k") (footprint "Resistor_SMD:R_0603_1608Metric")
     )
+    (path "/00000000-0000-0000-0000-00006188ce03/dc494e81-b50b-453c-ba8e-8cfe2ab07aab"
+      (reference "R27") (unit 1) (value "100k") (footprint "Resistor_SMD:R_0603_1608Metric")
+    )
     (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-0000618df169"
       (reference "SW1") (unit 1) (value "ON/OFF") (footprint "console:1825232-1")
     )
@@ -4996,9 +4996,6 @@
     )
     (path "/00000000-0000-0000-0000-000060ecd14e"
       (reference "U6") (unit 1) (value "FT25C32A") (footprint "Package_SO:SO-8_3.9x4.9mm_P1.27mm")
-    )
-    (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-000061e2cc72"
-      (reference "U7") (unit 1) (value "SE809") (footprint "Package_TO_SOT_SMD:SOT-23")
     )
   )
 )
