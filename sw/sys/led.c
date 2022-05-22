@@ -19,33 +19,43 @@
 
 #include <avr/io.h>
 
-static uint8_t blink_period;  // LED_BLINK_NONE at startup
-static NO_INIT uint8_t blink_counter;
+#ifdef BOOTLOADER
 
-void led_set(void) {
+#include <boot/defs.h>
+#include <core/led.h>
+
+BOOTLOADER_KEEP uint8_t sys_led_blink_period;  // LED_BLINK_NONE at startup
+BOOTLOADER_KEEP uint8_t sys_led_blink_counter;
+
+void sys_led_blink_update(void) {
+    if (sys_led_blink_period == LED_BLINK_NONE) {
+        return;
+    }
+    ++sys_led_blink_counter;
+    if (sys_led_blink_counter == sys_led_blink_period) {
+        led_toggle();
+        sys_led_blink_counter = 0;
+    }
+}
+
+#endif
+
+ALWAYS_INLINE
+void sys_led_set(void) {
     VPORTC.OUT |= PIN0_bm;
 }
 
-void led_clear(void) {
+ALWAYS_INLINE
+void sys_led_clear(void) {
     VPORTC.OUT &= ~PIN0_bm;
 }
 
-void led_toggle(void) {
+ALWAYS_INLINE
+void sys_led_toggle(void) {
     PORTC.OUTTGL = PIN0_bm;
 }
 
-void led_blink(uint8_t ticks) {
-    blink_period = ticks;
-    blink_counter = 0;
-}
-
-void led_blink_update(void) {
-    if (blink_period == LED_BLINK_NONE) {
-        return;
-    }
-    ++blink_counter;
-    if (blink_counter == blink_period) {
-        led_toggle();
-        blink_counter = 0;
-    }
+void sys_led_blink(uint8_t ticks) {
+    sys_led_blink_period = ticks;
+    sys_led_blink_counter = 0;
 }

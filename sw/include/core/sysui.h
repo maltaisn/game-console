@@ -18,23 +18,6 @@
 #ifndef CORE_SYSUI_H
 #define CORE_SYSUI_H
 
-#include <stdint.h>
-
-#ifndef SYSUI_BATTERY_ICON_SIZE
-#define SYSUI_BATTERY_ICON_SIZE 7
-#endif
-
-/** A 10x7 image representing a battery outline. */
-extern const uint8_t SYSUI_BATTERY_OUTLINE[];
-
-/** A set of 5x3 images representing baterry statuses (except discharging). */
-extern const uint8_t SYSUI_BATTERY_ICONS[][SYSUI_BATTERY_ICON_SIZE];
-
-/**
- * Draw the system UI to indicate that the battery is too low and device will go to sleep.
- */
-void sysui_battery_sleep(void);
-
 /**
  * Draw an overlay in the bottom right corner indicating the battery status and percentage.
  */

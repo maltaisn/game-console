@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,47 +15,67 @@
  */
 
 #include <sys/uart.h>
-#include <sys/defs.h>
 
 #include <avr/io.h>
+
+#ifdef BOOTLOADER
+
 #include <avr/interrupt.h>
 
-// As given by datasheet formula, Table 23-1, Rev. C 01/2021, for asynchronous USART with CLK2X=1
-#define uart_baud_rate_reg(baud) ((uint16_t) ((64.0 * F_CPU / (8.0 * baud)) + 0.5))
+// The UART interrupts are naked to prevent the generation of the interrupt prologue and epilogue.
+// Moreover, the callback is called from inline assembly to avoid saving and restoring all the
+// registers like the compiler does for externally defined functions.
+// These interrupt result in a single `jmp` instruction to the callback address.
+// We are effectively "forwarding" the interrupt to the app.
+
+// The callback itself is marked with __attribute__((signal)) to be treated as an interrupt.
+// That means it will generate the same epilogue, prologue, and make sure to save all registers,
+// just like an interrupt.
+
+// Finally, the callback is called "vector" instead to avoid showing the -Wmisspelled-isr warning
+// during compilation, since it annoyingly can't disabled in the linker, only in the compiler.
+
+ISR(USART0_DRE_vect, ISR_NAKED) {
+    asm volatile("jmp __vector_uart_dre");
+}
+
+ISR(USART0_RXC_vect, ISR_NAKED) {
+    asm volatile("jmp __vector_uart_rxc");
+}
+
+#elif defined(SYS_UART_ENABLE)
 
 enum {
     STATE_TRANSMITTED = (1 << 0),
-    STATE_FAST = (1 << 1),
 };
 
-#ifndef DISABLE_COMMS
 static uint8_t state;
 
 static struct {
-    uint8_t data[TX_BUFFER_SIZE];
+    uint8_t data[SYS_UART_TX_BUFFER_SIZE];
     uint8_t head;
     volatile uint8_t tail;
 } tx_buf;
 
 static struct {
-    uint8_t data[RX_BUFFER_SIZE];
+    uint8_t data[SYS_UART_RX_BUFFER_SIZE];
     volatile uint8_t head;
     uint8_t tail;
 } rx_buf;
 
-ISR(USART0_DRE_vect) {
+void vector_uart_dre(void) {
     uint8_t tail = tx_buf.tail;
     USART0.TXDATAL = tx_buf.data[tail];
-    tail = (tail + 1) % TX_BUFFER_SIZE;
+    tail = (tail + 1) % SYS_UART_TX_BUFFER_SIZE;
     tx_buf.tail = tail;
     if (tail == tx_buf.head) {
         USART0.CTRLA &= ~USART_DREIE_bm;
     }
 }
 
-ISR(USART0_RXC_vect) {
+void vector_uart_rxc(void) {
     uint8_t head = rx_buf.head;
-    uint8_t new_head = (head + 1) % RX_BUFFER_SIZE;
+    uint8_t new_head = (head + 1) % SYS_UART_RX_BUFFER_SIZE;
     if (new_head == rx_buf.tail) {
         // buffer full, drop data. wait until data is read to reenable interrupt.
         USART0.CTRLA &= ~USART_RXCIE_bm;
@@ -65,7 +85,18 @@ ISR(USART0_RXC_vect) {
     }
 }
 
-void uart_write(uint8_t c) {
+void sys_uart_init(uint16_t baud_calc) {
+    USART0.CTRLA = USART_RXCIE_bm;
+    USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
+    CPUINT.LVL1VEC = USART0_RXC_vect_num;
+    sys_uart_set_baud(baud_calc);
+}
+
+void sys_uart_set_baud(uint16_t baud_calc) {
+    USART0.BAUD = baud_calc;
+}
+
+void sys_uart_write(uint8_t c) {
     state |= STATE_TRANSMITTED;
     if (tx_buf.tail == tx_buf.head && (USART0.STATUS & USART_DREIF_bm)) {
         // TX data register empty and buffer empty, transmit directly.
@@ -73,7 +104,7 @@ void uart_write(uint8_t c) {
         USART0.TXDATAL = c;
     } else {
         // append byte to buffer and transmit later.
-        const uint8_t new_head = (tx_buf.head + 1) % TX_BUFFER_SIZE;
+        const uint8_t new_head = (tx_buf.head + 1) % SYS_UART_TX_BUFFER_SIZE;
         while (new_head == tx_buf.tail);  // wait for interrupt to empty buffer.
         tx_buf.data[tx_buf.head] = c;
         tx_buf.head = new_head;
@@ -81,19 +112,19 @@ void uart_write(uint8_t c) {
     }
 }
 
-uint8_t uart_read(void) {
+uint8_t sys_uart_read(void) {
     while (rx_buf.tail == rx_buf.head);  // wait for interrupt to fill buffer.
     const uint8_t c = rx_buf.data[rx_buf.tail];
-    rx_buf.tail = (rx_buf.tail + 1) % RX_BUFFER_SIZE;
+    rx_buf.tail = (rx_buf.tail + 1) % SYS_UART_RX_BUFFER_SIZE;
     USART0.CTRLA |= USART_RXCIE_bm;
     return c;
 }
 
-bool uart_available(void) {
+bool sys_uart_available(void) {
     return rx_buf.tail != rx_buf.head;
 }
 
-void uart_flush(void) {
+void sys_uart_flush(void) {
     if (!(state & STATE_TRANSMITTED)) {
         // nothing was transmitted, TXCIF bit will not be set.
         return;
@@ -102,17 +133,4 @@ void uart_flush(void) {
     while ((USART0.CTRLA & USART_DREIE_bm) || !(USART0.STATUS & USART_TXCIF_bm));
 }
 
-void uart_set_fast_mode(void) {
-    state |= STATE_FAST;
-    USART0.BAUD = uart_baud_rate_reg(UART_BAUD_FAST);
-}
-
-void uart_set_normal_mode(void) {
-    state &= ~STATE_FAST;
-    USART0.BAUD = uart_baud_rate_reg(UART_BAUD);
-}
-
-bool uart_is_in_fast_mode(void) {
-    return (state & STATE_FAST) != 0;
-}
-#endif //DISABLE_COMMS
+#endif

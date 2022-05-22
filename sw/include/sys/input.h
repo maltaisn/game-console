@@ -19,53 +19,12 @@
 #define SYS_INPUT_H
 
 #include <stdint.h>
+#include <core/defs.h>
 
-// input state update frequency in Hz.
-#define UPDATE_FREQUENCY 64
+extern volatile uint8_t sys_input_state;
 
-#define BUTTONS_COUNT 6
+// see core/input.h for documentation
 
-#define BUTTON0 (1 << 0)  // SW2
-#define BUTTON1 (1 << 1)  // SW3
-#define BUTTON2 (1 << 2)  // SW4
-#define BUTTON3 (1 << 3)  // SW5
-#define BUTTON4 (1 << 4)  // SW6
-#define BUTTON5 (1 << 5)  // SW7
-
-#define BUTTONS_ALL (BUTTON0 | BUTTON1 | BUTTON2 | BUTTON3 | BUTTON4 | BUTTON5)
-
-/**
- * Returns a bitfield indicating the current (debounced) state of input.
- * A 1 bit indicates that the button is pressed.
- */
-uint8_t input_get_state(void);
-
-/**
- * Update current input state, with debouncing.
- * This is called on systick update.
- */
-void input_update_state(void);
-
-/**
- * Update current input state, without debouncing.
- * This is called on wakeup from sleep.
- */
-void input_update_state_immediate(void);
-
-/**
- * Dim or undim screen depending on inactivity countdown value.
- * Must not be called within an interrupt.
- */
-void input_dim_if_inactive(void);
-
-/**
- * Reset inactivity countdown timer and undim screen.
- */
-void input_reset_inactivity(void);
-
-/**
- * Called every second to update inactivity countdown.
- */
-void input_update_inactivity(void);
+uint8_t sys_input_get_state(void);
 
 #endif //SYS_INPUT_H

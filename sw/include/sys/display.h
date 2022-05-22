@@ -18,191 +18,81 @@
 #ifndef SYS_DISPLAY_H
 #define SYS_DISPLAY_H
 
+#include <core/display.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifndef DISPLAY_BUFFER_SIZE
-
-// Display buffer size can be increased to change display refresh latency / RAM usage.
-// The display buffer size must be a multiple of 64 to contain only complete rows.
-//
-// A few examples:
-// - 1024 bytes: 8 pages of 128x16 px
-// - 1664 bytes: 5 pages of 128x26 px, 1 page of 128x24 px
-// - 2048 bytes: 4 pages of 128x32 px (default)
-// - 2752 bytes: 2 pages of 128x43 px, 1 page of 128x42 px
-// - 3072 bytes: 2 pages of 128x48 px, 1 page of 128x32 px
-//
-// The relation between page height and refresh latency is not linear. For example,
-// when only drawing an indexed image, doubling the buffer size will change almost nothing.
-// However, larger buffer size will always result in lower refresh latency, if not always by much.
-// All drawing functions are optimized to return when out of page, which explains this.
-//
-// This macro should not be used in simulation since page height is a runtime value.
-#define DISPLAY_BUFFER_SIZE 2048
-
-#endif // DISPLAY_BUFFER_SIZE
-
-#if (DISPLAY_BUFFER_SIZE / 64 * 64 != DISPLAY_BUFFER_SIZE)
-#error "Display buffer size must be a multiple of 64"
-#endif
-
-// Number of pixels in width
-#define DISPLAY_WIDTH 128
-// Number of pixels in height
-#define DISPLAY_HEIGHT 128
 // Number of columns (2 pixels per column)
 #define DISPLAY_NUM_COLS 64
 // Number of rows (1 pixel per row)
 #define DISPLAY_NUM_ROWS 128
 // Display RAM size
 #define DISPLAY_SIZE ((uint16_t) (DISPLAY_NUM_COLS * DISPLAY_NUM_ROWS))
-// Number of pages given buffer size.
-// Should not be used in simulation since page height is a runtime value.
-#define DISPLAY_PAGES ((uint8_t) ((DISPLAY_SIZE + DISPLAY_BUFFER_SIZE - 1) / DISPLAY_BUFFER_SIZE))
-
-#if (DISPLAY_NUM_COLS * DISPLAY_NUM_ROWS / DISPLAY_BUFFER_SIZE * \
-     DISPLAY_BUFFER_SIZE != DISPLAY_NUM_COLS * DISPLAY_NUM_ROWS)
-// If defined, the last page will be shorter than the other pages
-#define DISPLAY_LAST_PAGE_SHORT
-#endif
-
-// Maximum page height in pixels (sometimes last page is shorter)
-#if defined(SIMULATION)
-#include <sim/display.h>
-#define max_page_height() display_get_page_height()
-#else
-#define max_page_height() ((uint8_t) ((DISPLAY_HEIGHT - 1) / DISPLAY_PAGES + 1))
-#endif
 
 #define DISPLAY_COLOR_BLACK ((disp_color_t) 0)
 #define DISPLAY_COLOR_WHITE ((disp_color_t) 15)
 
 #define DISPLAY_DEFAULT_CONTRAST 0x7f
 
-/** Display generic coordinate. */
-typedef uint8_t disp_coord_t;
-/** Display X coordinate, 0 to (DISPLAY_WIDTH-1). */
-typedef disp_coord_t disp_x_t;
-/** Display Y coordinate, 0 to (DISPLAY_HEIGHT-1). */
-typedef disp_coord_t disp_y_t;
-/** Display "color" (grayscale level). */
-typedef uint8_t disp_color_t;
-
 #ifdef SIMULATION
 /** First Y coordinate for current page (inclusive), must not be changed directly. */
-extern disp_y_t display_page_ystart;
+extern disp_y_t sys_display_page_ystart;
 /** Last Y coordinate for current page (inclusive), must not be changed directly */
-extern disp_y_t display_page_yend;
+extern disp_y_t sys_display_page_yend;
 #else
 #include <avr/io.h>
-#define display_page_ystart (*((disp_y_t*) &GPIOR1))
-#define display_page_yend (*((disp_y_t*) &GPIOR2))
+#define sys_display_page_ystart (*((disp_y_t*) &GPIOR1))
+#define sys_display_page_yend (*((disp_y_t*) &GPIOR2))
 #endif
 
-// Height of the current page, in pixels.
-#if defined(SIMULATION) || defined(DISPLAY_LAST_PAGE_SHORT)
-/** Height of the current page in pixels, must not be changed directly */
-extern uint8_t display_page_height;
-#define page_height() display_page_height
-#else
-// The page height is constant, all pages are the same height.
-#define page_height() max_page_height()
-#endif
-
-typedef enum {
-    DISPLAY_GPIO_DISABLE = 0b00,
-    DISPLAY_GPIO_INPUT = 0b01,
-    DISPLAY_GPIO_OUTPUT_LO = 0b10,
-    DISPLAY_GPIO_OUTPUT_HI = 0b11,
-} display_gpio_t;
+/**
+ * Height of current page in pixels.
+ * This can be accessed directly.
+ */
+extern uint8_t sys_display_curr_page_height;
 
 /**
- * Initialize display. This resets the display and sets all registers through SPI commands.
- * The display RAM is initialized to zero but the buffer is NOT cleared.
- * The display is initially turned OFF and not inverted.
+ * Maximum height for a display page in pixels.
+ * All pages except the last one (and sometimes the last one too) have this height.
+ * This can be accessed directly.
  */
-void display_init(void);
+extern uint8_t sys_display_page_height;
 
 /**
- * Disable internal VDD regulator to put display to sleep.
- * Re-initializing the display will turn it back on via display reset.
+ * The display page buffer. This buffer is assigned to a particular section and
+ * its size is variable (may be different for the bootloader and the app).
+ * `sys_display_buffer_at()` should always be used to access this buffer.
  */
-void display_sleep(void);
+extern uint8_t sys_display_buffer[];
+
+extern uint8_t sys_display_state;
+extern uint8_t sys_display_contrast;
+
+// see core/display.h for documentation
+void sys_display_set_inverted(bool inverted);
+
+// see core/display.h for documentation
+void sys_display_set_contrast(uint8_t contrast);
+
+// see core/display.h for documentation
+uint8_t sys_display_get_contrast(void);
 
 /**
- * Turn the display on or off.
+ * Returns true if the display is currently dimmed.
  */
-void display_set_enabled(bool enabled);
-
-/**
- * Set whether the display is inverted or not.
- */
-void display_set_inverted(bool inverted);
-
-/**
- * Set the display contrast. The default is DISPLAY_DEFAULT_CONTRAST.
- * Nothing is done if contrast is already at set value.
- */
-void display_set_contrast(uint8_t contrast);
-
-/**
- * Set whether screen dimming is enabled or not.
- */
-void display_set_dimmed(bool dimmed);
-
-/**
- * Returns true if display is currently dimmed.
- */
-bool display_is_dimmed(void);
-
-/**
- * Get the display contrast.
- */
-uint8_t display_get_contrast(void);
-
-/**
- * Set the display GPIO mode.
- */
-void display_set_gpio(display_gpio_t mode);
-
-/**
- * Set D/C pin for display.
- */
-void display_set_dc(void);
-
-/**
- * Clear D/C pin for display.
- */
-void display_clear_dc(void);
-
-/**
- * Set reset pin for display.
- */
-void display_set_reset(void);
-
-/**
- * Clear reset pin for display.
- */
-void display_clear_reset(void);
+bool sys_display_is_dimmed(void);
 
 /**
  * Clear the whole display, not paged.
  */
-void display_clear(disp_color_t c);
+void sys_display_clear(disp_color_t c);
 
 /**
- * Start updating display with the first page.
- * The display buffer is NOT cleared beforehand.
+ * Initialize display page size.
+ * This must be called prior to `display_first_page` and before starting the app.
  */
-void display_first_page(void);
-
-/**
- * Flush display buffer and go to the next page.
- * The display buffer is NOT cleared afterwards.
- * If on the last page, this returns false, otherwise it returns true.
- */
-bool display_next_page(void);
+void sys_display_init_page(uint8_t height);
 
 /**
  * The display buffer used to write data for one page at a time before it is sent to the display.
@@ -212,6 +102,6 @@ bool display_next_page(void);
  * If X is odd, this returns a pointer to the pixel on the left, since there are two pixels per byte.
  * Page coordinate have the same x as display coordinates but a different y.
  */
-uint8_t* display_buffer(disp_x_t x, disp_y_t y);
+uint8_t* sys_display_buffer_at(disp_x_t x, disp_y_t y);
 
 #endif //SYS_DISPLAY_H

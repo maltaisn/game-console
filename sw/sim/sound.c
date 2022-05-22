@@ -70,25 +70,21 @@ typedef struct {
     uint16_t phase;
 } channel_t;
 
-static channel_t channels[SOUND_CHANNELS_COUNT];
+static channel_t channels[SYS_SOUND_CHANNELS];
 
-void sound_set_output_enabled(bool enabled) {
+void sys_sound_set_output_enabled(bool enabled) {
     output_enabled = enabled;
 }
 
-bool sound_is_output_enabled(void) {
-    return output_enabled;
-}
-
-void sound_set_volume_impl(sound_volume_t volume) {
+void sys_sound_set_volume(sound_volume_t volume) {
     global_volume = volume;
 }
 
-sound_volume_t sound_get_volume_impl(void) {
+sound_volume_t sys_sound_get_volume(void) {
     return global_volume;
 }
 
-void sound_set_channel_volume_impl(uint8_t channel, sound_channel_volume_t volume) {
+void sys_sound_set_channel_volume(uint8_t channel, sound_channel_volume_t volume) {
     if (channel != 2) {
         return;
     }
@@ -101,11 +97,11 @@ void sound_set_channel_volume_impl(uint8_t channel, sound_channel_volume_t volum
     channels[channel].volume = v;
 }
 
-sound_channel_volume_t sound_get_channel_volume_impl(uint8_t channel) {
+sound_channel_volume_t sys_sound_get_channel_volume(uint8_t channel) {
     return channels[channel].volume;
 }
 
-void sound_play_note(uint8_t note, uint8_t channel) {
+void sys_sound_play_note(uint8_t note, uint8_t channel) {
     // update channel fields for new note
 #ifndef SIMULATION_HEADLESS
     channel_t *ch = &channels[channel];
@@ -116,7 +112,7 @@ void sound_play_note(uint8_t note, uint8_t channel) {
         while (atomic_flag_test_and_set(&channels_lock));
         ch->note = note;
         ch->phase = 0;
-        if (note == SOUND_NO_NOTE) {
+        if (note == SYS_SOUND_NO_NOTE) {
             ch->phase = 0;
             ch->samples_per_period = 0;
         } else {
@@ -156,10 +152,10 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
         // update the phase for all channels and count how many channels are on the
         // high side of the square wave.
         float level = 0;
-        for (int channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
+        for (int channel = 0; channel < SYS_SOUND_CHANNELS; ++channel) {
             channel_t *ch = &channels[channel];
             float ch_vol = CHANNEL_VOLUME_LEVELS[ch->volume];
-            if (ch->note != SOUND_NO_NOTE) {
+            if (ch->note != SYS_SOUND_NO_NOTE) {
                 if (ch->phase < ch->samples_per_period / 2) {
                     level += ch_vol;
                 } else {
@@ -172,7 +168,7 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
             }
         }
         // normalize level and apply volume
-        float sample = level / SOUND_CHANNELS_COUNT * GLOBAL_VOLUME_LEVELS[vol];
+        float sample = level / SYS_SOUND_CHANNELS * GLOBAL_VOLUME_LEVELS[vol];
         *out++ = sample;
     }
 
@@ -181,7 +177,7 @@ static int patestCallback(const void* input_buffer, void* output_buffer,
 }
 #endif //SIMULATION_HEADLESS
 
-void sound_init(void) {
+void sim_sound_init(void) {
 #ifndef SIMULATION_HEADLESS
     // temporarily close stderr because Pa_Initialize outputs lots of stuff.
     int stderr_copy = dup(STDERR_FILENO);
@@ -190,30 +186,30 @@ void sound_init(void) {
     dup2(stderr_copy, STDERR_FILENO);
 #endif //SIMULATION_HEADLESS
 
-    for (int i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
+    for (int i = 0; i < SYS_SOUND_CHANNELS; ++i) {
         channels[i].volume = 1;
     }
 }
 
-void sound_terminate(void) {
+void sim_sound_terminate(void) {
 #ifndef SIMULATION_HEADLESS
     if (stream != 0) {
-        sound_close_stream();
+        sim_sound_close_stream();
     }
     handle_pa_error(Pa_Terminate());
     stream = 0;
 #endif //SIMULATION_HEADLESS
 }
 
-void sound_open_stream(void) {
+void sim_sound_open_stream(void) {
 #ifndef SIMULATION_HEADLESS
     if (stream != 0) {
         return;
     }
 
     // silence all channels initially
-    for (int i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
-        channels[i].note = SOUND_NO_NOTE;
+    for (int i = 0; i < SYS_SOUND_CHANNELS; ++i) {
+        channels[i].note = SYS_SOUND_NO_NOTE;
     }
 
     // create portaudio output stream.
@@ -233,7 +229,7 @@ void sound_open_stream(void) {
 #endif //SIMULATION_HEADLESS
 }
 
-void sound_close_stream(void) {
+void sim_sound_close_stream(void) {
 #ifndef SIMULATION_HEADLESS
     if (stream == 0) {
         return;
@@ -242,4 +238,8 @@ void sound_close_stream(void) {
     if (handle_pa_error(Pa_CloseStream(stream))) return;
     stream = 0;
 #endif //SIMULATION_HEADLESS
+}
+
+bool sim_sound_is_output_enabled(void) {
+    return output_enabled;
 }

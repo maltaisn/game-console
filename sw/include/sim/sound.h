@@ -25,27 +25,27 @@
 /**
  * Initialize sound output.
  */
-void sound_init(void);
+void sim_sound_init(void);
 
 /**
  * De-initialize sound output.
  */
-void sound_terminate(void);
+void sim_sound_terminate(void);
 
 /**
  * Open sound open stream.
  */
-void sound_open_stream(void);
+void sim_sound_open_stream(void);
 
 /**
  * Close sound open stream.
  */
-void sound_close_stream(void);
+void sim_sound_close_stream(void);
 
 /**
  * Returns true if sound output is currently enabled.
  */
-bool sound_is_output_enabled(void);
+bool sim_sound_is_output_enabled(void);
 
 #endif //SIM_SOUND_H
 

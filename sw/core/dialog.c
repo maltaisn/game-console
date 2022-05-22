@@ -16,24 +16,25 @@
  */
 
 #include <core/dialog.h>
-#include <core/trace.h>
 #include <core/utils.h>
 
 #include <string.h>
 
+#ifdef RUNTIME_CHECKS
+#include <core/trace.h>
+#endif
+
 // dialog-arrow-left.png, 3x5, 1-bit mixed, unindexed.
-__attribute__((weak)) const uint8_t DIALOG_ARROW_LEFT[] =
-        {0xf1, 0x10, 0x02, 0x04, 0x17, 0x6c, 0x40};
+static const uint8_t ARROW_LEFT[] = {0xf1, 0x10, 0x02, 0x04, 0x17, 0x6c, 0x40};
 
 // dialog-arrow-right.png, 3x5, 1-bit mixed, unindexed.
-__attribute__((weak)) const uint8_t DIALOG_ARROW_RIGHT[] =
-        {0xf1, 0x10, 0x02, 0x04, 0x4d, 0x7a, 0x00};
+static const uint8_t ARROW_RIGHT[] = {0xf1, 0x10, 0x02, 0x04, 0x4d, 0x7a, 0x00};
 
 // characters allowed in text fields
 static const char TEXT_FIELD_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-*!";
 #define TEXT_FIELD_CHARS_COUNT 30
 
-NO_INIT dialog_t dialog;
+dialog_t dialog;
 
 void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height) {
     dialog.flags = 0;
@@ -466,8 +467,8 @@ void dialog_draw(void) {
             // draw arrows on the left and right side of choice item.
             uint8_t arrow_y = action_y + (action_height - 5) / 2;
             graphics_set_color(DISPLAY_COLOR_WHITE);
-            graphics_image(data_mcu(DIALOG_ARROW_RIGHT), arrow_right_x, arrow_y);
-            graphics_image(data_mcu(DIALOG_ARROW_LEFT), action_x - 4, arrow_y);
+            graphics_image_1bit_mixed(data_mcu(ARROW_RIGHT), arrow_right_x, arrow_y);
+            graphics_image_1bit_mixed(data_mcu(ARROW_LEFT), action_x - 4, arrow_y);
         }
         action_y += action_height + 2;
     }

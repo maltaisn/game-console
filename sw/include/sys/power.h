@@ -21,146 +21,39 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifndef POWER_SLEEP_COUNTDOWN
-#define POWER_SLEEP_COUNTDOWN 3
-#endif
+#include <core/power.h>
 
-#ifndef POWER_INACTIVE_COUNTDOWN_SLEEP
-#define POWER_INACTIVE_COUNTDOWN_SLEEP 90
-#endif
+#define SYS_POWER_SLEEP_COUNTDOWN 3
+#define SYS_POWER_INACTIVE_COUNTDOWN_SLEEP 90
+#define SYS_POWER_INACTIVE_COUNTDOWN_DIM 60
 
-#ifndef POWER_INACTIVE_COUNTDOWN_DIM
-#define POWER_INACTIVE_COUNTDOWN_DIM 60
-#endif
+extern volatile battery_status_t sys_power_battery_status;
+extern volatile uint8_t sys_power_battery_percent;
+extern volatile sleep_cause_t sys_power_sleep_cause;
 
-typedef enum {
-    /** Battery status is unknown (not yet sampled or outside known values). */
-    BATTERY_UNKNOWN = 0x00,
-    /** Battery not connected. */
-    BATTERY_NONE = 0x01,
-    /** USB connected, battery is charging (red LED). */
-    BATTERY_CHARGING = 0x02,
-    /** USB connected, battery charge is complete (green LED). */
-    BATTERY_CHARGED = 0x03,
-    /** USB disconnected, battery is discharging. */
-    BATTERY_DISCHARGING = 0x04,
-} battery_status_t;
+/** Get average battery level ADC reading, for internal use. */
+uint16_t sys_power_get_battery_level_average(void);
 
-typedef enum {
-    /** No upcoming sleep. */
-    SLEEP_CAUSE_NONE,
-    /** Upcoming sleep due to inactivity. */
-    SLEEP_CAUSE_INACTIVE,
-    /** Upcoming sleep due to low battery level. */
-    SLEEP_CAUSE_LOW_POWER,
-    /** Remote sleep caused by communication module. */
-    SLEEP_CAUSE_REMOTE,
-} sleep_cause_t;
+// see core/power.h for documentation
+battery_status_t sys_power_get_battery_status(void);
 
-/**
- * Start taking sample for battery status & battery level (if discharging).
- * Sampling takes at least 110-220k cycles.
- * This gets called automatically on startup & every second by the PIT.
- */
-void power_start_sampling(void);
-
-/**
- * End current sampling, if started.
- */
-void power_end_sampling(void);
-
-/**
- * Wait until battery sample is ready.
- */
-void power_wait_for_sample(void);
-
-/**
- * Get current battery status.
- * Returns `BATTERY_UNKNOWN` status if not sampled yet or sampling failed.
- */
-battery_status_t power_get_battery_status(void);
-
-/**
- * Returns the estimated battery level.
- * Battery level must have been sampled previously with `power_start_sampling()`.
- * Battery level is only available if battery is currently discharging.
- * The level is a percentage from 0 to 100. The system should shutdown at level 0.
- * Must not be called within interrupt.
- */
-uint8_t power_get_battery_percent(void);
+// see core/power.h for documentation
+uint8_t sys_power_get_battery_percent(void);
 
 /**
  * Returns the approximate battery voltage in mV, for debug purposes.
  * Battery must be discharging and battery level must have been sampled previously.
  * Must not be called within interrupt.
  */
-uint16_t power_get_battery_voltage(void);
+uint16_t sys_power_get_battery_voltage(void);
 
-/**
- * Returns true if the +15V regulator is currently enabled.
- */
-bool power_is_15v_reg_enabled(void);
-
-/**
- * Enable or disable the +15V regulator for the display.
- * Must not be called within an interrupt.
- */
-void power_set_15v_reg_enabled(bool enabled);
-
-/**
- * Schedule sleep with a cause.
- * When sleep is scheduled, a short countdown will start to allow the game to save its state.
- * If the countdown is not enabled and wake up is allowed, then this must not be called within an
- * interrupt because sleep will be enabled immediately.
- */
-void power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool countdown);
-
-/**
- * If battery level is too low, schedule sleep, with countdown or not.
- * At least one battery sample must have been taken before calling this.
- */
-void power_schedule_sleep_if_low_battery(bool countdown);
-
-/**
- * Cancel scheduled sleep if any.
- */
-void power_schedule_sleep_cancel(void);
-
-/**
- * Returns the scheduled sleep cause, or `SLEEP_CAUSE_NONE` if sleep has not been scheduled.
- * There's a countdown of `POWER_DOWN_SLEEP` seconds on sleep to let the game save its state.
- */
-sleep_cause_t power_get_scheduled_sleep_cause(void);
+// see core/power.h for documentation
+sleep_cause_t sys_power_get_scheduled_sleep_cause(void);
 
 /**
  * Returns true if sleep countdown has expired and device is due to go to sleep.
  * This will return true at least once in main game loop before going to sleep.
  */
-bool power_is_sleep_due(void);
-
-/**
- * Enter sleep mode.
- */
-void power_enable_sleep(void);
-
-/**
- * Function called right before CPU is put to sleep.
- * Default implementation is weakly linked and does nothing.
- */
-void power_callback_sleep(void);
-
-/**
- * Function called right after CPU wakes up from sleep.
- * Default implementation is weakly linked and does nothing.
- */
-void power_callback_wakeup(void);
-
-/**
- * Function called when sleep is scheduled.
- * Default implementation is weakly linked and does nothing.
- * Note that this is called from an interrupt.
- */
-void power_callback_sleep_scheduled(void);
-
+bool sys_power_is_sleep_due(void);
 
 #endif //SYS_POWER_H

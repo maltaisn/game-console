@@ -21,6 +21,6 @@
 /**
  * Trigger software reset.
  */
-void reset_system(void);
+void sys_reset_system(void);
 
 #endif //SYS_RESET_H

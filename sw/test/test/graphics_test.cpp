@@ -31,7 +31,8 @@
 extern "C" {
 #include <core/graphics.h>
 #include <sim/display.h>
-#include "sys/init.h"
+#include <boot/init.h>
+#include <boot/display.h>
 }
 
 // when set to true, test that have no reference frames will save them and skip the test.
@@ -62,7 +63,7 @@ private:
     void save_error_mask(const Frame& expected, const uint8_t* actual) const {
         std::ostringstream filename;
         filename << "output/" << ::testing::UnitTest::GetInstance()->current_test_info()->name()
-                 << "_" << (int) display_get_page_height() << "_" << current_frame << ".png";
+                 << "_" << (int) sys_display_curr_page_height << "_" << current_frame << ".png";
         std::filesystem::create_directories("output/");
         FILE* out = fopen(filename.str().c_str(), "wb");
         if (!out) {
@@ -117,30 +118,30 @@ public:
 
     template<typename T>
     void do_test(const T& test, const std::string& name = "") {
-        display_first_page();
+        sys_display_first_page();
         do {
             graphics_clear(DISPLAY_COLOR_BLACK);
             test();
-        } while (display_next_page());
+        } while (sys_display_next_page());
 
         if (SAVE_REFERENCE_PNG) {
             std::ostringstream filename;
             filename << "output/" << ::testing::UnitTest::GetInstance()->current_test_info()->name()
-                     << "_" << (int) display_get_page_height() << "_" << current_frame;
+                     << "_" << (int) sys_display_curr_page_height << "_" << current_frame;
             if (!name.empty()) {
                 filename << "_" << name;
             }
             filename << ".png";
             std::filesystem::create_directories("output/");
             FILE* out = fopen(filename.str().c_str(), "wb");
-            display_save(out);
+            sim_display_save(out);
             fclose(out);
         }
 
         if (no_reference) {
             // don't compare, only save the result.
             Frame& frame = frames.emplace_back();
-            std::copy_n(display_data(), DISPLAY_SIZE, frame.begin());
+            std::copy_n(sim_display_data(), DISPLAY_SIZE, frame.begin());
         } else {
             if (current_frame >= frames.size()) {
                 FAIL() << "not enough reference frames";
@@ -148,15 +149,15 @@ public:
 
             // compare result with reference frame at same position.
             const Frame& expected = frames[current_frame];
-            if (!std::equal(expected.begin(), expected.end(), display_data())) {
+            if (!std::equal(expected.begin(), expected.end(), sim_display_data())) {
                 // frame is different
                 ADD_FAILURE() << "difference in frame " << current_frame
                               << (name.empty() ? "" : " (" + name + ")")
-                              << ", with page height " << (int) display_get_page_height();
+                              << ", with page height " << (int) sys_display_curr_page_height;
 
                 // save error mask if max not reached
                 if (error_masks < MAX_ERROR_MASKS) {
-                    save_error_mask(expected, display_data());
+                    save_error_mask(expected, sim_display_data());
                     ++error_masks;
                 }
             }
@@ -168,12 +169,12 @@ public:
     void graphics_test(const T& test) {
         if (no_reference) {
             // saving reference, only do the test once.
-            display_set_page_height(PAGE_HEIGHTS[0]);
+            sys_display_init_page(PAGE_HEIGHTS[0]);
             test();
         } else {
             for (uint8_t page_height : PAGE_HEIGHTS) {
                 current_frame = 0;
-                display_set_page_height(page_height);
+                sys_display_init_page(page_height);
                 test();
             }
         }
@@ -181,7 +182,7 @@ public:
 
 protected:
     static void SetUpTestSuite() {
-        init();
+        sys_init();
     }
 
     void SetUp() override {
@@ -428,150 +429,150 @@ TEST_F(GraphicsTest, graphics_fill_rect) {
         do_rect_test(*this, graphics_fill_rect);
     });
 }
-
-static void do_image_test(GraphicsTest& test, const std::string& asset) {
-    const auto image_data = load_asset(asset);
-    auto image_ptr = data_mcu(image_data.data());
-    graphics_set_color(12);
-    // 128x128 region
-    for (int top = 0; top <= 128; top += 32) {
-        for (int left = 0; left <= 128; left += 32) {
-            test.do_test([=]() {
-                graphics_image_region(image_ptr, 0, 0, left, top, left + 127, top + 127);
-            });
-        }
-    }
-    // 32x32 region
-    for (int x = 0; x < DISPLAY_WIDTH; x += 32) {
-        for (int y = 0; y < DISPLAY_HEIGHT; y += 32) {
-            test.do_test([=]() {
-                graphics_image_region(image_ptr, x, y, x + 64, y + 64, x + 95, y + 95);
-            });
-        }
-    }
-
-}
-
-TEST_F(GraphicsTest, graphics_image_1bit) {
-    graphics_test([&]() {
-        do_image_test(*this, "image256x256-1bit.dat");
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_1bit_indexed) {
-    graphics_test([&]() {
-        do_image_test(*this, "image256x256-1bit-indexed.dat");
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_1bit_raw) {
-    graphics_test([&]() {
-        do_image_test(*this, "image256x256-1bit-raw.dat");
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_4bit) {
-    graphics_test([&]() {
-        do_image_test(*this, "image256x256-4bit.dat");
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_4bit_indexed) {
-    graphics_test([&]() {
-        do_image_test(*this, "image256x256-4bit-indexed.dat");
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_4bit_raw) {
-    graphics_test([&]() {
-        do_image_test(*this, "image256x256-4bit-raw.dat");
-    });
-}
-
-static void do_image_test_thin(GraphicsTest &test, const std::string &suffix) {
-    // 1 pixel wide or 1 pixel tall images (edge case test)
-    const auto image1x1 = load_asset("image1x1" + suffix + ".dat");
-    const auto image1x256 = load_asset("image1x256" + suffix + ".dat");
-    const auto image256x1 = load_asset("image256x1" + suffix + ".dat");
-    graphics_set_color(DISPLAY_COLOR_WHITE);
-    test.do_test([&]() {
-        for (disp_x_t i = 0; i < DISPLAY_WIDTH; ++i) {
-            graphics_image_region(data_mcu(image1x256.data()), i, i, 0, i * 2, 0, i * 2 + 127 - i);
-            graphics_image_region(data_mcu(image256x1.data()), i, i, i * 2, 0, i * 2 + 127 - i, 0);
-        }
-        graphics_image( data_mcu(image1x1.data()), 8, 3);
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_1bit_thin) {
-    graphics_test([&]() {
-        do_image_test_thin(*this, "-bin");
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_4bit_thin) {
-    graphics_test([&]() {
-        do_image_test_thin(*this, "");
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_1bit_various) {
-    // various image dimensions, coordinates & regions
-    const auto font = load_asset("font6x9-bin.dat");
-    const auto chess = load_asset("chess49x54-bin.dat");
-    const auto castle = load_asset("castle-bin.dat");
-    auto font_data = data_mcu(font.data());
-    auto chess_data = data_mcu(chess.data());
-    auto castle_data = data_mcu(castle.data());
-    graphics_set_color(DISPLAY_COLOR_WHITE);
-    graphics_test([&]() {
-        do_test([=]() {
-            graphics_image_region(font_data, 0, 10, 0, 0, 127, 10);
-            graphics_image(chess_data, 79, 74);
-            graphics_image(castle_data, 0, 68);
-        });
-        do_test([=]() {
-            graphics_image_region(font_data, 1, 3, 50, 1, 155, 7);
-            graphics_image_region(chess_data, 50, 51, 10, 11, 45, 47);
-            graphics_image_region(castle_data, 5, 80, 2, 2, 36, 49);
-        });
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_4bit_various) {
-    // various image dimensions, coordinates & regions
-    const auto logo = load_asset("logo.dat");
-    const auto chess = load_asset("chess49x54.dat");
-    const auto lena = load_asset("lena.dat");
-    auto logo_data = data_mcu(logo.data());
-    auto chess_data = data_mcu(chess.data());
-    auto lena_data = data_mcu(lena.data());
-    graphics_set_color(DISPLAY_COLOR_WHITE);
-    graphics_test([&]() {
-        do_test([=]() {
-            graphics_image(lena_data, 18, 16);
-            graphics_image(logo_data, 2, 5);
-            graphics_image(chess_data, 79, 74);
-        });
-        do_test([=]() {
-            graphics_image_region(lena_data, 1, 3, 20, 20, 89, 91);
-            graphics_image_region(chess_data, 80, 11, 10, 11, 45, 47);
-            graphics_image_region(logo_data, 5, 80, 2, 13, 120, 26);
-        });
-    });
-}
-
-TEST_F(GraphicsTest, graphics_image_4bit_alpha) {
-    // various image dimensions, coordinates & regions
-    const auto background = load_asset("image256x256-4bit-raw.dat");
-    const auto overlay = load_asset("logo-alpha.dat");
-    graphics_test([&]() {
-        do_test([&]() {
-            graphics_image_region(data_mcu(background.data()), 0, 0, 64, 64, 191, 191);
-            graphics_image(data_mcu(overlay.data()), 2, 48);
-        });
-    });
-}
+//
+//static void do_image_test(GraphicsTest& test, const std::string& asset) {
+//    const auto image_data = load_asset(asset);
+//    auto image_ptr = data_mcu(image_data.data());
+//    graphics_set_color(12);
+//    // 128x128 region
+//    for (int top = 0; top <= 128; top += 32) {
+//        for (int left = 0; left <= 128; left += 32) {
+//            test.do_test([=]() {
+//                graphics_image_region(image_ptr, 0, 0, left, top, left + 127, top + 127);
+//            });
+//        }
+//    }
+//    // 32x32 region
+//    for (int x = 0; x < DISPLAY_WIDTH; x += 32) {
+//        for (int y = 0; y < DISPLAY_HEIGHT; y += 32) {
+//            test.do_test([=]() {
+//                graphics_image_region(image_ptr, x, y, x + 64, y + 64, x + 95, y + 95);
+//            });
+//        }
+//    }
+//
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_1bit) {
+//    graphics_test([&]() {
+//        do_image_test(*this, "image256x256-1bit.dat");
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_1bit_indexed) {
+//    graphics_test([&]() {
+//        do_image_test(*this, "image256x256-1bit-indexed.dat");
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_1bit_raw) {
+//    graphics_test([&]() {
+//        do_image_test(*this, "image256x256-1bit-raw.dat");
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_4bit) {
+//    graphics_test([&]() {
+//        do_image_test(*this, "image256x256-4bit.dat");
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_4bit_indexed) {
+//    graphics_test([&]() {
+//        do_image_test(*this, "image256x256-4bit-indexed.dat");
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_4bit_raw) {
+//    graphics_test([&]() {
+//        do_image_test(*this, "image256x256-4bit-raw.dat");
+//    });
+//}
+//
+//static void do_image_test_thin(GraphicsTest &test, const std::string &suffix) {
+//    // 1 pixel wide or 1 pixel tall images (edge case test)
+//    const auto image1x1 = load_asset("image1x1" + suffix + ".dat");
+//    const auto image1x256 = load_asset("image1x256" + suffix + ".dat");
+//    const auto image256x1 = load_asset("image256x1" + suffix + ".dat");
+//    graphics_set_color(DISPLAY_COLOR_WHITE);
+//    test.do_test([&]() {
+//        for (disp_x_t i = 0; i < DISPLAY_WIDTH; ++i) {
+//            graphics_image_region(data_mcu(image1x256.data()), i, i, 0, i * 2, 0, i * 2 + 127 - i);
+//            graphics_image_region(data_mcu(image256x1.data()), i, i, i * 2, 0, i * 2 + 127 - i, 0);
+//        }
+//        graphics_image( data_mcu(image1x1.data()), 8, 3);
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_1bit_thin) {
+//    graphics_test([&]() {
+//        do_image_test_thin(*this, "-bin");
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_4bit_thin) {
+//    graphics_test([&]() {
+//        do_image_test_thin(*this, "");
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_1bit_various) {
+//    // various image dimensions, coordinates & regions
+//    const auto font = load_asset("font6x9-bin.dat");
+//    const auto chess = load_asset("chess49x54-bin.dat");
+//    const auto castle = load_asset("castle-bin.dat");
+//    auto font_data = data_mcu(font.data());
+//    auto chess_data = data_mcu(chess.data());
+//    auto castle_data = data_mcu(castle.data());
+//    graphics_set_color(DISPLAY_COLOR_WHITE);
+//    graphics_test([&]() {
+//        do_test([=]() {
+//            graphics_image_region(font_data, 0, 10, 0, 0, 127, 10);
+//            graphics_image(chess_data, 79, 74);
+//            graphics_image(castle_data, 0, 68);
+//        });
+//        do_test([=]() {
+//            graphics_image_region(font_data, 1, 3, 50, 1, 155, 7);
+//            graphics_image_region(chess_data, 50, 51, 10, 11, 45, 47);
+//            graphics_image_region(castle_data, 5, 80, 2, 2, 36, 49);
+//        });
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_4bit_various) {
+//    // various image dimensions, coordinates & regions
+//    const auto logo = load_asset("logo.dat");
+//    const auto chess = load_asset("chess49x54.dat");
+//    const auto lena = load_asset("lena.dat");
+//    auto logo_data = data_mcu(logo.data());
+//    auto chess_data = data_mcu(chess.data());
+//    auto lena_data = data_mcu(lena.data());
+//    graphics_set_color(DISPLAY_COLOR_WHITE);
+//    graphics_test([&]() {
+//        do_test([=]() {
+//            graphics_image(lena_data, 18, 16);
+//            graphics_image(logo_data, 2, 5);
+//            graphics_image(chess_data, 79, 74);
+//        });
+//        do_test([=]() {
+//            graphics_image_region(lena_data, 1, 3, 20, 20, 89, 91);
+//            graphics_image_region(chess_data, 80, 11, 10, 11, 45, 47);
+//            graphics_image_region(logo_data, 5, 80, 2, 13, 120, 26);
+//        });
+//    });
+//}
+//
+//TEST_F(GraphicsTest, graphics_image_4bit_alpha) {
+//    // various image dimensions, coordinates & regions
+//    const auto background = load_asset("image256x256-4bit-raw.dat");
+//    const auto overlay = load_asset("logo-alpha.dat");
+//    graphics_test([&]() {
+//        do_test([&]() {
+//            graphics_image_region(data_mcu(background.data()), 0, 0, 64, 64, 191, 191);
+//            graphics_image(data_mcu(overlay.data()), 2, 48);
+//        });
+//    });
+//}
 
 static void do_glyph_test(GraphicsTest& test, const std::string& asset, size_t num_chars) {
     const auto font_data = load_asset(asset);

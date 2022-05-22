@@ -23,49 +23,63 @@
 #include <stddef.h>
 #include <memory.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define READ_BUFFER_SIZE 8192
 #define ERASE_BYTE 0xff
 
-static uint8_t flash[EXTERNAL_FLASH_SIZE];
+static uint8_t flash[SYS_FLASH_SIZE];
 static bool powered_down;
 
-void flash_read(flash_t address, uint16_t length, uint8_t dest[static length]) {
+void sys_flash_read_absolute(flash_t address, uint16_t length, void* dest) {
+    sys_flash_read_relative(address, length, dest);
+}
+
+void sys_flash_sleep(void) {
+    powered_down = true;
+}
+
+void sys_flash_wakeup(void) {
+    powered_down = false;
+}
+
+void sys_flash_set_offset(flash_t address) {
+    // nothing to do, flash is always absolute in simulation.
+}
+
+void sys_flash_read_relative(flash_t address, uint16_t length, void* dest) {
     if (powered_down) {
-        trace("flash is in power down mode");
-        memset(dest, ERASE_BYTE, length);
+        trace("flash is in power down mode, cannot read");
         return;
     }
-    if (address + length > EXTERNAL_FLASH_SIZE) {
-        // wrap around the end
-        uint16_t wrap_after = EXTERNAL_FLASH_SIZE - address;
-        memcpy(dest, &flash[address], wrap_after);
-        memcpy(&dest[wrap_after], flash, length - wrap_after);
-    } else {
-        memcpy(dest, &flash[address], length);
+    if (address >= SYS_FLASH_SIZE) {
+        return;
+    } else if (address + length > SYS_FLASH_SIZE) {
+        length = SYS_FLASH_SIZE - address;
     }
+    memcpy(dest, &flash[address], length);
 }
 
-const uint8_t* flash_at(flash_t address) {
-    return &flash[address];
-}
-
-void flash_load(flash_t address, size_t length, const uint8_t data[static length]) {
-    if (length > EXTERNAL_FLASH_SIZE) {
-        length = EXTERNAL_FLASH_SIZE;
+void sim_flash_load(flash_t address, size_t length, const uint8_t data[static length]) {
+    if (length + address > SYS_FLASH_SIZE) {
+        length = SYS_FLASH_SIZE - address;
+    } else if (address > SYS_FLASH_SIZE) {
+        return;
     }
     memcpy(flash + address, data, length);
 }
 
-void flash_load_file(flash_t address, FILE* file) {
+void sim_flash_load_file(const char* filename) {
+    FILE* file = fopen(filename, "rb");
     if (!file || ferror(file)) {
-        return;
+        trace("could not read flash file '%s'", filename);
+        exit(1);
     }
-    uint8_t* ptr = flash + address;
+    uint8_t* ptr = flash;
     while (true) {
         size_t n = READ_BUFFER_SIZE;
-        if (ptr + n >= flash + EXTERNAL_FLASH_SIZE) {
-            n = (size_t) (EXTERNAL_FLASH_SIZE - (ptrdiff_t) ptr + flash);
+        if (ptr + n >= flash + SYS_FLASH_SIZE) {
+            n = (size_t) (SYS_FLASH_SIZE - (ptrdiff_t) ptr + flash);
         }
         size_t read = fread(ptr, 1, n, file);
         ptr += read;
@@ -73,23 +87,17 @@ void flash_load_file(flash_t address, FILE* file) {
             // end of file reached, short count.
             break;
         }
-        if (ptr >= flash + EXTERNAL_FLASH_SIZE) {
+        if (ptr >= flash + SYS_FLASH_SIZE) {
             // end of flash reached.
             break;
         }
     }
     // erase the rest of memory
-    memset(ptr, ERASE_BYTE, EXTERNAL_FLASH_SIZE - (ptr - flash));
+    memset(ptr, ERASE_BYTE, SYS_FLASH_SIZE - (ptr - flash));
+
+    fclose(file);
 }
 
-void flash_load_erased(void) {
-    memset(flash, ERASE_BYTE, EXTERNAL_FLASH_SIZE);
-}
-
-void flash_sleep(void) {
-    powered_down = true;
-}
-
-void flash_wakeup(void) {
-    powered_down = false;
+void sim_flash_load_erased(void) {
+    memset(flash, ERASE_BYTE, SYS_FLASH_SIZE);
 }

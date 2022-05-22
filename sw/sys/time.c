@@ -15,32 +15,39 @@
  */
 
 #include <sys/time.h>
-#include <sys/input.h>
-#include <sys/led.h>
+#include <sys/defs.h>
 
-#include <core/sound.h>
+#include <util/atomic.h>
+
+#ifdef BOOTLOADER
+
+#include <boot/input.h>
+#include <boot/sound.h>
+#include <boot/led.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/atomic.h>
 
-static volatile systime_t systick;
+volatile systime_t sys_time_counter;
 
 ISR(RTC_CNT_vect) {
     // called 256 times per second
     RTC.INTFLAGS = RTC_OVF_bm;
 
-    systime_t time = systick + 1;
-    systick = time;
+    systime_t time = sys_time_counter + 1;
+    sys_time_counter = time;
 
-    input_update_state();
-    sound_update();
-    led_blink_update();
+    sys_input_update_state();
+    sys_sound_update();
+    sys_led_blink_update();
 }
 
-systime_t time_get() {
+#endif // BOOTLOADER
+
+ALWAYS_INLINE
+systime_t sys_time_get() {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        return systick;
+        return sys_time_counter;
     }
     return 0;
 }

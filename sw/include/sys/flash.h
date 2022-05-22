@@ -18,30 +18,78 @@
 #ifndef SYS_FLASH_H
 #define SYS_FLASH_H
 
-#include <sys/defs.h>
+#include <core/flash.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 
-#define EXTERNAL_FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+/*
+ * FLASH MEMORY LAYOUT
+ *
+ * App code and app data are both located in the external flash memory.
+ * Both are written as a single block which forms the app image and is read by the bootloader to
+ * load the app. An index is kept at the start of flash with the location of each app
+ * and data associated to them.
+ * The index has a fixed size of 32 entries. Unused entries have an app ID of 0.
+ *
+ * [0..1]: flash signature (0x6367)
+ * [2..31]: --reserved--
+ * [32..2079]: index entries
+ * [2081..]: app data
+ *
+ * Each index entry has the following format:
+ * [0]: app ID
+ * [1..2]: image CRC (code & data)
+ * [3..4]: code CRC
+ * [5..6]: version
+ * [7..8]: bootloader version that app was compiled against
+ * [9..10]: code size in bytes
+ * [11]: display page height
+ * [12..13]: start address of EEPROM data space (0 if none)
+ * [14..15]: size of EEPROM data space (0 if none)
+ * [16..18]: start address of image in flash
+ * [19..26]: --reserved--
+ * [27..29]: total app size in bytes
+ * [30..31]: build date ([0..4]=day, [5..8]=month, [9..15]=year since 2020)
+ * [32..47]: name, ASCII encoding
+ * [48..63]: author, ASCII encoding
+ *
+ * The total index size is 64 * 32 = 2048 bytes.
+ */
 
-/** Address in flash (20-bit). */
-typedef uint24_t flash_t;
+/**
+ * Flash size in bytes. Flash addresses are stored on 24 bits, but 1-bit is reserved to indicate
+ * the location in unified data space. As such, a maximum of 8 MB of flash is supported.
+ */
+#define SYS_FLASH_SIZE ((flash_t) 0x100000)  // 1 MB
+
+#define SYS_FLASH_SIGNATURE 0x6367
+
+#define SYS_FLASH_INDEX_ADDR 32
+#define SYS_FLASH_INDEX_ENTRY_SIZE 64
+
+extern flash_t sys_flash_offset;
+
+/**
+ * Set the offset to use for relative reads.
+ * This allows the app code to be location-independant.
+ */
+void sys_flash_set_offset(flash_t address);
 
 /**
  * Read a number of bytes from flash starting from an address.
+ * The address is absolute in the flash memory space.
  * The bytes are copied to the destination buffer.
  * If reading past the end of flash, the address will be wrapped around.
  */
-void flash_read(flash_t address, uint16_t length, uint8_t dest[]);
+void sys_flash_read_absolute(flash_t address, uint16_t length, void* dest);
 
 /**
- * Enable deep power-down mode on flash device.
+ * Read a number of bytes from flash starting from an address.
+ * The address is relative to the start of the app data space.
+ * The bytes are copied to the destination buffer.
+ * If reading past the end of flash, the address will be wrapped around.
  */
-void flash_sleep(void);
-
-/**
- * Disable deep power-down mode on flash device.
- */
-void flash_wakeup(void);
+void sys_flash_read_relative(flash_t address, uint16_t length, void* dest);
 
 #endif //SYS_FLASH_H

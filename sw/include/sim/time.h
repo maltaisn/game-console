@@ -26,23 +26,23 @@
 /**
  * Initialize time module.
  */
-void time_init(void);
+void sim_time_init(void);
 
 /**
- * Do the things normally done in periodic RTC interrupt.
+ * Do an update of the time module, must be called once every system tick.
  */
-void time_update(void);
+void sim_time_update(void);
 
 /**
  * Return time elapsed since start of simulation, in seconds.
  */
-double time_sim_get(void);
+double sim_time_get(void);
 
 /**
  * Sleep thread for a number of us.
  * In headless mode, this increases the current time instantly.
  */
-void time_sleep(uint32_t us);
+void sim_time_sleep(uint32_t us);
 
 #endif //SIM_TIME_H
 

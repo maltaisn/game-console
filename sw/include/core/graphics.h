@@ -22,7 +22,7 @@
 #include <sys/flash.h>
 
 #include <stdint.h>
-#include <sys/data.h>
+#include "data.h"
 
 /**
  * Spacing in pixels between every glyph when text is drawn.
@@ -62,22 +62,7 @@
  * Raw encoding for 1-bit images is provided for completeness but doesn't provide significant
  * improvements over mixed encoding since the mixed decoding algorithm is very fast.
  *
- * Built-in images (dialog arrows, battery icons) uses mixed 1-bit encoding.
- * If this encoding is disabled, the icons definitions can be overriden.
- *
- * Unused encodings can be disabled using these defines, to save space:
- * - GRAPHICS_NO_1BIT_IMAGE
- * - GRAPHICS_NO_1BIT_RAW_IMAGE
- * - GRAPHICS_NO_1BIT_MIXED_IMAGE (should probably not be disabled, used by built-in images)
- * - GRAPHICS_NO_4BIT_IMAGE
- * - GRAPHICS_NO_4BIT_RAW_IMAGE
- * - GRAPHICS_NO_4BIT_MIXED_IMAGE
- *
- * Other options:
- * - GRAPHICS_NO_INDEXED_IMAGE: disable index support (note that no built-in image is indexed)
- * - GRAPHICS_NO_UNINDEXED_IMAGE: disable support for unindexed images (built-in images will fail)
- * - GRAPHICS_NO_HORIZONTAL_IMAGE_REGION: disable support for left & right bounded image regions.
- * - GRAPHICS_NO_TRANSPARENT_IMAGE: disable support for transparent 4-bit images.
+ * Built-in images (dialog arrows, battery icons) use mixed 1-bit encoding.
  *
  * INDEXING
  *
@@ -164,17 +149,10 @@
  * Very rough benchmark done with tiger128.png & tiger-bin128.png, stored in external flash memory.
  * Clearing only the display takes 21 ms per frame, which was subtracted from the measured time.
  *
- * Default settings (everything enabled):
  * - 1-bit raw:   56 ms  (33 cycles/px)
  * - 1-bit mixed: 62 ms  (37 cycles/px)
  * - 4-bit raw:   101 ms (61 cycles/px)
  * - 4-bit mixed: 119 ms (72 cycles/px)
- *
- * Minimal settings (single enabled encoding, no transparency, no region, etc):
- * - 1-bit raw:   56 ms  (33 cycles/px)
- * - 1-bit mixed: 60 ms  (36 cycles/px)
- * - 4-bit raw:   89 ms  (54 cycles/px)
- * - 4-bit mixed: 106 ms (64 cycles/px)
  */
 typedef data_ptr_t graphics_image_t;
 
@@ -211,6 +189,22 @@ typedef data_ptr_t graphics_image_t;
  * - Characters that are not encoded in font will appear blank (a notable example is the space).
  */
 typedef data_ptr_t graphics_font_t;
+
+typedef struct {
+    graphics_font_t addr;  // this is the address of the start of glyph data
+    uint8_t glyph_count;
+    uint8_t glyph_size;
+    uint8_t offset_bits;
+    uint8_t offset_max;
+    uint8_t line_spacing;
+    uint8_t width;
+    uint8_t height;
+} graphics_font_data_t;
+
+/**
+ * The current font. There is no default value.
+ */
+extern graphics_font_data_t graphics_font;
 
 // 3x5 font, 2 bytes per char, encodes 0x21-0x5a, total size 122 bytes.
 // from https://github.com/olikraus/u8g2/wiki/fntgrpx11#micro, u8g2_font_micro_tr, modified
@@ -278,26 +272,56 @@ void graphics_rect(disp_x_t x, disp_y_t y, uint8_t w, uint8_t h);
 void graphics_fill_rect(disp_x_t x, disp_y_t y, uint8_t w, uint8_t h);
 
 /**
- * Draw an image from unified data space, with top left corner at position (x, y).
- * The image is encoded using one of the encodings described above.
- * 1-bit image will be drawn using current color and current color has no effect on 4-bit images.
- * The image must fully fit within display bounds.
+ * Draw a 1-bit raw image from unified data space, with top left corner at position (x, y),
+ * using the current color. The image must fully fit within display bounds.
  */
-void graphics_image(graphics_image_t data, disp_x_t x, disp_y_t y);
+void graphics_image_1bit_raw(graphics_image_t data, disp_x_t x, disp_y_t y);
 
 /**
- * Same as `graphics_image` but draws a portion of an image.
- * The region coordinates are within the image, (0, 0) being the top left corner.
- * The right and bottom coordinates are inclusive.
- * The image region must fully fit within display bounds.
+ * Same as `graphics_image_1bit_raw` but draws a vertical portion of the image.
+ * The bottom coordinate is inclusive. The image region must fully fit within display bounds.
  */
-#ifndef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
-void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
-                           uint8_t left, uint8_t top, uint8_t right, uint8_t bottom);
-#else
-void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
-                           uint8_t top, uint8_t bottom);
-#endif
+void graphics_image_1bit_raw_region(graphics_image_t data, disp_x_t x, disp_y_t y,
+                                    uint8_t top, uint8_t bottom);
+
+/**
+ * Draw a 1-bit raw image from unified data space, with top left corner at position (x, y),
+ * using the current color. The image must fully fit within display bounds.
+ */
+void graphics_image_1bit_mixed(graphics_image_t data, disp_x_t x, disp_y_t y);
+
+/**
+ * Same as `graphics_image_1bit_raw` but draws a vertical portion of the image.
+ * The bottom coordinate is inclusive. The image region must fully fit within display bounds.
+ */
+void graphics_image_1bit_mixed_region(graphics_image_t data, disp_x_t x, disp_y_t y,
+                                      uint8_t top, uint8_t bottom);
+
+/**
+ * Draw a 1-bit raw image from unified data space, with top left corner at position (x, y),
+ * using the current color. The image must fully fit within display bounds.
+ */
+void graphics_image_4bit_raw(graphics_image_t data, disp_x_t x, disp_y_t y);
+
+/**
+ * Same as `graphics_image_1bit_raw` but draws a vertical portion of the image.
+ * The bottom coordinate is inclusive. The image region must fully fit within display bounds.
+ */
+void graphics_image_4bit_raw_region(graphics_image_t data, disp_x_t x, disp_y_t y,
+                                    uint8_t top, uint8_t bottom);
+
+/**
+ * Draw a 1-bit raw image from unified data space, with top left corner at position (x, y),
+ * using the current color. The image must fully fit within display bounds.
+ */
+void graphics_image_4bit_mixed(graphics_image_t data, disp_x_t x, disp_y_t y);
+
+/**
+ * Same as `graphics_image_1bit_raw` but draws a vertical portion of the image.
+ * The bottom coordinate is inclusive. The image region must fully fit within display bounds.
+ */
+void graphics_image_4bit_mixed_region(graphics_image_t data, disp_x_t x, disp_y_t y,
+                                      uint8_t top, uint8_t bottom);
 
 /**
  * Draw a single glyph using the current font and color.

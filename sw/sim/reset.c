@@ -16,6 +16,10 @@
 
 #include <sys/reset.h>
 
-void reset_system(void) {
-    // not implemented, reset is controlled by comms system which is itself not implemented.
+#include <stdlib.h>
+
+void sys_reset_system(void) {
+    // reset is used to crash the app and go back to bootloader.
+    // there is no bootloader in simulator so we just terminate the process.
+    exit(1);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,36 +16,32 @@
 
 #include <sys/uart.h>
 
-#ifndef DISABLE_COMMS
-static bool fast_mode;
+#ifdef SYS_UART_ENABLE
 
-void uart_write(uint8_t c) {
-    // not implemented
+void sys_uart_init(uint16_t baud_calc) {
+    // no-op
 }
 
-uint8_t uart_read(void) {
-    // not implemented
+void sys_uart_set_baud(uint16_t baud_calc) {
+    // no-op
+}
+
+void sys_uart_write(uint8_t c) {
+    // no-op
+}
+
+uint8_t sys_uart_read(void) {
+    // no data ever available
     return 0;
 }
 
-bool uart_available(void) {
+bool sys_uart_available(void) {
+    // no data ever available
     return false;
 }
 
-void uart_flush(void) {
-    // not implemented
+void sys_uart_flush(void) {
+    // no-op
 }
 
-void uart_set_fast_mode(void) {
-    fast_mode = true;
-}
-
-void uart_set_normal_mode(void) {
-    fast_mode = false;
-}
-
-bool uart_is_in_fast_mode(void) {
-    return fast_mode;
-}
-
-#endif //DISABLE_COMMS
+#endif

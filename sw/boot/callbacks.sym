@@ -1,0 +1,8 @@
+__callback_loop = 0x2000;
+__callback_draw = 0x2004;
+__callback_sleep = 0x2008;
+__callback_wakeup = 0x200c;
+__callback_sleep_scheduled = 0x2010;
+__vector_uart_dre = 0x2014;
+__vector_uart_rxc = 0x2018;
+__callback_setup = 0x201c;

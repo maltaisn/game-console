@@ -15,41 +15,44 @@
  * limitations under the License.
  */
 
-#include <sys/input.h>
+#include <boot/power.h>
+#include <boot/display.h>
+
 #include <sys/power.h>
 
 #include <sim/input.h>
 #include <sim/power.h>
 #include <sim/display.h>
 
+#include <core/input.h>
 #include <core/trace.h>
 
 #include <GL/glut.h>
 
 #define SPECIAL_MASK 0x80000000
 
-#define INACTIVITY_COUNTDOWN_START (POWER_INACTIVE_COUNTDOWN_SLEEP - POWER_SLEEP_COUNTDOWN)
-#define INACTIVITY_COUNTDOWN_DIM (POWER_INACTIVE_COUNTDOWN_DIM - POWER_SLEEP_COUNTDOWN)
+#define INACTIVITY_COUNTDOWN_START (SYS_POWER_INACTIVE_COUNTDOWN_SLEEP - SYS_POWER_SLEEP_COUNTDOWN)
+#define INACTIVITY_COUNTDOWN_DIM (SYS_POWER_INACTIVE_COUNTDOWN_DIM - SYS_POWER_SLEEP_COUNTDOWN)
 
 static uint8_t state;
 static uint8_t inactive_countdown;
 
 static void reset_inactive_countdown(void) {
     if (inactive_countdown == 0) {
-        power_schedule_sleep_cancel();
+        sys_power_schedule_sleep_cancel();
     }
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
 }
 
 static void on_input_change(void) {
     reset_inactive_countdown();
-    power_disable_sleep();
+    sim_power_disable_sleep();
 }
 
 #ifndef SIMULATION_HEADLESS
 static void save_display(void) {
     FILE* file = fopen("screenshot.png", "wb");
-    display_save(file);
+    sim_display_save(file);
     fclose(file);
     trace("screenshot saved to 'screenshot.png'");
 }
@@ -73,6 +76,7 @@ static uint8_t get_key_state_mask(unsigned int key) {
             mask = BUTTON3;
             break;
         case 'e':
+        case '\r':
             mask = BUTTON4;
             break;
         case GLUT_KEY_RIGHT | SPECIAL_MASK:
@@ -91,6 +95,20 @@ static void input_on_key_down(unsigned char key, int x, int y) {
 
     if (key == 'p') {
         save_display();
+    } else if (key == 'b') {
+        sim_power_set_battery_status((power_get_battery_status() + 1) % BATTERY_STATUS_COUNT);
+    } else if (key == '+') {
+        int percent = power_get_battery_percent() + 10;
+        if (percent > 100) {
+            percent = 100;
+        }
+        sim_power_set_battery_percent(percent);
+    } else if (key == '-') {
+        int percent = power_get_battery_percent() - 10;
+        if (percent < 0) {
+            percent = 0;
+        }
+        sim_power_set_battery_percent(percent);
     }
 }
 
@@ -110,7 +128,7 @@ static void input_on_key_up_special(int key, int x, int y) {
 }
 #endif //SIMULATION_HEADLESS
 
-void input_init(void) {
+void sim_input_init(void) {
 #ifndef SIMULATION_HEADLESS
     glutKeyboardFunc(input_on_key_down);
     glutKeyboardUpFunc(input_on_key_up);
@@ -120,38 +138,38 @@ void input_init(void) {
 #endif //SIMULATION_HEADLESS
 }
 
-uint8_t input_get_state(void) {
+uint8_t sys_input_get_state(void) {
     return state;
 }
 
-void input_update_state(void) {
+void sys_input_update_state(void) {
     // no-op, glut callbacks are used instead.
 }
 
-void input_update_state_immediate(void) {
+void sys_input_update_state_immediate(void) {
     // no-op, there's no debouncing in simulator anyway.
 }
 
-void input_dim_if_inactive(void) {
+void sys_input_dim_if_inactive(void) {
 #ifndef DISABLE_INACTIVE_SLEEP
     bool dimmed = inactive_countdown <= INACTIVITY_COUNTDOWN_DIM;
-    if (dimmed && !display_is_dimmed()) {
+    if (dimmed && !sys_display_is_dimmed()) {
         trace("input inactive, display dimmed");
     }
-    display_set_dimmed(dimmed);
+    sys_display_set_dimmed(dimmed);
 #endif
 }
 
-void input_reset_inactivity(void) {
+void sys_input_reset_inactivity(void) {
 #ifndef DISABLE_INACTIVE_SLEEP
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
 #endif
 }
 
-void input_update_inactivity(void) {
+void sys_input_update_inactivity(void) {
 #ifndef DISABLE_INACTIVE_SLEEP
     if (inactive_countdown == 0) {
-        power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
+        sys_power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
     } else {
         --inactive_countdown;
     }
@@ -160,21 +178,21 @@ void input_update_inactivity(void) {
 
 #ifdef SIMULATION_HEADLESS
 
-void input_set_state(uint8_t s) {
+void sim_input_set_state(uint8_t s) {
     if (s != state) {
         state = s;
         on_input_change();
     }
 }
 
-void input_press(uint8_t button_mask) {
+void sim_input_press(uint8_t button_mask) {
     if ((state & button_mask) != button_mask) {
         state |= button_mask;
         on_input_change();
     }
 }
 
-void input_release(uint8_t button_mask) {
+void sim_input_release(uint8_t button_mask) {
     if ((state & button_mask) != 0) {
         state &= ~button_mask;
         on_input_change();

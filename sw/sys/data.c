@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-#include <sys/data.h>
-#include <sys/flash.h>
-#include <sys/eeprom.h>
+#ifdef BOOTLOADER
+
+#include <core/data.h>
+#include <core/flash.h>
 
 #include <string.h>
 
-void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
+#include <boot/defs.h>
+
+BOOTLOADER_NOINLINE
+void sys_data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
     if (address & DATA_FLASH_MASK) {
         flash_read((flash_t) (address & ~DATA_FLASH_MASK), length, dest);
-    } else if (address & DATA_EEPROM_MASK) {
-        eeprom_read((eeprom_t) (address & ~DATA_EEPROM_MASK), length, dest);
     } else {
         memcpy(dest, (const uint8_t*) (uintptr_t) address, length);
     }
 }
+
+#endif  //BOOTLOADER

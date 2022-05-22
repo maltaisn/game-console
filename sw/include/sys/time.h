@@ -18,29 +18,12 @@
 #ifndef SYS_TIME_H
 #define SYS_TIME_H
 
-#include <sys/defs.h>
+#include <core/time.h>
 
-#include <stdint.h>
+extern volatile systime_t sys_time_counter;
 
-#define SYSTICK_FREQUENCY 256
+// see core/time.h for documentation
 
-/**
- * Convert a number of milliseconds to a number of system ticks.
- * Note: this will return 0 if less than a system tick!
- */
-#define millis_to_ticks(n) ((systime_t) (n / 1000.0 * SYSTICK_FREQUENCY + 0.5))
-
-/**
- * Type used to store system time.
- * The 24-bit counter overflows after 65536 seconds (~18.2 h).
- */
-typedef uint24_t systime_t;
-
-/**
- * Returns the system time value.
- * The system time is incremented every 1/256th second.
- * Must not be called within an interrupt.
- */
-systime_t time_get();
+systime_t sys_time_get();
 
 #endif //SYS_TIME_H

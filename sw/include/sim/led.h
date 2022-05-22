@@ -25,7 +25,7 @@
 /**
  * Returns true if status LED is currently on.
  */
-bool led_get(void);
+bool sim_led_get(void);
 
 #endif //SIM_LED_H
 

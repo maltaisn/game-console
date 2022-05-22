@@ -15,34 +15,31 @@
  */
 
 #include <sys/led.h>
+#include <core/led.h>
 #include <stdbool.h>
 
 static bool led_on;
 static uint8_t blink_period;
 static uint8_t blink_counter;
 
-void led_set(void) {
+void sys_led_set(void) {
     led_on = true;
 }
 
-void led_clear(void) {
+void sys_led_clear(void) {
     led_on = false;
 }
 
-void led_toggle(void) {
+void sys_led_toggle(void) {
     led_on = !led_on;
 }
 
-bool led_get(void) {
-    return led_on;
-}
-
-void led_blink(uint8_t ticks) {
+void sys_led_blink(uint8_t ticks) {
     blink_period = ticks;
     blink_counter = 0;
 }
 
-void led_blink_update(void) {
+void sys_led_blink_update(void) {
     if (blink_period == LED_BLINK_NONE) {
         return;
     }
@@ -51,4 +48,8 @@ void led_blink_update(void) {
         led_toggle();
         blink_counter = 0;
     }
+}
+
+bool sim_led_get(void) {
+    return led_on;
 }

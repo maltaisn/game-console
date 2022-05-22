@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
-#include <sys/init.h>
-#include <sys/power.h>
-#include <sys/uart.h>
+#ifdef BOOTLOADER
+
+#include <boot/init.h>
+#include <boot/display.h>
+#include <boot/flash.h>
+#include <boot/input.h>
+#include <boot/power.h>
+#include <boot/sound.h>
+
 #include <sys/sound.h>
 #include <sys/spi.h>
 #include <sys/display.h>
 #include <sys/led.h>
-#include <sys/input.h>
 #include <sys/reset.h>
-#include <sys/flash.h>
-
-#include <core/sound.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -40,7 +42,7 @@
 
 #define ADC_ENABLE() (ADC0.CTRLA = ADC_RESSEL_10BIT_gc | ADC_ENABLE_bm)
 
-static void init_registers(void) {
+static void sys_init_registers(void) {
     // ====== CLOCK =====
     // 10 MHz clock (maximum for 2.8 V supply voltage)
     _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm);
@@ -57,7 +59,7 @@ static void init_registers(void) {
     // there are hardware pull-down so better to set low to avoid sound artifacts on startup.
     VPORTA.OUT = 0;
     // set all CS lines high
-    spi_deselect_all();
+    sys_spi_deselect_all();
 
 #ifndef DISABLE_INACTIVE_SLEEP
     // note: both edges is needed for asynchronous sensing, needed to wake up from deep power down.
@@ -67,14 +69,6 @@ static void init_registers(void) {
     PORTD.PIN3CTRL = PORT_ISC_BOTHEDGES_gc;
     PORTD.PIN4CTRL = PORT_ISC_BOTHEDGES_gc;
     PORTD.PIN5CTRL = PORT_ISC_BOTHEDGES_gc;
-#endif
-
-    // ====== USART ======
-#ifndef DISABLE_COMMS
-    uart_set_normal_mode();
-    USART0.CTRLA = USART_RXCIE_bm;
-    USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
-    CPUINT.LVL1VEC = USART0_RXC_vect_num;
 #endif
 
     // ====== SPI ======
@@ -87,7 +81,7 @@ static void init_registers(void) {
     // PWM is output on PA3 for buzzer. Only high timer is used, low timer is unused.
     TCA0.SPLIT.CTRLD = TCA_SPLIT_SPLITM_bm;
     TCA0.SPLIT.CTRLB = TCA_SPLIT_HCMP0EN_bm;
-    TCA0.SPLIT.HPER = SOUND_PWM_MAX;
+    TCA0.SPLIT.HPER = SYS_SOUND_PWM_MAX;
     TCA0.SPLIT.HCMP0 = 0;
     TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc;
     // The event system channel 0 is set to PA3, with event user EVOUTA pin (PA2),
@@ -129,63 +123,65 @@ static void init_registers(void) {
     sei();
 }
 
-static void init_power_monitor(void) {
+static void sys_init_power_monitor(void) {
     // PIT: interrupt every 1 s for battery sampling and sleep countdown.
     while (RTC.PITSTATUS != 0);
     RTC.PITINTCTRL = RTC_PI_bm;
     PIT_ENABLE();
 }
 
-void init(void) {
+void sys_init(void) {
     uint8_t reset_flags = RSTCTRL.RSTFR;
     if (reset_flags == 0) {
         // dirty reset, reset cleanly.
-        VPORTC.DIR |= PIN0_bm;
-        VPORTC.OUT |= PIN0_bm;
+        sys_led_set();
+        sys_led_clear();
         _delay_ms(1000);
-        reset_system();
+        sys_reset_system();
     }
     RSTCTRL.RSTFR = reset_flags;
 
-    init_registers();
-    init_wakeup();
+    sys_init_registers();
+    sys_init_wakeup();
 }
 
-void init_sleep(void) {
+void sys_init_sleep(void) {
     RTC_DISABLE();
     PIT_DISABLE();
 
     // disable all peripherals to reduce current consumption
-    power_set_15v_reg_enabled(false);
-    display_set_enabled(false);
-    display_sleep();
-    sound_set_output_enabled(false);
-    power_end_sampling();
-    flash_sleep();
-    led_clear();
+    sys_power_set_15v_reg_enabled(false);
+    sys_display_set_enabled(false);
+    sys_display_sleep();
+    sys_sound_set_output_enabled(false);
+    sys_power_end_sampling();
+    sys_flash_sleep();
+    sys_led_clear();
 }
 
-void init_wakeup(void) {
+void sys_init_wakeup(void) {
     // check battery level on startup
     ADC_ENABLE();
-    power_start_sampling();
-    power_wait_for_sample();
-    power_schedule_sleep_if_low_battery(false);
-    init_power_monitor();
+    sys_power_start_sampling();
+    sys_power_wait_for_sample();
+    sys_power_schedule_sleep_if_low_battery(false);
+    sys_init_power_monitor();
 
     // initialize display
-    display_init();
-    display_clear(DISPLAY_COLOR_BLACK);
-    power_set_15v_reg_enabled(true);
-    display_set_enabled(true);
+    sys_display_init();
+    sys_display_clear(DISPLAY_COLOR_BLACK);
+    sys_power_set_15v_reg_enabled(true);
+    sys_display_set_enabled(true);
 
-    input_update_state_immediate();
-    input_reset_inactivity();
+    sys_input_update_state_immediate();
+    sys_input_reset_inactivity();
 
-    sound_update_output_state();
+    sys_sound_update_output_state();
 
-    flash_wakeup();
+    sys_flash_wakeup();
 
     while (RTC.STATUS & RTC_CTRLABUSY_bm);
     RTC_ENABLE();
 }
+
+#endif //BOOTLOADER

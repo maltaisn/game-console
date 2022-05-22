@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,27 +18,10 @@
 #ifndef SYS_DEFS_H
 #define SYS_DEFS_H
 
-#include <stdint.h>
-
-#ifdef __AVR__
-typedef __uint24 uint24_t;
-#else
-#include <stdint.h>
-typedef uint32_t uint24_t;
-#endif
-
-#ifdef __AVR__
-typedef __int24 int24_t;
-#else
-#include <stdint.h>
-typedef int32_t int24_t;
-#endif
-
-// Global data that is not zero initialized.
-#define NO_INIT __attribute__((section(".noinit")))
-
-// Temporary data placed alongside display buffer, to save RAM.
-// This data must not be used across or during display refresh.
-#define SHARED_DISP_BUF __attribute__((section(".shared_disp_buf")))
+// Used on some functions to force them to be inline.
+// This is needed in some cases where the compiler won't inline very simple functions,
+// for an unknown reason. For consistency, it's used on every function in the sys library
+// that should be inlined.
+#define ALWAYS_INLINE __attribute__((always_inline))
 
 #endif //SYS_DEFS_H

@@ -16,80 +16,85 @@
  */
 
 #include <sys/input.h>
+#include <sys/defs.h>
+
+#ifdef BOOTLOADER
+
+#include <boot/display.h>
+#include <boot/power.h>
+
 #include <sys/time.h>
 #include <sys/power.h>
-#include <sys/display.h>
+
+#include <core/input.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+// input state update frequency in Hz.
+#define UPDATE_FREQUENCY 64
 #define UPDATE_PERIOD (SYSTICK_FREQUENCY / UPDATE_FREQUENCY)
 
-#define INACTIVITY_COUNTDOWN_START (POWER_INACTIVE_COUNTDOWN_SLEEP - POWER_SLEEP_COUNTDOWN)
-#define INACTIVITY_COUNTDOWN_DIM (POWER_INACTIVE_COUNTDOWN_DIM - POWER_SLEEP_COUNTDOWN)
+#define INACTIVITY_COUNTDOWN_START (SYS_POWER_INACTIVE_COUNTDOWN_SLEEP - SYS_POWER_SLEEP_COUNTDOWN)
+#define INACTIVITY_COUNTDOWN_DIM (SYS_POWER_INACTIVE_COUNTDOWN_DIM - SYS_POWER_SLEEP_COUNTDOWN)
 
-static volatile uint8_t state;
+volatile uint8_t sys_input_state;
 
-static uint8_t state0;
-static uint8_t state1;
-
-static uint8_t update_register;
-
-#ifndef DISABLE_INACTIVE_SLEEP
-static uint8_t inactive_countdown;
+static uint8_t _state0;
+static uint8_t _state1;
+static uint8_t _update_register;
+static uint8_t _inactive_countdown;
 
 ISR(PORTD_PORT_vect) {
     VPORTD.INTFLAGS = BUTTONS_ALL;
-    if (inactive_countdown == 0) {
-        power_schedule_sleep_cancel();
+    if (_inactive_countdown == 0) {
+        sys_power_schedule_sleep_cancel();
     }
-    inactive_countdown = INACTIVITY_COUNTDOWN_START;
-}
-#endif
-
-uint8_t input_get_state(void) {
-    return state;
+    _inactive_countdown = INACTIVITY_COUNTDOWN_START;
 }
 
-void input_update_state(void) {
+void sys_input_update_state(void) {
     // 2 levels debouncing: new value is most common value among last two and new.
     // this is probably overkill since the buttons don't even bounce...
-    if (update_register == 0) {
+    if (_update_register == 0) {
         const uint8_t port = VPORTD.IN & BUTTONS_ALL;
-        state = (state0 & port) | (state1 & port) | (state0 & state1);
-        state1 = state0;
-        state0 = port;
-        update_register = UPDATE_PERIOD - 1;
+        sys_input_state = (_state0 & port) |
+                          (_state1 & port) |
+                          (_state0 & _state1);
+        _state1 = _state0;
+        _state0 = port;
+        _update_register = UPDATE_PERIOD - 1;
     } else {
-        --update_register;
+        --_update_register;
     }
 }
 
-void input_update_state_immediate(void) {
+void sys_input_update_state_immediate(void) {
     const uint8_t port = VPORTD.IN & BUTTONS_ALL;
-    state = port;
-    state0 = port;
-    state1 = port;
+    sys_input_state = port;
+    _state0 = port;
+    _state1 = port;
 }
 
-void input_dim_if_inactive(void) {
-#ifndef DISABLE_INACTIVE_SLEEP
-    display_set_dimmed(inactive_countdown <= INACTIVITY_COUNTDOWN_DIM);
-#endif
+void sys_input_dim_if_inactive(void) {
+    sys_display_set_dimmed(_inactive_countdown <= INACTIVITY_COUNTDOWN_DIM);
 }
 
-void input_reset_inactivity(void) {
-#ifndef DISABLE_INACTIVE_SLEEP
-    inactive_countdown = INACTIVITY_COUNTDOWN_START;
-#endif
+void sys_input_reset_inactivity(void) {
+    _inactive_countdown = INACTIVITY_COUNTDOWN_START;
 }
 
-void input_update_inactivity(void) {
-#ifndef DISABLE_INACTIVE_SLEEP
-    if (inactive_countdown == 0) {
-        power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
+void sys_input_update_inactivity(void) {
+    if (_inactive_countdown == 0) {
+        sys_power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
     } else {
-        --inactive_countdown;
+        --_inactive_countdown;
     }
-#endif
+}
+
+#endif //BOOTLOADER
+
+ALWAYS_INLINE
+uint8_t sys_input_get_state(void) {
+    return sys_input_state;
 }

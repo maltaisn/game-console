@@ -1,7 +1,5 @@
 # Development files
 dev/
-sw/.sim
-*.dat
 
 # Build files
 out/
@@ -10,3 +8,7 @@ __pycache__/
 
 # Jetbrains
 .idea/
+
+# Data files for assets and eeprom
+*.dat
+assets.c

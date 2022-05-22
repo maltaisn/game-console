@@ -25,31 +25,31 @@
  * The CS line for the selected peripheral should be driven low before and after.
  * This should never be called in an interrupt, in case another transfer is in progress already.
  */
-void spi_transceive(uint16_t length, uint8_t data[]);
+void sys_spi_transceive(uint16_t length, uint8_t data[]);
 
 /**
  * Transmit data on the SPI bus. Length must be at least 1.
  * The CS line for the selected peripheral should be driven low before and after.
  * This should never be called in an interrupt, in case another transfer is in progress already.
  */
-void spi_transmit(uint16_t length, const uint8_t data[]);
+void sys_spi_transmit(uint16_t length, const uint8_t data[]);
 
 /**
  * Transmit a single byte on the SPI bus.
  * The CS line for the selected peripheral should be driven low before and after.
  * This should never be called in an interrupt, in case another transfer is in progress already.
  */
-void spi_transmit_single(uint8_t byte);
+void sys_spi_transmit_single(uint8_t byte);
 
 // Peripheral selection
-void spi_select_flash(void);
-void spi_select_eeprom(void);
-void spi_select_display(void);
+void sys_spi_select_flash(void);
+void sys_spi_select_eeprom(void);
+void sys_spi_select_display(void);
 
 // Peripheral deselection
-void spi_deselect_flash(void);
-void spi_deselect_eeprom(void);
-void spi_deselect_display(void);
-void spi_deselect_all(void);
+void sys_spi_deselect_flash(void);
+void sys_spi_deselect_eeprom(void);
+void sys_spi_deselect_display(void);
+void sys_spi_deselect_all(void);
 
 #endif //SYS_SPI_H

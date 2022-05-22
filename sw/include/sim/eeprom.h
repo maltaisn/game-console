@@ -20,36 +20,34 @@
 #ifndef SIM_EEPROM_H
 #define SIM_EEPROM_H
 
-#include <sys/eeprom.h>
+#include <core/eeprom.h>
+#include <stddef.h>
 
-#include <stdio.h>
-#include <stdint.h>
-
-/**
- * Returns a pointer to EEPROM data at an address.
- * Note that this isn't 100% equivalent to `eeprom_read` since it won't wrap around the end.
+/*
+ * When in simulator, the EEPROM content is typically stored to a file named 'eeprom.dat'.
+ * The size of the simulated EEPROM is restricted to the space reserved by the app in its
+ * configuration file. Thus, relative and absolute operations are always the same.
  */
-const uint8_t* eeprom_at(eeprom_t address);
 
 /**
  * Load EEPROM content from an array.
  */
-void eeprom_load(size_t length, const uint8_t data[]);
+void sim_eeprom_load(eeprom_t address, size_t length, const uint8_t data[]);
 
 /**
  * Load EEPROM content from a file.
  */
-void eeprom_load_file(FILE* file);
+void sim_eeprom_load_file(const char* filename);
 
 /**
  * Load EEPROM content as all erased bytes.
  */
-void eeprom_load_erased(void);
+void sim_eeprom_load_erased(void);
 
 /**
  * Save EEPROM content to a file.
  */
-void eeprom_save(FILE* file);
+void sim_eeprom_save(const char* filename);
 
 #endif //SIM_EEPROM_H
 

@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,40 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define RX_BUFFER_SIZE 64
-#define TX_BUFFER_SIZE 32
+/*
+ * To use the UART module, a SYS_UART_ENABLE define must be set during compilation.
+ * This is to avoid the declaration of the uart callbacks when it's not used.
+ */
+
+#define SYS_UART_RX_BUFFER_SIZE 64
+#define SYS_UART_TX_BUFFER_SIZE 32
+
+#ifdef SIMULATION
+#define SYS_UART_BAUD_RATE(baud) 0
+#else
+// As given by datasheet formula, Table 23-1, Rev. C 01/2021, for asynchronous USART with CLK2X=1
+#define SYS_UART_BAUD_RATE(baud) ((uint16_t) ((64.0 * F_CPU / (8.0 * baud)) + 0.5))
+#endif
+
+/**
+ * Initialize the UART interface with a baud rate.
+ * This must be called before reading or writing anything.
+ */
+void sys_uart_init(uint16_t baud_calc);
+
+/**
+ * Set the baud rate to use for UART communication.
+ * This should be done first or after flushing to ensure the buffers are empty.
+ * Use the `SYS_UART_BAUD_RATE` macro to compute the argument value.
+ */
+void sys_uart_set_baud(uint16_t baud_calc);
 
 /**
  * Write a byte to the UART. The byte may be buffered or transmitted directly.
  * This function is never blocking. Interrupts must be enabled when called,
  * because the function waits for an interrupt in the case that buffer is full.
  */
-void uart_write(uint8_t c);
+void sys_uart_write(uint8_t c);
 
 /**
  * Read a byte from the UART. This function is blocking if buffer is empty.
@@ -37,34 +62,19 @@ void uart_write(uint8_t c);
  * Interrupts must be enabled when called, because the function waits for an interrupt in
  * the case that the buffer is empty.
  */
-uint8_t uart_read(void);
+uint8_t sys_uart_read(void);
 
 /**
  * Returns true if data is available to be read from the RX buffer.
  * If this returns true, the next call to `uart_read` will not be blocking.
  */
-bool uart_available(void);
+bool sys_uart_available(void);
 
 /**
  * Wait until TX buffer is empty and last transmission is complete.
  * Interrupts must be enabled when this is called.
  */
-void uart_flush(void);
-
-/**
- * Set UART in fast mode (use UART_BAUD_FAST baud rate).
- */
-void uart_set_fast_mode(void);
-
-/**
- * Set UART in normal mode (use UART_BAUD baud rate).
- */
-void uart_set_normal_mode(void);
-
-/**
- * Returns true if UART is currently in fast mode.
- */
-bool uart_is_in_fast_mode(void);
+void sys_uart_flush(void);
 
 
 #endif //SYS_UART_H

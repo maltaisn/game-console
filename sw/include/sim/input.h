@@ -23,24 +23,24 @@
 /**
  * Initialize keyboard callbacks for input module.
  */
-void input_init(void);
+void sim_input_init(void);
 
 #ifndef SIMULATION_HEADLESS
 
 /**
  * Set input state (headless only).
  */
-void input_set_state(uint8_t state);
+void sim_input_set_state(uint8_t state);
 
 /**
  * Update input state to set buttons pressed (headless only).
  */
-void input_press(uint8_t button_mask);
+void sim_input_press(uint8_t button_mask);
 
 /**
  * Update input state to set buttons released (headless only).
  */
-void input_release(uint8_t button_mask);
+void sim_input_release(uint8_t button_mask);
 
 #endif //SIMULATION_HEADLESS
 

@@ -1,8 +1,11 @@
 
-SRC_DIRS += sim
-BUILD_DIR := build/test
+PLATFORM := test
 
 include common.mk
+
+CSOURCES += app/callbacks.c
+SRC_DIRS += sim
+INCLUDE_DIRS += boot/include
 
 GTEST_DIR := gtest
 GTEST_DIR_LIB := $(GTEST_DIR)/build/lib
@@ -19,7 +22,7 @@ CXX := g++
 
 # tests run in "headless" simulator mode.
 # the simulator will have no GUI, produce no sound, and time will be controllable.
-DEFINES += SIMULATION SIMULATION_HEADLESS
+DEFINES += SIMULATION SIMULATION_HEADLESS BOOTLOADER
 
 CFLAGS += -Wextra -Wno-unused-parameter -g3 \
           -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined -pthread

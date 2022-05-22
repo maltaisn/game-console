@@ -20,33 +20,17 @@
 
 #include <stdint.h>
 
-#define LED_BLINK_NONE 0
+extern uint8_t sys_led_blink_period;  // LED_BLINK_NONE at startup
+extern uint8_t sys_led_blink_counter;
 
-/**
- * Turn the LED on.
- */
-void led_set(void);
+// see core/led.h for documentation
 
-/**
- * Turn the LED off.
- */
-void led_clear(void);
+void sys_led_set(void);
 
-/**
- * Toggle the LED.
- */
-void led_toggle(void);
+void sys_led_clear(void);
 
-/**
- * Blink the LED at a certain half-period in system ticks.
- * Note that setting, clearing and toggling the LED does not disable blinking.
- * Blinking must be disabled by calling `led_blink(LED_BLINK_NONE)`.
- */
-void led_blink(uint8_t ticks);
+void sys_led_toggle(void);
 
-/**
- * Called every tick to update LED blinking.
- */
-void led_blink_update(void);
+void sys_led_blink(uint8_t ticks);
 
 #endif //SYS_LED_H

@@ -75,7 +75,7 @@ static void draw_display(void) {
     glPushMatrix();
     glTranslatef(50, 20, 0);
     glScalef(DISPLAY_PIXEL_SIZE, DISPLAY_PIXEL_SIZE, 1);
-    display_draw();
+    sim_display_draw();
     glPopMatrix();
 }
 
@@ -89,7 +89,7 @@ static void window_draw(void) {
     const battery_status_t vbat_status = power_get_battery_status();
     draw_led(22.5f, 30, 0.07f, 0.8f, 0.15f, vbat_status == BATTERY_CHARGED);
     draw_led(22.5f, 60, 1.0f, 0.2f, 0.2f, vbat_status == BATTERY_CHARGING);
-    draw_led(22.5f, 90, 0.95f, 0.95f, 0.95f, led_get());
+    draw_led(22.5f, 90, 0.95f, 0.95f, 0.95f, sim_led_get());
 
     draw_display();
 }

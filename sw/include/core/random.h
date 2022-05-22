@@ -18,7 +18,7 @@
 #ifndef CORE_RANDOM_H
 #define CORE_RANDOM_H
 
-#include <sys/defs.h>
+#include <stdint.h>
 
 // Note: the random algorithm is a 16-bit XOR shift,
 // which has limited randomness but should be fine for game purposes.

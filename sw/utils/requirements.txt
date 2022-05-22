@@ -1,0 +1,6 @@
+mido ~= 1.2.10
+pillow ~= 8.1.2
+argparse ~= 1.4.0
+crc ~= 1.2.0
+pyserial~=3.5
+bitarray~=2.5.1

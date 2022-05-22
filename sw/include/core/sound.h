@@ -19,8 +19,8 @@
 #define CORE_SOUND_H
 
 #include <sys/time.h>
-#include <sys/sound.h>
-#include <sys/data.h>
+
+#include <core/data.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -96,13 +96,6 @@
  * - 0xff: last byte of sound data
  */
 
-// Maximum supported subdivision of a beat (1/16th of a beat)
-#define SOUND_RESOLUTION 16
-
-// The size of each track buffer, to avoid reading from flash one byte at a time.
-// A buffer size of 16 should give about 2-4 seconds of equivalent playback time.
-#define TRACK_BUFFER_SIZE 20
-
 // Masks used to check whether a track is started.
 #define TRACK0_STARTED (1 << 0)
 #define TRACK1_STARTED (1 << 1)
@@ -115,15 +108,25 @@
 #define TRACKS_STARTED_ALL (TRACK0_STARTED | TRACK1_STARTED | TRACK2_STARTED)
 #define TRACKS_PLAYING_ALL (TRACK0_PLAYING | TRACK1_PLAYING | TRACK2_PLAYING)
 
-#define encode_bpm_tempo(bpm) ((uint8_t) ((60.0 * SYSTICK_FREQUENCY) / ((bpm) * SOUND_RESOLUTION) - 0.5))
+#define encode_bpm_tempo(bpm) ((uint8_t) \
+    ((60.0 * SYSTICK_FREQUENCY) / ((bpm) * SYS_SOUND_RESOLUTION) - 0.5))
+
+typedef enum {
+    SOUND_VOLUME_0,
+    SOUND_VOLUME_1,
+    SOUND_VOLUME_2,
+    SOUND_VOLUME_3,
+    SOUND_VOLUME_OFF = 0xff,
+} sound_volume_t;
+
+typedef enum {
+    SOUND_CHANNEL0_VOLUME0 = (1 << 2),
+    SOUND_CHANNEL1_VOLUME0 = (1 << 3),
+    SOUND_CHANNEL2_VOLUME0 = (1 << 4),
+    SOUND_CHANNEL2_VOLUME1 = (1 << 5),
+} sound_channel_volume_t;
 
 typedef data_ptr_t sound_t;
-
-/**
- * Fill track buffers with sound data. This must be called periodically
- * to avoid buffer underrun, in which case sound will be cut.
- */
-void sound_fill_track_buffers(void);
 
 /**
  * Load and initialize tracks from data contained in unified data space.
@@ -132,12 +135,6 @@ void sound_fill_track_buffers(void);
  * The "playing" state of the track is set for loaded tracks.
  */
 void sound_load(sound_t address);
-
-/**
- * Enable or disable buzzer output depending on volume level and whether there's any track playing.
- * This allows to save CPU time (no timer interrupts) and reduce current consumption.
- */
-void sound_update_output_state(void);
 
 /**
  * Start playback for given tracks. (using TRACKn_STARTED masks)
@@ -198,11 +195,6 @@ void sound_set_channel_volume(uint8_t channel, sound_channel_volume_t volume);
  */
 sound_channel_volume_t sound_get_channel_volume(uint8_t channel);
 
-/**
- * Update sound state after one system time counter tick.
- * This is called automatically during the interrupt.
- */
-void sound_update(void);
-
+#include <sim/sound.h>
 
 #endif //CORE_SOUND_H

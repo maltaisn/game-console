@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,16 @@
  */
 
 #include <sys/spi.h>
+#include <sys/defs.h>
 
 #include <avr/io.h>
 
-void spi_transceive(uint16_t length, uint8_t data[static length]) {
+#ifdef BOOTLOADER
+
+#include <boot/defs.h>
+
+BOOTLOADER_NOINLINE
+void sys_spi_transceive(uint16_t length, uint8_t data[static length]) {
     // SPI is triple-buffered is the transmit direction and double buffered in the receive direction.
     // Here we only use one buffer level in the transmit direction.
     // 1. Write the first byte to be transmitted.
@@ -39,7 +45,8 @@ void spi_transceive(uint16_t length, uint8_t data[static length]) {
     data[pos] = SPI0.DATA;
 }
 
-void spi_transmit(uint16_t length, const uint8_t data[static length]) {
+BOOTLOADER_NOINLINE
+void sys_spi_transmit(uint16_t length, const uint8_t data[static length]) {
     // same as transceive but not receiving.
     SPI0.DATA = *data++;
     while (--length) {
@@ -52,37 +59,47 @@ void spi_transmit(uint16_t length, const uint8_t data[static length]) {
     SPI0.DATA;
 }
 
-void spi_transmit_single(uint8_t byte) {
+BOOTLOADER_NOINLINE
+void sys_spi_transmit_single(uint8_t byte) {
     SPI0.DATA = byte;
     while (!(SPI0.INTFLAGS & SPI_RXCIF_bm));
     SPI0.DATA;
 }
 
-void spi_select_flash(void) {
+#endif //BOOTLOADER
+
+ALWAYS_INLINE
+void sys_spi_select_flash(void) {
     VPORTF.OUT &= ~PIN0_bm;
 }
 
-void spi_select_eeprom(void) {
+ALWAYS_INLINE
+void sys_spi_select_eeprom(void) {
     VPORTF.OUT &= ~PIN1_bm;
 }
 
-void spi_select_display(void) {
+ALWAYS_INLINE
+void sys_spi_select_display(void) {
     VPORTC.OUT &= ~PIN1_bm;
 }
 
-void spi_deselect_flash(void) {
+ALWAYS_INLINE
+void sys_spi_deselect_flash(void) {
     VPORTF.OUT |= PIN0_bm;
 }
 
-void spi_deselect_eeprom(void) {
+ALWAYS_INLINE
+void sys_spi_deselect_eeprom(void) {
     VPORTF.OUT |= PIN1_bm;
 }
 
-void spi_deselect_display(void) {
+ALWAYS_INLINE
+void sys_spi_deselect_display(void) {
     VPORTC.OUT |= PIN1_bm;
 }
 
-void spi_deselect_all(void) {
+ALWAYS_INLINE
+void sys_spi_deselect_all(void) {
     VPORTF.OUT |= PIN0_bm;
     VPORTF.OUT |= PIN1_bm;
     VPORTC.OUT |= PIN1_bm;

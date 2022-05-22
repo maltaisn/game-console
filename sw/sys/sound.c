@@ -16,9 +16,14 @@
  */
 
 #include <sys/sound.h>
+#include <sys/defs.h>
 
 #include <avr/io.h>
+
+#ifdef BOOTLOADER
+#include <boot/defs.h>
 #include <avr/interrupt.h>
+#endif  //BOOTLOADER
 
 #define GLOBAL_VOLUME_MASK 0x03
 
@@ -38,15 +43,29 @@
 // zeroing the state of all tracks as an optimization won't make any perceptible difference.
 #define out_level GPIOR0
 
-static sound_volume_t global_volume; // = SOUND_VOLUME_0
-static sound_channel_volume_t channel2_volume = SOUND_CHANNEL2_VOLUME0;
+#define TCA_ENABLE() (TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc | TCA_SPLIT_ENABLE_bm)
+#define TCA_DISABLE() (TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc)
+
+#define TCB_ENABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm)
+#define TCB_DISABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc)
+
+
+#define HBRIDGE_ENABLE() PORTA.PIN2CTRL = PORT_INVEN_bm; \
+                         EVSYS.USEREVOUTA = EVSYS_CHANNEL_CHANNEL0_gc
+#define HBRIDGE_DISABLE() PORTA.PIN2CTRL = 0; \
+                          EVSYS.USEREVOUTA = EVSYS_CHANNEL_OFF_gc
+
+#ifdef BOOTLOADER
+
+BOOTLOADER_KEEP sound_volume_t sys_sound_global_volume; // = SOUND_VOLUME_0
+BOOTLOADER_KEEP sound_channel_volume_t sys_sound_channel2_volume = SOUND_CHANNEL2_VOLUME0;
 
 // Timer counts for TCA PWM timer.
 // The value corresponds to the number of bits set in the 2-5 position in out_level,
 // multiplied by an arbitrary constant to account for the global volume and channel volume.
 // The maximum value in array must be SOUND_MAX_PWM.
 // The condition where both masks for channel 2 are set must never happen (no associated values).
-static uint8_t PWM_LEVELS[] = {
+static uint8_t _PWM_LEVELS[] = {
         0, 0, 0, 0,
         2, 4, 8, 8,
         2, 4, 8, 8,
@@ -65,7 +84,7 @@ static uint8_t PWM_LEVELS[] = {
 // Counts are calculated using the following formula:
 //   [count] = round([f_cpu] / [prescaler] / [note frequency] / 2) - 1
 // Maximum error is about 0.01 semitone.
-static uint16_t TIMER_NOTES[] = {
+static uint16_t _TIMER_NOTES[] = {
         38222, 36076, 34051, 32140, 30336, 28634, 27026, 25510, 24078, 22726, 21451, 20247,
         19110, 18038, 17025, 16070, 15168, 14316, 13513, 12754, 12038, 11363, 10725, 10123,
         9555, 9018, 8512, 8034, 7583, 7158, 6756, 6377, 6019, 5681, 5362, 5061,
@@ -74,21 +93,10 @@ static uint16_t TIMER_NOTES[] = {
         1193, 1126, 1063, 1003, 947, 894, 844, 796, 751, 709, 669, 632, 596,
 };
 
-#define TCA_ENABLE() (TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc | TCA_SPLIT_ENABLE_bm)
-#define TCA_DISABLE() (TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc)
-
-#define TCB_ENABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm)
-#define TCB_DISABLE(tcb) ((tcb).CTRLA = TCB_CLKSEL_CLKDIV2_gc)
-
-#define HBRIDGE_ENABLE() PORTA.PIN2CTRL = PORT_INVEN_bm; \
-                         EVSYS.USEREVOUTA = EVSYS_CHANNEL_CHANNEL0_gc
-#define HBRIDGE_DISABLE() PORTA.PIN2CTRL = 0; \
-                          EVSYS.USEREVOUTA = EVSYS_CHANNEL_OFF_gc
-
-void sound_set_output_enabled(bool enabled) {
+void sys_sound_set_output_enabled(bool enabled) {
     if (enabled) {
         TCA_ENABLE();
-        if (global_volume >= HBRIDGE_MIN_VOLUME) {
+        if (sys_sound_global_volume >= HBRIDGE_MIN_VOLUME) {
             HBRIDGE_ENABLE();
         }
     } else {
@@ -101,49 +109,17 @@ void sound_set_output_enabled(bool enabled) {
     }
 }
 
-void sound_play_note(uint8_t note, uint8_t channel) {
-    bool has_note = note != SOUND_NO_NOTE;
+BOOTLOADER_NOINLINE
+void sys_sound_play_note(uint8_t note, uint8_t channel) {
+    bool has_note = note != SYS_SOUND_NO_NOTE;
     TCB_t* tcb = &TCB0 + channel;
     if (has_note) {
-        tcb->CCMP = TIMER_NOTES[note];
+        tcb->CCMP = _TIMER_NOTES[note];
         TCB_ENABLE(*tcb);
     } else {
         TCB_DISABLE(*tcb);
         // see Note A
         out_level &= GLOBAL_VOLUME_MASK;
-    }
-}
-
-void sound_set_volume_impl(sound_volume_t volume) {
-    if (volume != SOUND_VOLUME_OFF) {
-        out_level = volume;  // see Note A
-    }
-    if (volume >= HBRIDGE_MIN_VOLUME) {
-        HBRIDGE_ENABLE();
-    } else {
-        HBRIDGE_DISABLE();
-    }
-    global_volume = volume;
-}
-
-sound_volume_t sound_get_volume_impl(void) {
-    return global_volume;
-}
-
-void sound_set_channel_volume_impl(uint8_t channel, sound_channel_volume_t volume) {
-    if (channel == 2) {
-        channel2_volume = volume;
-    }
-    // only one supported level for other channels
-}
-
-sound_channel_volume_t sound_get_channel_volume_impl(uint8_t channel) {
-    if (channel == 0) {
-        return SOUND_CHANNEL0_VOLUME0;
-    } else if (channel == 1) {
-        return SOUND_CHANNEL1_VOLUME0;
-    } else {
-        return channel2_volume;
     }
 }
 
@@ -154,7 +130,7 @@ sound_channel_volume_t sound_get_channel_volume_impl(uint8_t channel) {
 ISR(TCB0_INT_vect) {
     uint8_t level = out_level;
     level ^= SOUND_CHANNEL0_VOLUME0;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
+    TCA0.SPLIT.HCMP0 = _PWM_LEVELS[level];
     out_level = level;
     TCB0.INTFLAGS = TCB_CAPT_bm;
 }
@@ -162,15 +138,51 @@ ISR(TCB0_INT_vect) {
 ISR(TCB1_INT_vect) {
     uint8_t level = out_level;
     level ^= SOUND_CHANNEL1_VOLUME0;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
+    TCA0.SPLIT.HCMP0 = _PWM_LEVELS[level];
     out_level = level;
     TCB1.INTFLAGS = TCB_CAPT_bm;
 }
 
 ISR(TCB2_INT_vect) {
     uint8_t level = out_level;
-    level ^= channel2_volume;
-    TCA0.SPLIT.HCMP0 = PWM_LEVELS[level];
+    level ^= sys_sound_channel2_volume;
+    TCA0.SPLIT.HCMP0 = _PWM_LEVELS[level];
     out_level = level;
     TCB2.INTFLAGS = TCB_CAPT_bm;
+}
+
+#endif  //BOOTLOADER
+
+void sys_sound_set_volume(sound_volume_t volume) {
+    if (volume != SOUND_VOLUME_OFF) {
+        out_level = volume;  // see Note A
+    }
+    if (volume >= HBRIDGE_MIN_VOLUME) {
+        HBRIDGE_ENABLE();
+    } else {
+        HBRIDGE_DISABLE();
+    }
+    sys_sound_global_volume = volume;
+}
+
+ALWAYS_INLINE
+sound_volume_t sys_sound_get_volume(void) {
+    return sys_sound_global_volume;
+}
+
+void sys_sound_set_channel_volume(uint8_t channel, sound_channel_volume_t volume) {
+    if (channel == 2) {
+        sys_sound_channel2_volume = volume;
+    }
+    // only one supported level for other channels
+}
+
+sound_channel_volume_t sys_sound_get_channel_volume(uint8_t channel) {
+    if (channel == 0) {
+        return SOUND_CHANNEL0_VOLUME0;
+    } else if (channel == 1) {
+        return SOUND_CHANNEL1_VOLUME0;
+    } else {
+        return sys_sound_channel2_volume;
+    }
 }

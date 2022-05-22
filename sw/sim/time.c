@@ -17,23 +17,24 @@
 #include <sim/time.h>
 #include <sys/time.h>
 
-#include <sys/input.h>
-#include <sys/led.h>
+#include <boot/input.h>
+#include <boot/sound.h>
+#include <boot/led.h>
 
-#include <core/sound.h>
+#ifndef SIMULATION_HEADLESS
+#include <time.h>
+#include <math.h>
+#endif
 
 #define SYSTICK_MAX 0xffffff
 
-void time_update(void) {
-    input_update_state();
-    sound_update();
-    led_blink_update();
+void sim_time_update(void) {
+    sys_input_update_state();
+    sys_sound_update();
+    sys_led_blink_update();
 }
 
 #ifndef SIMULATION_HEADLESS
-
-#include <time.h>
-#include <math.h>
 
 static struct timespec start_time;
 
@@ -42,21 +43,21 @@ static double get_elapsed_time(const struct timespec* start, const struct timesp
            (double) (end->tv_nsec - start->tv_nsec) / 1e9;
 }
 
-void time_init(void) {
+systime_t sys_time_get() {
+    return (systime_t) (lround(sim_time_get() * SYSTICK_FREQUENCY)) & SYSTICK_MAX;
+}
+
+void sim_time_init(void) {
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 }
 
-systime_t time_get() {
-    return (systime_t) (lround(time_sim_get() * SYSTICK_FREQUENCY)) & SYSTICK_MAX;
-}
-
-double time_sim_get(void) {
+double sim_time_get(void) {
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
     return get_elapsed_time(&start_time, &time);
 }
 
-void time_sleep(uint32_t us) {
+void sim_time_sleep(uint32_t us) {
     struct timespec remaining, request = {0, us * 1000};
     nanosleep(&request, &remaining);
 }
@@ -65,19 +66,19 @@ void time_sleep(uint32_t us) {
 
 static systime_t systick;
 
-void time_init(void) {
+void sim_time_init(void) {
     systick = 0;
 }
 
-systime_t time_get() {
+systime_t sys_time_get() {
     return systick & SYSTICK_MAX;
 }
 
-double time_sim_get(void) {
+double sim_time_get(void) {
     return ((double) systick / SYSTICK_FREQUENCY);
 }
 
-void time_sleep(uint32_t us) {
+void sim_time_sleep(uint32_t us) {
     systick += us;
 }
 

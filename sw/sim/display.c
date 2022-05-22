@@ -18,6 +18,7 @@
 #include <sim/time.h>
 
 #include <sys/display.h>
+#include <boot/display.h>
 
 #include <core/trace.h>
 
@@ -31,9 +32,10 @@
 
 #endif
 
-disp_y_t display_page_ystart;
-disp_y_t display_page_yend;
-uint8_t display_page_height;
+disp_y_t sys_display_page_ystart;
+disp_y_t sys_display_page_yend;
+disp_y_t sys_display_page_height;
+disp_y_t sys_display_curr_page_height;
 
 #ifdef SIMULATION_HEADLESS
 #define lock_display_mutex()
@@ -50,80 +52,77 @@ static struct {
     uint8_t buffer[DISPLAY_SIZE];
     size_t buffer_size;
     uint8_t data[DISPLAY_SIZE];
-    uint8_t max_page_height;
     uint8_t* data_ptr;
     bool enabled;
     bool internal_vdd_enabled;
     bool inverted;
     bool dimmed;
     uint8_t contrast;
-    display_gpio_t gpio_mode;
+    sys_display_gpio_t gpio_mode;
 } display;
 
-void display_init(void) {
-    display.max_page_height = ((uint8_t) ((DISPLAY_HEIGHT - 1) / DISPLAY_PAGES + 1));
+void sys_display_init(void) {
     display.data_ptr = 0;
     display.internal_vdd_enabled = true;
     display.enabled = false;
     display.inverted = false;
     display.dimmed = false;
     display.contrast = DISPLAY_DEFAULT_CONTRAST;
-    display.gpio_mode = DISPLAY_GPIO_OUTPUT_LO;
 
 #ifndef SIMULATION_HEADLESS
     pthread_mutex_init(&display_mutex, 0);
 #endif
 }
 
-void display_sleep(void) {
+void sys_display_sleep(void) {
     display.internal_vdd_enabled = false;
 }
 
-void display_set_enabled(bool enabled) {
+void sys_display_set_enabled(bool enabled) {
     display.enabled = enabled;
 }
 
-void display_set_inverted(bool inverted) {
+void sys_display_set_inverted(bool inverted) {
     display.inverted = inverted;
 }
 
-void display_set_contrast(uint8_t contrast) {
+void sys_display_set_contrast(uint8_t contrast) {
     display.contrast = contrast;
 }
 
-void display_set_dimmed(bool dimmed) {
+void sys_display_set_dimmed(bool dimmed) {
     display.dimmed = dimmed;
 }
 
-bool display_is_dimmed(void) {
+bool sys_display_is_dimmed(void) {
     return display.dimmed;
 }
 
-uint8_t display_get_contrast(void) {
+uint8_t sys_display_get_contrast(void) {
     return display.contrast;
 }
 
-void display_set_gpio(display_gpio_t mode) {
+void sys_display_set_gpio(sys_display_gpio_t mode) {
     display.gpio_mode = mode;
 }
 
-void display_set_dc(void) {
+void sys_display_set_dc(void) {
     // no-op
 }
 
-void display_clear_dc(void) {
+void sys_display_clear_dc(void) {
     // no-op
 }
 
-void display_set_reset(void) {
+void sys_display_set_reset(void) {
     // no-op
 }
 
-void display_clear_reset(void) {
+void sys_display_clear_reset(void) {
     // no-op
 }
 
-void display_clear(disp_color_t color) {
+void sys_display_clear(disp_color_t color) {
 #ifdef RUNTIME_CHECKS
     if (color > DISPLAY_COLOR_WHITE) {
         trace("invalid color");
@@ -135,13 +134,30 @@ void display_clear(disp_color_t color) {
     unlock_display_mutex();
 }
 
-void display_first_page(void) {
+void sys_display_init_page(uint8_t height) {
+#ifdef RUNTIME_CHECKS
+    if (height == 0 || height > DISPLAY_HEIGHT) {
+        trace("page height out of bounds");
+        return;
+    }
+#endif
+    sys_display_page_height = height;
+}
+
+void sys_display_first_page(void) {
+#ifdef RUNTIME_CHECKS
+    if (sys_display_page_height == 0) {
+        trace("display page has not been initialized.");
+        return;
+    }
+#endif
+
     lock_display_mutex();
 
-    display_page_ystart = 0;
-    display_page_yend = max_page_height() - 1;
-    display_page_height = max_page_height();
-    display.buffer_size = display_page_height * DISPLAY_NUM_COLS;
+    sys_display_page_ystart = 0;
+    sys_display_page_yend = sys_display_page_height - 1;
+    sys_display_curr_page_height = sys_display_page_height;
+    display.buffer_size = sys_display_page_height * DISPLAY_NUM_COLS;
     display.data_ptr = display.data;
 
     // initialize guard bytes
@@ -151,7 +167,7 @@ void display_first_page(void) {
            sizeof display.buffer - display.buffer_size);
 }
 
-bool display_next_page(void) {
+bool sys_display_next_page(void) {
     if (display.data_ptr == 0) {
         trace("next page called before first page");
         return false;
@@ -180,14 +196,14 @@ bool display_next_page(void) {
            GUARD_BYTE, sizeof display.buffer - display.buffer_size);
 
     // update page bounds
-    display_page_ystart += max_page_height();
-    display_page_yend += max_page_height();
-    if (display_page_yend >= DISPLAY_HEIGHT) {
-        display_page_yend = DISPLAY_HEIGHT - 1;
+    sys_display_page_ystart += sys_display_page_height;
+    sys_display_page_yend += sys_display_page_height;
+    if (sys_display_page_yend >= DISPLAY_HEIGHT) {
+        sys_display_page_yend = DISPLAY_HEIGHT - 1;
     }
-    display_page_height = display_page_yend - display_page_ystart + 1;
+    sys_display_curr_page_height = sys_display_page_yend - sys_display_page_ystart + 1;
 
-    bool has_next_page = display_page_ystart < DISPLAY_HEIGHT;
+    bool has_next_page = sys_display_page_ystart < DISPLAY_HEIGHT;
     if (!has_next_page) {
         display.data_ptr = 0;
 
@@ -195,21 +211,13 @@ bool display_next_page(void) {
 
         // sleep to simulate update delay
         // maximum FPS on game console is about 50
-        time_sleep(20000);
+        sim_time_sleep(20000);
     }
     return has_next_page;
 }
 
-uint8_t* display_buffer(disp_x_t x, disp_y_t y) {
+uint8_t* sys_display_buffer_at(disp_x_t x, disp_y_t y) {
     return &display.buffer[y * DISPLAY_NUM_COLS + x / 2];
-}
-
-void display_set_page_height(uint8_t height) {
-    display.max_page_height = height;
-}
-
-uint8_t display_get_page_height(void) {
-    return display.max_page_height;
 }
 
 #ifndef SIMULATION_HEADLESS
@@ -227,10 +235,10 @@ static float get_pixel_opacity(disp_color_t color) {
 
 #endif
 
-void display_draw(void) {
+void sim_display_draw(void) {
 #ifndef SIMULATION_HEADLESS
     if (!display.enabled || !display.internal_vdd_enabled ||
-        display.gpio_mode != DISPLAY_GPIO_OUTPUT_HI) {
+        display.gpio_mode != SYS_DISPLAY_GPIO_OUTPUT_HI) {
         // display OFF, internal VDD is disabled, or 15V regulator is disabled, nothing shown.
         return;
     }
@@ -267,7 +275,7 @@ void display_draw(void) {
 #endif //SIMULATION_HEADLESS
 }
 
-void display_save(FILE* file) {
+void sim_display_save(FILE* file) {
     if (!file) {
         return;
     }
@@ -299,6 +307,6 @@ void display_save(FILE* file) {
     unlock_display_mutex();
 }
 
-const uint8_t* display_data(void) {
+const uint8_t* sim_display_data(void) {
     return display.data;
 }

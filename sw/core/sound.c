@@ -17,12 +17,20 @@
 
 #include <core/sound.h>
 #include <core/trace.h>
+#include <core/data.h>
 
-#include <sys/data.h>
+#include <sys/sound.h>
+
+#ifdef BOOTLOADER
+
+#include <boot/defs.h>
+#include <boot/sound.h>
+
+#endif //BOOTLOADER
 
 #define SOUND_SIGNATURE 0xf2
 
-#define TRACK_DATA_END_MASK ((data_ptr_t) 0x800000)
+#define DATA_END 0x0
 
 #define IMMEDIATE_PAUSE_OFFSET 0x55
 #define SHORT_PAUSE_OFFSET 0xaa
@@ -69,75 +77,30 @@ static void sound_unlock_mutex(int* arg) {
 #define ATOMIC_BLOCK_IMPL for (int __i __attribute__((cleanup(sound_unlock_mutex))) \
                           = sound_lock_mutex(); __i; __i = 0)
 #else
+
 #include <util/atomic.h>
 
 #define ATOMIC_BLOCK_IMPL ATOMIC_BLOCK(ATOMIC_FORCEON)
 #endif
 
-typedef struct {
-    // Current position in note data array, in unified data space.
-    // TRACK_DATA_END_MASK is set when all data has been read for the track.
-    sound_t data;
-    // Pause duration used after note using immediate pause encoding.
-    uint8_t immediate_pause;
-    // Note being currently played (0-83).
-    uint8_t note;
-    // Time left for note currently being played, in 1/16th of a beat, -1.
-    uint16_t duration_left;
-    // Total duration of note currently being played, in 1/16th of a beat, -1.
-    // The MSB of this field indicates whether the current note is followed by the most common pause.
-    uint16_t duration_total;
-    // Number of times that the current note duration is to be repeated yet.
-    uint8_t duration_repeat;
-    // Buffer used to store upcoming sound data.
-    uint8_t buffer[TRACK_BUFFER_SIZE];
-    // Current position in buffer.
-    uint8_t buffer_pos;
-} track_t;
+#ifdef BOOTLOADER
 
-// Sound tracks, one per channel.
-static NO_INIT track_t tracks[SOUND_CHANNELS_COUNT];
-// Bitfield indicating which tracks are currently started and playing.
-// - 0:2 indicate whether tracks have been started.
-// - 3:5 indicate whether tracks have finished playing.
-// The following states are possible:
-// 1. Not started & not playing: track is stopped and wasn't playing before being stopped -> no sound
-// 2. Not started & playing: track is stopped and was playing before being stopped -> no sound
-// 3. Started & not playing: track is started, but has no data or is finished -> no sound
-// 4. Started & playing: track is started and playing --> sound produced (aka "active")
-static volatile uint8_t tracks_on;
-// Current tempo value.
-static uint8_t tempo;
+sound_track_t sys_sound_tracks[SYS_SOUND_CHANNELS];
+volatile uint8_t sys_sound_tracks_on;
+BOOTLOADER_KEEP uint8_t sys_sound_tempo;
+
 // Delay in system ticks until next 1/16th of a beat is played on all tracks (minus one).
-static uint8_t delay;
-
-/**
- * Fill track data buffer starting from a position by reading from flash.
- * Must be called within an atomic block.
- */
-static void track_fill_buffer(track_t* track, uint8_t start) {
-    const uint8_t read_len = TRACK_BUFFER_SIZE - start;
-    data_read(track->data, read_len, &track->buffer[start]);
-    track->data += read_len;
-
-    // Look for end of track marker byte
-    for (uint8_t i = start; i < TRACK_BUFFER_SIZE; ++i) {
-        if (track->buffer[i] == TRACK_END) {
-            track->data |= TRACK_DATA_END_MASK;
-            break;
-        }
-    }
-}
+static uint8_t sys_sound_delay;
 
 /**
  * Read the next note in track data and set it as current note with its duration.
  * Preconditions: track->duration_left == 0, track is playing.
  * On simulator, this is called from the systick thread and on AVR it's called from an interrupt.
  */
-static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
+static void sys_sound_track_seek_note(sound_track_t* track, uint8_t track_playing_mask) {
     if (track->duration_total & IMMEDIATE_PAUSE_MASK) {
         // note is followed by an immediate pause.
-        track->note = SOUND_NO_NOTE;
+        track->note = SYS_SOUND_NO_NOTE;
         track->duration_left = track->immediate_pause;
         track->duration_total &= ~IMMEDIATE_PAUSE_MASK;
         return;
@@ -146,13 +109,13 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
     uint8_t note = track->buffer[track->buffer_pos];
     if (note == TRACK_END) {
         // no more notes in track, done playing.
-        track->note = SOUND_NO_NOTE;
-        tracks_on &= ~track_playing_mask;
-        sound_update_output_state();
+        track->note = SYS_SOUND_NO_NOTE;
+        sys_sound_tracks_on &= ~track_playing_mask;
+        sys_sound_update_output_state();
         return;
     }
 
-    if (track->buffer_pos > TRACK_BUFFER_SIZE - TRACK_NOTE_MAX_LENGTH) {
+    if (track->buffer_pos > SOUND_TRACK_BUFFER_SIZE - TRACK_NOTE_MAX_LENGTH) {
         // buffer underrun! track buffer wasn't filled recently.
         // keep playing the last note, this will produce a lagging effect.
         trace("buffer underrun on sound track");
@@ -164,7 +127,7 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
         // single byte encoding for pause, no associated duration.
         // note that this doesn't update duration_total!
         track->duration_left = note - SHORT_PAUSE_OFFSET;
-        track->note = SOUND_NO_NOTE;
+        track->note = SYS_SOUND_NO_NOTE;
         return;
     }
 
@@ -199,18 +162,18 @@ static void track_seek_note(track_t* track, uint8_t track_playing_mask) {
  * Update the current note for all playing tracks.
  * On simulator, this is called from the systick thread and on AVR it's called from an interrupt.
  */
-static void tracks_seek_note(void) {
+static void sys_sound_tracks_seek_note(void) {
 #ifdef SIMULATION
     pthread_mutex_lock(&sound_mutex);
 #endif
     uint8_t track_active_mask = TRACK0_ACTIVE;
-    for (uint8_t channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
-        if ((tracks_on & track_active_mask) == track_active_mask) {
+    for (uint8_t channel = 0; channel < SYS_SOUND_CHANNELS; ++channel) {
+        if ((sys_sound_tracks_on & track_active_mask) == track_active_mask) {
             // Track is started & currently playing.
-            track_t* track = &tracks[channel];
+            sound_track_t* track = &sys_sound_tracks[channel];
             if (track->duration_left == 0) {
-                track_seek_note(track, track_active_mask & TRACKS_PLAYING_ALL);
-                sound_play_note(track->note, channel);
+                sys_sound_track_seek_note(track, track_active_mask & TRACKS_PLAYING_ALL);
+                sys_sound_play_note(track->note, channel);
             } else {
                 --track->duration_left;
             }
@@ -222,23 +185,61 @@ static void tracks_seek_note(void) {
 #endif
 }
 
-void sound_fill_track_buffers(void) {
+BOOTLOADER_NOINLINE
+void sys_sound_update_output_state(void) {
+    uint8_t tracks_state = sys_sound_tracks_on;
+    bool any_tracks_active = (tracks_state & TRACK0_ACTIVE) == TRACK0_ACTIVE ||
+                             (tracks_state & TRACK1_ACTIVE) == TRACK1_ACTIVE ||
+                             (tracks_state & TRACK2_ACTIVE) == TRACK2_ACTIVE;
+    sys_sound_set_output_enabled(sound_get_volume() != SOUND_VOLUME_OFF && any_tracks_active);
+}
+
+void sys_sound_update(void) {
+    if (sys_sound_delay == 0) {
+        sys_sound_delay = sys_sound_tempo;
+        sys_sound_tracks_seek_note();
+    } else {
+        --sys_sound_delay;
+    }
+}
+
+#endif //BOOTLOADER
+
+/**
+ * Fill track data buffer starting from a position by reading from flash.
+ * Must be called within an atomic block.
+ */
+static void sys_sound_fill_track_buffer(sound_track_t* track, uint8_t start) {
+    const uint8_t read_len = SOUND_TRACK_BUFFER_SIZE - start;
+    data_read(track->data, read_len, &track->buffer[start]);
+    track->data += read_len;
+
+    // Look for end of track marker byte
+    for (uint8_t i = start; i < SOUND_TRACK_BUFFER_SIZE; ++i) {
+        if (track->buffer[i] == TRACK_END) {
+            track->data = 0;
+            break;
+        }
+    }
+}
+
+void sys_sound_fill_track_buffers(void) {
     uint8_t track_active_mask = TRACK0_ACTIVE;
-    for (uint8_t channel = 0; channel < SOUND_CHANNELS_COUNT; ++channel) {
-        if ((tracks_on & track_active_mask) == track_active_mask) {
+    for (uint8_t channel = 0; channel < SYS_SOUND_CHANNELS; ++channel) {
+        if ((sys_sound_tracks_on & track_active_mask) == track_active_mask) {
             // Track is started & currently playing.
-            track_t* track = &tracks[channel];
+            sound_track_t* track = &sys_sound_tracks[channel];
             ATOMIC_BLOCK_IMPL {
-                if (!(track->data & TRACK_DATA_END_MASK) &&
-                    track->buffer_pos >= TRACK_BUFFER_SIZE - TRACK_BUFFER_MIN_SIZE) {
+                if (track->data != DATA_END &&
+                    track->buffer_pos >= SOUND_TRACK_BUFFER_SIZE - TRACK_BUFFER_MIN_SIZE) {
                     // Not enough data to be guaranteed that next note can be decoded.
                     // Move all remaining data to the start of buffer and fill the rest.
                     uint8_t j = 0;
-                    for (uint8_t i = track->buffer_pos; i < TRACK_BUFFER_SIZE; ++i, ++j) {
+                    for (uint8_t i = track->buffer_pos; i < SOUND_TRACK_BUFFER_SIZE; ++i, ++j) {
                         track->buffer[j] = track->buffer[i];
                     }
                     track->buffer_pos = 0;
-                    track_fill_buffer(track, j);
+                    sys_sound_fill_track_buffer(track, j);
                 }
             }
         }
@@ -258,8 +259,8 @@ void sound_load(sound_t address) {
         uint8_t header[TRACK_HEADER_SIZE];
         uint8_t track_playing_mask = TRACK0_PLAYING;
         uint8_t new_tracks_on = 0;
-        for (uint8_t i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
-            track_t* track = &tracks[i];
+        for (uint8_t i = 0; i < SYS_SOUND_CHANNELS; ++i) {
+            sound_track_t* track = &sys_sound_tracks[i];
             data_read(address, TRACK_HEADER_SIZE, header);
             if (header[0] == i) {
                 // Initialize track from header, fill buffer with first data.
@@ -270,7 +271,7 @@ void sound_load(sound_t address) {
                 track->duration_total = 0;
                 track->duration_repeat = 0;
                 track->buffer_pos = 0;
-                track_fill_buffer(track, 0);
+                sys_sound_fill_track_buffer(track, 0);
                 new_tracks_on |= track_playing_mask;
                 address += (data_ptr_t) track_length;
             }
@@ -281,17 +282,9 @@ void sound_load(sound_t address) {
             trace("loaded sound data has no tracks");
         }
 #endif
-        tracks_on |= new_tracks_on;
+        sys_sound_tracks_on |= new_tracks_on;
     }
-    sound_update_output_state();
-}
-
-void sound_update_output_state(void) {
-    uint8_t tracks_state = tracks_on;
-    bool any_tracks_active = (tracks_state & TRACK0_ACTIVE) == TRACK0_ACTIVE ||
-                             (tracks_state & TRACK1_ACTIVE) == TRACK1_ACTIVE ||
-                             (tracks_state & TRACK2_ACTIVE) == TRACK2_ACTIVE;
-    sound_set_output_enabled(sound_get_volume() != SOUND_VOLUME_OFF && any_tracks_active);
+    sys_sound_update_output_state();
 }
 
 void sound_start(uint8_t t) {
@@ -304,16 +297,16 @@ void sound_start(uint8_t t) {
     ATOMIC_BLOCK_IMPL {
         // start playing current note on started tracks, if they are playing.
         uint8_t track = TRACK0_ACTIVE;
-        for (uint8_t i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
-            if ((t & track) && (tracks_on & track)) {
-                sound_play_note(tracks[i].note, i);
+        for (uint8_t i = 0; i < SYS_SOUND_CHANNELS; ++i) {
+            if ((t & track) && (sys_sound_tracks_on & track)) {
+                sys_sound_play_note(sys_sound_tracks[i].note, i);
             }
             track <<= 1;
         }
 
-        tracks_on |= t;
+        sys_sound_tracks_on |= t;
     }
-    sound_update_output_state();
+    sys_sound_update_output_state();
 }
 
 void sound_stop(uint8_t t) {
@@ -324,57 +317,48 @@ void sound_stop(uint8_t t) {
     }
 #endif
     ATOMIC_BLOCK_IMPL {
-        tracks_on &= ~t;
+        sys_sound_tracks_on &= ~t;
 
         // stop playing current note on stopped tracks
         uint8_t track = TRACK0_STARTED;
-        for (uint8_t i = 0; i < SOUND_CHANNELS_COUNT; ++i) {
+        for (uint8_t i = 0; i < SYS_SOUND_CHANNELS; ++i) {
             if (t & track) {
-                sound_play_note(SOUND_NO_NOTE, i);
+                sys_sound_play_note(SYS_SOUND_NO_NOTE, i);
             }
             track <<= 1;
         }
     }
-    sound_update_output_state();
+    sys_sound_update_output_state();
 }
 
 bool sound_check_tracks(uint8_t t) {
-    return (tracks_on & t) != 0;
+    return (sys_sound_tracks_on & t) != 0;
 }
 
 void sound_set_tempo(uint8_t t) {
-    tempo = t;
+    sys_sound_tempo = t;
 }
 
 uint8_t sound_get_tempo(void) {
-    return tempo;
+    return sys_sound_tempo;
 }
 
 void sound_set_volume(sound_volume_t volume) {
     // should be in atomic block but won't affect sound noticeably.
-    if (volume != sound_get_volume_impl()) {
-        sound_set_volume_impl(volume);
-        sound_update_output_state();
+    if (volume != sys_sound_get_volume()) {
+        sys_sound_set_volume(volume);
+        sys_sound_update_output_state();
     }
 }
 
 sound_volume_t sound_get_volume(void) {
-    return sound_get_volume_impl();
+    return sys_sound_get_volume();
 }
 
 void sound_set_channel_volume(uint8_t channel, sound_channel_volume_t volume) {
-    sound_set_channel_volume_impl(channel, volume);
+    sys_sound_set_channel_volume(channel, volume);
 }
 
 sound_channel_volume_t sound_get_channel_volume(uint8_t channel) {
-    return sound_get_channel_volume_impl(channel);
-}
-
-void sound_update(void) {
-    if (delay == 0) {
-        delay = tempo;
-        tracks_seek_note();
-    } else {
-        --delay;
-    }
+    return sys_sound_get_channel_volume(channel);
 }

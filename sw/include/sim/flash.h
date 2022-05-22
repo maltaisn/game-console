@@ -20,30 +20,30 @@
 #ifndef SIM_FLASH_H
 #define SIM_FLASH_H
 
-#include <sys/flash.h>
+#include <core/flash.h>
+#include <stddef.h>
 
-#include <stdio.h>
-
-/**
- * Returns a pointer to flash data at an address.
- * Note that this isn't 100% equivalent to `flash_read` since it won't wrap around the end.
+/*
+ * When in simulator, the flash content is typically loaded from a file named 'assets.dat'
+ * and contains only the data required by the app.
+ * The size of the simulated flash is the same as the physical flash, but the data is starts
+ * at address 0 instead of a specified offset. Thus, absolute and relative reads are the same.
  */
-const uint8_t* flash_at(flash_t address);
 
 /**
  * Load flash content from an array.
  */
-void flash_load(flash_t address, size_t length, const uint8_t data[]);
+void sim_flash_load(flash_t address, size_t length, const uint8_t data[]);
 
 /**
- * Load flash content from a file, starting at an address.
+ * Load flash content from a file, starting an address 0.
  */
-void flash_load_file(flash_t address, FILE* file);
+void sim_flash_load_file(const char* filename);
 
 /**
  * Load flash content as all erased bytes.
  */
-void flash_load_erased(void);
+void sim_flash_load_erased(void);
 
 #endif //SIM_FLASH_H
 

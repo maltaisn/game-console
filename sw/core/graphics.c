@@ -18,10 +18,16 @@
 #include <core/graphics.h>
 #include <core/trace.h>
 
-#include <sys/data.h>
+#include <core/data.h>
 #include <sys/display.h>
 
 #include <string.h>
+
+#ifdef BOOTLOADER
+
+#include <boot/defs.h>
+
+#endif
 
 /**
  * Important note: when most drawing functions are used in such a way that drawing would happen
@@ -53,16 +59,14 @@
 
 #define IMAGE_SIGNATURE 0xf1
 #define IMAGE_HEADER_SIZE 4
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
 #define IMAGE_INDEX_HEADER_SIZE 2
-#else
-#define IMAGE_INDEX_HEADER_SIZE 0
-#endif
+#define IMAGE_TYPE_FLAGS (IMAGE_FLAG_BINARY | IMAGE_FLAG_RAW)
 
 #define IMAGE_INDEX_BUFFER_SIZE 8
 #define IMAGE_BUFFER_SIZE 16
 
 #define IMAGE_ALPHA_COLOR_NONE 0xff
+#define IMAGE_BOTTOM_NONE 0xff
 
 enum {
     IMAGE_FLAG_BINARY = (1 << 4),
@@ -71,25 +75,33 @@ enum {
     IMAGE_FLAG_INDEXED = (1 << 7),
 };
 
+typedef struct {
+    data_ptr_t data;
+    uint8_t x;
+    uint8_t y;
+    uint8_t top;
+    uint8_t bottom;
+    uint8_t width;
+    uint8_t index_gran;
+    uint8_t alpha_color;
+#ifdef RUNTIME_CHECKS
+    uint8_t flags;
+    bool valid;
+#endif
+} image_context_t;
+
 // currently selected color, black by default.
 #ifdef SIMULATION
 static disp_color_t color;
 #else
+
 #include <avr/io.h>
+
 #define color (*((disp_color_t*) &GPIOR3))
 #endif
 
-// font specs of currently selected font
-static struct {
-    graphics_font_t addr;  // this is the address of the start of glyph data
-    uint8_t glyph_count;
-    uint8_t glyph_size;
-    uint8_t offset_bits;
-    uint8_t offset_max;
-    uint8_t line_spacing;
-    uint8_t width;
-    uint8_t height;
-} font;
+#ifdef BOOTLOADER
+graphics_font_data_t graphics_font;
 
 const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
         0xf0, 0x3a, 0x02, 0x42, 0x00, 0x06, 0x0c, 0xdb, 0x00, 0xb4, 0xfa, 0xbe,
@@ -104,6 +116,7 @@ const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
         0x24, 0xe9, 0xde, 0xb6, 0xd4, 0xb6, 0xfa, 0xb6, 0x7a, 0xbd, 0xa4, 0xb7,
         0x4e, 0xe5
 };
+#endif //BOOTLOADER
 
 // nibble swap is implemented as a single instruction on AVR
 // can be used as a quick >> 4 when the most significant nibble is not important,
@@ -140,20 +153,11 @@ const uint8_t GRAPHICS_BUILTIN_FONT_DATA[] = {
 
 #define saturate_sub(a, b) ((a) <= (b) ? 0 : ((a) - (b)))
 
-void graphics_set_color(disp_color_t c) {
-#ifdef RUNTIME_CHECKS
-    if (c > DISPLAY_COLOR_WHITE) {
-        trace("invalid color");
-        return;
-    }
-#endif
-    color = c;
-}
 
-disp_color_t graphics_get_color(void) {
-    return color;
-}
 
+#ifdef BOOTLOADER
+
+BOOTLOADER_NOINLINE
 void graphics_set_font(graphics_font_t f) {
     // read font header to get its specs
     uint8_t header[FONT_HEADER_SIZE];
@@ -162,38 +166,35 @@ void graphics_set_font(graphics_font_t f) {
         trace("invalid font signature");
         return;
     }
-    font.addr = f + FONT_HEADER_SIZE;
-    font.glyph_count = header[1];
-    font.glyph_size = header[2];
-    font.width = (header[3] & 0xf) + 1;
-    font.height = (header[3] >> 4) + 1;
-    font.offset_bits = header[4] & 0xf;
-    font.offset_max = header[4] >> 4;
-    font.line_spacing = header[5];
+    graphics_font.addr = f + FONT_HEADER_SIZE;
+    graphics_font.glyph_count = header[1];
+    graphics_font.glyph_size = header[2];
+    graphics_font.width = (header[3] & 0xf) + 1;
+    graphics_font.height = (header[3] >> 4) + 1;
+    graphics_font.offset_bits = header[4] & 0xf;
+    graphics_font.offset_max = header[4] >> 4;
+    graphics_font.line_spacing = header[5];
 
 #ifdef RUNTIME_CHECKS
-    if (font.glyph_count > FONT_MAX_GLYPHS) {
+    if (graphics_font.glyph_count > FONT_MAX_GLYPHS) {
         trace("font has too many glyphs");
     }
-    if (font.offset_bits > FONT_MAX_Y_OFFSET_BITS) {
+    if (graphics_font.offset_bits > FONT_MAX_Y_OFFSET_BITS) {
         trace("font Y offset bits out of bounds");
     }
-    if (font.glyph_size < FONT_MIN_GLYPH_SIZE || font.glyph_size > FONT_MAX_GLYPH_SIZE) {
+    if (graphics_font.glyph_size < FONT_MIN_GLYPH_SIZE || graphics_font.glyph_size > FONT_MAX_GLYPH_SIZE) {
         trace("font glyph size out of bounds");
     }
-    if (font.offset_max >= (1 << font.offset_bits)) {
+    if (graphics_font.offset_max >= (1 << graphics_font.offset_bits)) {
         trace("max offset not coherent with offset bits");
     }
-    if (font.line_spacing > FONT_MAX_LINE_SPACING) {
+    if (graphics_font.line_spacing > FONT_MAX_LINE_SPACING) {
         trace("line spacing out of bounds");
     }
 #endif
 }
 
-graphics_font_t graphics_get_font(void) {
-    return font.addr - FONT_HEADER_SIZE;
-}
-
+BOOTLOADER_NOINLINE
 void graphics_clear(disp_color_t c) {
 #ifdef RUNTIME_CHECKS
     if (c > DISPLAY_COLOR_WHITE) {
@@ -202,42 +203,33 @@ void graphics_clear(disp_color_t c) {
     }
 #endif
     c = nibble_copy(c);
-    uint8_t* buffer = display_buffer(0, 0);
-    memset(buffer, c, page_height() * DISPLAY_NUM_COLS);
+    uint8_t* buffer = sys_display_buffer_at(0, 0);
+    memset(buffer, c, sys_display_curr_page_height * DISPLAY_NUM_COLS);
 }
 
+BOOTLOADER_NOINLINE
 static void graphics_pixel_fast(const disp_x_t x, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= page_height()) {
+    if (x >= DISPLAY_WIDTH || y >= sys_display_curr_page_height) {
         trace("drawing outside bounds");
         return;
     }
 #endif
-    uint8_t* buffer = display_buffer(x, y);
+    uint8_t* buffer = sys_display_buffer_at(x, y);
     set_buffer_pixel(color, x, buffer);
 }
 
-void graphics_pixel(const disp_x_t x, const disp_y_t y) {
-#ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
-        trace("drawing outside bounds");
-        return;
-    }
-#endif
-    if (y >= display_page_ystart && y <= display_page_yend) {
-        graphics_pixel_fast(x, y - display_page_ystart);
-    }
-}
-
+BOOTLOADER_NOINLINE
 static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y) {
-    // preconditions: y must be in current page, 0 <= y < page_height().
+    // preconditions: y must be in current page, 0 <= y < display_curr_page_height.
 #ifdef RUNTIME_CHECKS
-    if (x1 < x0 || x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= page_height()) {
+    if (x1 < x0 || x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH ||
+        y >= sys_display_curr_page_height) {
         trace("outside of bounds");
         return;
     }
 #endif
-    uint8_t* buffer = display_buffer(x0, y);
+    uint8_t* buffer = sys_display_buffer_at(x0, y);
     if (x0 & 1) {
         // handle half block at the start
         set_block_right(color, *buffer);
@@ -254,6 +246,7 @@ static void graphics_hline_fast(disp_x_t x0, const disp_x_t x1, const disp_y_t y
     }
 }
 
+BOOTLOADER_NOINLINE
 void graphics_hline(disp_x_t x0, disp_x_t x1, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
     if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
@@ -261,15 +254,16 @@ void graphics_hline(disp_x_t x0, disp_x_t x1, const disp_y_t y) {
         return;
     }
 #endif
-    if (y < display_page_ystart || y > display_page_yend) {
+    if (y < sys_display_page_ystart || y > sys_display_page_yend) {
         return; // completely out of page
     }
     if (x0 > x1) {
         swap(uint8_t, x0, x1);
     }
-    graphics_hline_fast(x0, x1, y - display_page_ystart);
+    graphics_hline_fast(x0, x1, y - sys_display_page_ystart);
 }
 
+BOOTLOADER_NOINLINE
 void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
 #ifdef RUNTIME_CHECKS
     if (y0 >= DISPLAY_HEIGHT || y1 >= DISPLAY_HEIGHT || x >= DISPLAY_WIDTH) {
@@ -280,12 +274,12 @@ void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
     if (y0 > y1) {
         swap(uint8_t, y0, y1);
     }
-    if (y1 < display_page_ystart || y0 > display_page_yend) {
+    if (y1 < sys_display_page_ystart || y0 > sys_display_page_yend) {
         return;  // completely out of page
     }
-    y0 = y0 <= display_page_ystart ? 0 : y0 - display_page_ystart;
-    y1 = y1 > display_page_yend ? page_height() - 1 : y1 - display_page_ystart;
-    uint8_t* buffer = display_buffer(x, y0);
+    y0 = y0 <= sys_display_page_ystart ? 0 : y0 - sys_display_page_ystart;
+    y1 = y1 > sys_display_page_yend ? sys_display_curr_page_height - 1 : y1 - sys_display_page_ystart;
+    uint8_t* buffer = sys_display_buffer_at(x, y0);
     if (x & 1) {
         // on the right side of blocks
         for (uint8_t y = y0; y <= y1; ++y) {
@@ -301,87 +295,7 @@ void graphics_vline(disp_y_t y0, disp_y_t y1, const disp_x_t x) {
     }
 }
 
-void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
-#ifdef RUNTIME_CHECKS
-    if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH ||
-        y0 >= DISPLAY_HEIGHT || y1 >= DISPLAY_HEIGHT) {
-        trace("outside of bounds");
-        return;
-    }
-#endif
-    if (x0 == x1) {
-        graphics_vline(y0, y1, x0);
-    } else if (y0 == y1) {
-        graphics_hline(x0, x1, y0);
-    } else {
-        // https://en.wikipedia.org/wiki/Bresenham's_line_algorithm#All_cases
-        // taken from: https://github.com/olikraus/u8g2/blob/7d1108521680fbb14147a867e0ea15769119b78b/csrc/u8g2_line.c
-        // adapted to include out of page fast path.
-        int8_t dx = (int8_t) ((int8_t) x0 - x1);
-        int8_t dy = (int8_t) ((int8_t) y0 - y1);
-        if (dx < 0) dx = (int8_t) -dx;
-        if (dy < 0) dy = (int8_t) -dy;
-        bool swapxy = false;
-        if (dy > dx) {
-            swapxy = true;
-            swap(uint8_t, dx, dy);
-            swap(uint8_t, x0, y0);
-            swap(uint8_t, x1, y1);
-        }
-        if (x0 > x1) {
-            swap(uint8_t, x0, x1);
-            swap(uint8_t, y0, y1);
-        }
-        int8_t err = (int8_t) (dx >> 1);
-        if (swapxy) {
-            // octants 2, 3, 6, 7
-            const int8_t ystep = y1 > y0 ? 1 : -1;
-            for (; x0 <= x1 && x0 <= display_page_yend; ++x0) {
-                if (x0 >= display_page_ystart) {
-                    graphics_pixel_fast(y0, x0 - display_page_ystart);
-                }
-                err = (int8_t) (err - dy);
-                if (err < 0) {
-                    y0 += ystep;
-                    err = (int8_t) (err + dx);
-                }
-            }
-        } else if (y1 > y0) {
-            // octants 1, 4
-            if (y0 <= display_page_yend) {
-                for (; x0 <= x1; ++x0) {
-                    if (y0 >= display_page_ystart) {
-                        graphics_pixel_fast(x0, y0 - display_page_ystart);
-                    }
-                    err = (int8_t) (err - dy);
-                    if (err < 0) {
-                        ++y0;
-                        if (y0 > display_page_yend) {
-                            break; // out of page
-                        }
-                        err = (int8_t) (err + dx);
-                    }
-                }
-            }
-        } else if (y0 >= display_page_ystart) {
-            // octants 5, 8
-            for (; x0 <= x1; ++x0) {
-                if (y0 <= display_page_yend) {
-                    graphics_pixel_fast(x0, y0 - display_page_ystart);
-                }
-                err = (int8_t) (err - dy);
-                if (err < 0) {
-                    --y0;
-                    if (y0 < display_page_ystart) {
-                        break; // out of page
-                    }
-                    err = (int8_t) (err + dx);
-                }
-            }
-        }
-    }
-}
-
+BOOTLOADER_NOINLINE
 void graphics_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const uint8_t h) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT ||
@@ -402,6 +316,7 @@ void graphics_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const ui
     graphics_vline(y, bottom, right);
 }
 
+BOOTLOADER_NOINLINE
 void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, const uint8_t h) {
 #ifdef RUNTIME_CHECKS
     if (x + w > DISPLAY_WIDTH || y + h > DISPLAY_HEIGHT) {
@@ -414,140 +329,241 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
     }
 #endif
     uint8_t y1 = y + h;
-    if (y + h <= display_page_ystart) {
+    if (y + h <= sys_display_page_ystart) {
         return;  // completely out of page
     }
     // get coordinates within current page
-    const uint8_t y0 = y <= display_page_ystart ? 0 : y - display_page_ystart;
-    y1 = y1 > display_page_yend ? page_height() : y1 - display_page_ystart;
+    const uint8_t y0 = y <= sys_display_page_ystart ? 0 : y - sys_display_page_ystart;
+    y1 = y1 > sys_display_page_yend ? sys_display_curr_page_height : y1 - sys_display_page_ystart;
     const uint8_t x1 = x + w - 1;
     for (uint8_t i = y0; i < y1; ++i) {
         graphics_hline_fast(x, x1, i);
     }
 }
 
-// The graphics_image_nbit functions draw a region of an image in current page.
-// The region height is at most equals to the page height.
-// `y` is a coordinate in the current page (with y=0 being display_page_ystart on display).
-// `data` is a pointer in unified data space to the start of image data (can be derived from index).
-// `image_width` is the width of the image in pixels, minus one.
-//
-// The functions decode image data sequentially until the top limit is reached in image,
-// then start drawing when within left and right bounds, until bottom limit is reached.
-// The decoder state is reset on an index boundary.
-// `index_gran` can be set to 0 if image is not indexed.
-//
-// For 4-bit images, `alpha_color` can be set to the color to treat as alpha, or a non-color
-// value to draw a fully opaque image (e.g. IMAGE_ALPHA_COLOR_NONE).
-
-#ifndef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
-#define within_region() (y_img >= top && x_img >= left && x_img <= right)
-#else
-#define within_region() (y_img >= top)
-#endif
-
-#if defined(GRAPHICS_NO_4BIT_RAW_IMAGE) && defined(GRAPHICS_NO_1BIT_RAW_IMAGE)
-#define GRAPHICS_NO_RAW_IMAGE
-#endif
-
-static void graphics_image_checks(disp_x_t x, disp_y_t y, uint8_t left, uint8_t top,
-                                  uint8_t right, uint8_t bottom, uint8_t image_width) {
+/**
+ * This function loads image parameters from the data space and computes the Y position
+ * as well as the top and bottom position in the current display page.
+ *
+ * `ctx.y` is a coordinate in the current page (with y=0 being sys_display_page_ystart on display).
+ * `ctx.data` is a pointer in unified data space to the start of first image data to be drawn.
+ * `ctx.width` is the width of the image in pixels, minus one.
+ *
+ * The `graphics_image_nbit_*_internal` functions decode image data sequentially until the top
+ * limit is reached in image, then start drawing until bottom limit is reached.
+ * The decoder state is reset on an index boundary.
+ * `ctx.index_gran` is be set to 0 if image is not indexed.
+ *
+ * For 4-bit images, `alpha_color` is be set to the color to treat as alpha, or a non-color
+ * value to draw a fully opaque image (i.e. IMAGE_ALPHA_COLOR_NONE).
+ *
+ * If the `full` argument is set to true, top and bottom arguments are ignored and
+ * the full image will be drawn.
+ */
+BOOTLOADER_NOINLINE
+static void graphics_create_context(image_context_t* ctx, graphics_image_t data,
+                                    const disp_x_t x, const disp_y_t y,
+                                    const uint8_t top, uint8_t bottom) {
 #ifdef RUNTIME_CHECKS
-    if (x >= DISPLAY_WIDTH || y >= page_height() || left > image_width ||
-        right > image_width || bottom < top || (bottom - top) >= page_height()) {
+    ctx->valid = false;
+    if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
         trace("out of bounds");
         return;
     }
+#endif
+
+    // read image header and index header (even if not indexed)
+    uint8_t header[IMAGE_HEADER_SIZE + IMAGE_INDEX_HEADER_SIZE];
+    data_read(data, sizeof header, header);
+#ifdef RUNTIME_CHECKS
+    if (header[0] != IMAGE_SIGNATURE) {
+        trace("invalid image signature");
+        return;
+    }
+#endif
+    const uint8_t flags = header[1];
+    const uint8_t width = header[2];
+    const uint8_t height = header[3];
+    uint8_t index_gran = header[4];
+    const uint8_t index_size = header[5];
+
+    uint8_t alpha_color = IMAGE_ALPHA_COLOR_NONE;
+    if (flags & IMAGE_FLAG_ALPHA) {
+        alpha_color = flags & 0xf;
+#ifdef RUNTIME_CHECKS
+        if (flags & IMAGE_FLAG_BINARY) {
+            trace("binary images do not support transparency");
+            return;
+        }
+#endif
+    }
+
+    data += IMAGE_HEADER_SIZE;
+
+    if (bottom == IMAGE_BOTTOM_NONE) {
+        bottom = height;
+    }
+
+    if (y > sys_display_page_yend || (uint8_t) (y + (bottom - top)) < sys_display_page_ystart) {
+        // out page page, either completely before or after.
+        return;
+    }
+
+#ifdef RUNTIME_CHECKS
+    if (y + bottom - top >= DISPLAY_HEIGHT) {
+        trace("out of bounds");
+        return;
+    }
+    if (top > bottom || bottom > height) {
+        trace("region out of bounds");
+        return;
+    }
+    if (flags & IMAGE_FLAG_INDEXED) {
+        if (flags & IMAGE_FLAG_RAW) {
+            trace("indexed flag is ignored for raw image");
+        } else if (index_gran == 0) {
+            trace("index granularity == 0 in indexed image");
+            return;
+        }
+    }
+#endif //RUNTIME_CHECKS
+
+    // Find the image position and bounds for the current page
+    uint8_t page_y;
+    uint8_t page_top;
+    uint8_t page_bottom;
+    if (flags & IMAGE_FLAG_INDEXED) {
+        // Image is indexed, we can skip parts of it that go before the current page or the
+        // specified top coordinate.
+        data += IMAGE_INDEX_HEADER_SIZE;
+        data_ptr_t index_pos = data;
+        data += index_size;
+
+        uint8_t index_buf[IMAGE_INDEX_BUFFER_SIZE];
+        uint8_t index_buf_pos = sizeof index_buf;
+
+        // To use the index, it's necessary to iterate over all pages that the image was drawn on
+        // to know how many rows were drawn on those pages, in order to find the first row to draw
+        // on the current page.
+        uint8_t page_start = 0;
+        uint8_t page_end = sys_display_page_height - 1;
+        uint8_t index_y = 0;
+        uint8_t actual_top = top;
+        while (true) {
+            // If y is smaller than page end, then the current page is the one on which image starts.
+            if (y <= page_end) {
+                // Get the Y coordinate of the index entry immediately before the actual top position.
+                // at the same time, increment the data pointer to point to this data.
+                const uint8_t bound = saturate_sub(actual_top, index_gran);
+                if (bound > 0) {
+                    // If bound == 0, the 1st index entry has already been read as part of header,
+                    // so the data pointer is already at the right position, and index_y is already 0.
+                    for (; index_y <= bound; index_y += index_gran) {
+                        if (index_buf_pos == sizeof index_buf) {
+                            // index buffer is empty, read more data.
+                            data_read(index_pos, sizeof index_buf, index_buf);
+                            index_pos += sizeof index_buf;
+                            index_buf_pos = 0;
+                        }
+                        data += (uint16_t) index_buf[index_buf_pos++] + 1;
+                    }
+                }
+
+                page_y = saturate_sub(y, page_start);
+                page_top = actual_top - index_y;
+                page_bottom = page_top + min((uint8_t) (page_end - page_start - page_y),
+                                             (uint8_t) (bottom - actual_top));
+
+                if (page_end == sys_display_page_yend) {
+                    break;
+                }
+
+                uint8_t actual_bottom = index_y + page_bottom;
+                actual_top = actual_bottom + 1;
+            }
+
+            page_start += sys_display_page_height;
+            page_end += sys_display_page_height;
+            if (page_end >= DISPLAY_HEIGHT) {
+                page_end = DISPLAY_HEIGHT - 1;
+            }
+        }
+
+    } else {
+        // Not indexed: the whole image data is iterated on for every page.
+        const uint8_t first_y = max(sys_display_page_ystart, y);
+        page_y = saturate_sub(y, sys_display_page_ystart);
+        page_top = top + (first_y - y);
+        page_bottom = page_top + sys_display_page_yend - first_y;
+        if (page_bottom > bottom || bottom < page_top) {
+            page_bottom = bottom;
+        }
+        if (flags & IMAGE_FLAG_RAW) {
+            // Image has raw encoding, skipping rows in data is trivial without need for an index.
+            uint8_t bytes_per_row = width / (flags & IMAGE_FLAG_BINARY ? 8 : 2) + 1;
+            data += page_top * bytes_per_row;
+            page_bottom -= page_top;
+            page_top = 0;
+        } else {
+            // set to zero to make sure the state of the decoder in never reset on index bound.
+            index_gran = 0;
+        }
+    }
+
+    ctx->data = data;
+    ctx->x = x;
+    ctx->y = page_y;
+    ctx->top = page_top;
+    ctx->bottom = page_bottom;
+    ctx->width = width;
+    ctx->index_gran = index_gran;
+    ctx->alpha_color = alpha_color;
+
+#ifdef RUNTIME_CHECKS
+    ctx->flags = flags;
+
+    // sanity check, these conditions should be impossible anyway.
+    if (ctx->y >= sys_display_curr_page_height || ctx->bottom < ctx->top ||
+            (ctx->bottom - ctx->top) >= sys_display_curr_page_height) {
+        trace("out of bounds");
+        return;
+    }
+
+    ctx->valid = true;
 #endif //RUNTIME_CHECKS
 }
 
-#ifndef GRAPHICS_NO_1BIT_IMAGE
+BOOTLOADER_NOINLINE
+static void graphics_image_1bit_mixed_internal(graphics_image_t data, const disp_x_t x,
+                                               const disp_y_t y, const uint8_t top,
+                                               const uint8_t bottom) {
+    image_context_t ctx;
+    graphics_create_context(&ctx, data, x, y, top, bottom);
 
-#ifndef GRAPHICS_NO_1BIT_RAW_IMAGE
-
-static void graphics_image_1bit_raw(graphics_image_t data, const disp_x_t x, const disp_y_t y,
-                                    const uint8_t left, const uint8_t top,
-                                    const uint8_t right, const uint8_t bottom,
-                                    const uint8_t image_width) {
-    graphics_image_checks(x, y, left, top, right, bottom, image_width);
-
-    uint8_t buf[IMAGE_BUFFER_SIZE];
-
-    // current coordinates within the image
-    uint8_t x_img = 0;
-    uint8_t y_img = 0;
-    // current coordinates within the page
-    uint8_t x_page = x;
-    uint8_t y_page = y;
-
-    uint8_t* buffer = display_buffer(x_page, y_page);
-    while (true) {
-        // fill buffer
-        data_read(data, sizeof buf, buf);
-        data += sizeof buf;
-
-        // draw all pixels in buffer
-        uint8_t buf_pos = 0;
-        while (buf_pos < sizeof buf) {
-            uint8_t shift_reg = buf[buf_pos++];
-            for (uint8_t i = 0; i < 8; ++i) {
-                if (within_region()) {
-                    if (shift_reg & 1) {
-                        set_buffer_pixel(color, x_page, buffer);
-                    } else if (x_page & 1) {
-                        ++buffer;
-                    }
-                    ++x_page;
-                }
-                shift_reg >>= 1;
-                if (x_img == image_width) {
-                    // end of scan line, go to next line
-                    x_img = 0;
-                    if (y_img >= top) {
-                        x_page = x;
-                        if (y_img == bottom) {
-                            // bottom of image reached.
-                            return;
-                        }
-                        ++y_page;
-                        buffer = display_buffer(x_page, y_page);
-                    }
-                    ++y_img;
-                    // data in byte cannot cross rows
-                    break;
-                } else {
-                    ++x_img;
-                }
-            }
-        }
+#ifdef RUNTIME_CHECKS
+    if (!ctx.valid) {
+        return;
     }
-}
-
-#endif //GRAPHICS_NO_1BIT_RAW_IMAGE
-
-#ifndef GRAPHICS_NO_1BIT_MIXED_IMAGE
-
-static void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, const disp_y_t y,
-                                      const uint8_t left, const uint8_t top,
-                                      const uint8_t right, const uint8_t bottom,
-                                      const uint8_t image_width, const uint8_t index_gran) {
-    graphics_image_checks(x, y, left, top, right, bottom, image_width);
+    if ((ctx.flags & IMAGE_TYPE_FLAGS) != IMAGE_FLAG_BINARY) {
+        trace("wrong image type for call");
+        return;
+    }
+#endif
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
     uint8_t buf_pos = sizeof buf;
+    data = ctx.data;
 
     // current coordinates within the image
     uint8_t x_img = 0;
     uint8_t y_img = 0;
     // current coordinates within the page
-    uint8_t x_page = x;
-    uint8_t y_page = y;
+    uint8_t x_page = ctx.x;
+    uint8_t y_page = ctx.y;
 
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-    uint8_t next_index_bound = index_gran;
-#endif
+    uint8_t next_index_bound = ctx.index_gran;
 
-    uint8_t* buffer = display_buffer(x_page, y_page);
+    uint8_t* buffer = sys_display_buffer_at(x_page, y_page);
     while (true) {
         if (buf_pos == sizeof buf) {
             // image data buffer is empty, read more data.
@@ -561,7 +577,7 @@ static void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, c
         uint8_t pixels = byte & 0x80 ? (byte & 0x3f) + 8 : 7;
         uint8_t shift_reg = byte;
         while (pixels--) {
-            if (within_region()) {
+            if (y_img >= ctx.top) {
                 if (shift_reg & 0x40) {
                     // 0x40 is both the color bit mask if byte is a RLE byte,
                     // and the next pixel mask if byte is raw byte.
@@ -574,20 +590,19 @@ static void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, c
             if (!(byte & 0x80)) {
                 shift_reg <<= 1;
             }
-            if (x_img == image_width) {
+            if (x_img == ctx.width) {
                 // end of scan line, go to next line
                 x_img = 0;
-                if (y_img >= top) {
-                    x_page = x;
-                    if (y_img == bottom) {
+                if (y_img >= ctx.top) {
+                    x_page = ctx.x;
+                    if (y_img == ctx.bottom) {
                         // bottom of image reached.
                         return;
                     }
                     ++y_page;
-                    buffer = display_buffer(x_page, y_page);
+                    buffer = sys_display_buffer_at(x_page, y_page);
                 }
                 ++y_img;
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
                 if (y_img == next_index_bound) {
                     // Index bound reached, reset decoder state. The encoder must make sure this
                     // never happens in a RLE sequence, only in a raw sequence.
@@ -597,10 +612,9 @@ static void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, c
                         return;
                     }
 #endif //RUNTIME_CHECKS
-                    next_index_bound += index_gran;
+                    next_index_bound += ctx.index_gran;
                     break;
                 }
-#endif //GRAPHICS_NO_INDEXED_IMAGE
             } else {
                 ++x_img;
             }
@@ -608,101 +622,160 @@ static void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, c
     }
 }
 
-#endif //GRAPHICS_NO_1BIT_MIXED_IMAGE
 
-#endif //GRAPHICS_NO_1BIT_IMAGE
-
-#ifndef GRAPHICS_NO_4BIT_IMAGE
-
-#ifndef GRAPHICS_NO_4BIT_RAW_IMAGE
-
-static void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, const disp_y_t y,
-                                    const uint8_t left, const uint8_t top,
-                                    const uint8_t right, const uint8_t bottom,
-                                    const uint8_t image_width, const uint8_t alpha_color) {
-    graphics_image_checks(x, y, left, top, right, bottom, image_width);
-
-    uint8_t buf[IMAGE_BUFFER_SIZE];
-
-    // current coordinates within the image
-    uint8_t x_img = 0;
-    uint8_t y_img = 0;
-    // current coordinates within the page
-    uint8_t x_page = x;
-    uint8_t y_page = y;
-
-    uint8_t* buffer = display_buffer(x_page, y_page);
-    while (true) {
-        // fill buffer
-        data_read(data, sizeof buf, buf);
-        data += sizeof buf;
-
-        // draw all pixels in buffer
-        uint8_t buf_pos = 0;
-        while (buf_pos < sizeof buf) {
-            uint8_t byte = buf[buf_pos++];
-            for (uint8_t i = 0; i < 2; ++i) {
-                if (within_region()) {
-                    const uint8_t c = byte & 0xf;
-#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
-                    if (c != alpha_color) {
+BOOTLOADER_NOINLINE
+void graphics_glyph(int8_t x, int8_t y, char c) {
+#ifdef RUNTIME_CHECKS
+    if (graphics_font.addr == 0) {
+        trace("no font set");
+        return;
+    }
 #endif
-                        set_buffer_pixel(c, x_page, buffer);
-#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
-                    } else if (x_page & 1) {
-                        ++buffer;
-                    }
+
+    int8_t curr_x = x;
+    int8_t curr_y = (int8_t) (y - sys_display_page_ystart);
+    if (curr_y >= sys_display_curr_page_height) {
+        return;  // glyph fully out of page
+    }
+
+    // get the glyph position with glyph data.
+    uint8_t pos = c;
+    if (pos < FONT_RANGE0_START) {
+        // 0x00-0x20
+        return;
+    }
+    if (pos > FONT_RANGE0_END) {
+        if (pos < FONT_RANGE1_START) {
+            // 0x60-0x9f
+            return;
+        }
+        // 0xa0-0xff
+        pos -= FONT_RANGE1_START - FONT_RANGE0_LEN;
+    } else {
+        // 0x21-0x7f
+        pos -= FONT_RANGE0_START;
+    }
+    if (pos > graphics_font.glyph_count) {
+        // Not encoded by the font data. This is the defined path for the space symbol notably,
+        // but should probably be reported for non-blank other symbols.
+#ifdef RUNTIME_CHECKS
+        if (!isspace(c) && !iscntrl(c)) {
+            trace("unencoded character %#02x", c);
+        }
 #endif
-                    byte = nibble_swap(byte);
-                    ++x_page;
-                }
-                if (x_img == image_width) {
-                    // end of scan line, go to next line
-                    x_img = 0;
-                    if (y_img >= top) {
-                        x_page = x;
-                        if (y_img == bottom) {
-                            // bottom of image reached.
-                            return;
-                        }
-                        ++y_page;
-                        buffer = display_buffer(x_page, y_page);
-                    }
-                    ++y_img;
-                    // data in byte cannot cross rows
-                    break;
-                } else {
-                    ++x_img;
-                }
+        return;
+    }
+
+    // read all glyph data
+    data_ptr_t addr = graphics_font.addr + pos * graphics_font.glyph_size;
+    uint8_t buf[FONT_MAX_GLYPH_SIZE];
+    data_read(addr, graphics_font.glyph_size, buf);
+
+    uint8_t byte_pos = graphics_font.glyph_size - 1;
+    uint8_t bits = 8;
+    uint8_t line_left = graphics_font.width;
+
+    // apply glyph offset
+    uint16_t first_byte = buf[byte_pos];
+    first_byte <<= graphics_font.offset_bits;
+    curr_y = (int8_t) (curr_y + (first_byte >> 8));
+    if (curr_y >= sys_display_curr_page_height) {
+        // Y offset brought top of glyph outside of page.
+        return;
+    }
+    bits -= graphics_font.offset_bits;
+    uint8_t byte = first_byte & 0xff;
+    // decode remaining bits in first byte
+    goto glyph_read;
+
+    while (byte_pos--) {
+        bits = 8;
+        byte = buf[byte_pos];
+glyph_read:
+        while (bits--) {
+            if ((byte & 0x80) && curr_x >= 0 && curr_y >= 0) {
+                // Pixel is set and on display.
+                graphics_pixel_fast(curr_x, curr_y);
             }
+            --line_left;
+            if (line_left == 0) {
+                // End of glyph line, either naturally or because
+                // we're past the right side of display. Start next line.
+                line_left = graphics_font.width;
+                curr_x = x;
+                ++curr_y;
+                if (curr_y >= sys_display_curr_page_height) {
+                    return;  // out of page or display
+                }
+            } else {
+#ifdef __AVR__
+                ++curr_x;  // will overflow to -128 on AVR
+#else
+                if (__builtin_add_overflow(curr_x, 1, &curr_x)) {
+                    curr_x = INT8_MIN;
+                }
+#endif
+            }
+            byte <<= 1;
         }
     }
 }
 
-#endif //GRAPHICS_NO_4BIT_RAW_IMAGE
+BOOTLOADER_NOINLINE
+void graphics_text(int8_t x, const int8_t y, const char* text) {
+#ifdef RUNTIME_CHECKS
+    if (graphics_font.addr == 0) {
+        trace("no font set");
+        return;
+    }
+    if (x < -128 + graphics_font.width || y < -128 + graphics_font.line_spacing) {
+        trace("position out of bounds");
+        return;
+    }
+#endif
+    if (y + graphics_font.height +
+        graphics_font.offset_max<sys_display_page_ystart || y>sys_display_page_yend) {
+        return;  // out of page
+    }
+    while (*text) {
+        graphics_glyph(x, y, *text++);
+        int8_t next_x;
+        if (__builtin_add_overflow(x, graphics_font.width + GRAPHICS_GLYPH_SPACING, &next_x)) {
+            return;
+        }
+        x = next_x;
+    }
+}
 
-#ifndef GRAPHICS_NO_4BIT_MIXED_IMAGE
+BOOTLOADER_NOINLINE
+static void graphics_image_4bit_mixed_internal(graphics_image_t data, const disp_x_t x,
+                                               const disp_y_t y, const uint8_t top,
+                                               const uint8_t bottom) {
+    image_context_t ctx;
+    graphics_create_context(&ctx, data, x, y, top, bottom);
 
-static void graphics_image_4bit_mixed(graphics_image_t data, const disp_x_t x, const disp_y_t y,
-                                      const uint8_t left, const uint8_t top,
-                                      const uint8_t right, const uint8_t bottom,
-                                      const uint8_t image_width, const uint8_t index_gran,
-                                      const uint8_t alpha_color) {
-    graphics_image_checks(x, y, left, top, right, bottom, image_width);
+#ifdef RUNTIME_CHECKS
+    if (!ctx.valid) {
+        return;
+    }
+    if ((ctx.flags & IMAGE_TYPE_FLAGS) != 0) {
+        trace("wrong image type for call");
+        return;
+    }
+#endif
 
     uint8_t buf[IMAGE_BUFFER_SIZE];
     uint8_t buf_pos = sizeof buf;
+    data = ctx.data;
 
     // current coordinates within the image
     uint8_t x_img = 0;
     uint8_t y_img = 0;
     // current coordinates within the page
-    uint8_t x_page = x;
-    uint8_t y_page = y;
+    uint8_t x_page = ctx.x;
+    uint8_t y_page = ctx.y;
 
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-    uint8_t next_index_bound = index_gran;
-#endif
+    uint8_t next_index_bound = ctx.index_gran;
 
     uint8_t raw_seq_length = 0;  // if decoding raw sequence, the number of blocks left (2 px/block), otherwise 0.
     uint8_t rle_seq_length = 0;  // if deocding rle sequence, the number of pixels left, otherwise 0.
@@ -715,7 +788,7 @@ static void graphics_image_4bit_mixed(graphics_image_t data, const disp_x_t x, c
     };
     uint8_t state = 0;
 
-    uint8_t* buffer = display_buffer(x_page, y_page);
+    uint8_t* buffer = sys_display_buffer_at(x_page, y_page);
     while (true) {
         if (buf_pos >= sizeof buf - 1) {
             // Image data buffer is empty, read more data.
@@ -775,32 +848,27 @@ draw:
         // draw logic
         curr_color &= 0xf;
         do {
-            if (within_region()) {
-#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
-                if (curr_color != alpha_color) {
-#endif
+            if (y_img >= ctx.top) {
+                if (curr_color != ctx.alpha_color) {
                     set_buffer_pixel(curr_color, x_page, buffer);
-#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
                 } else if (x_page & 1) {
                     ++buffer;
                 }
-#endif
                 ++x_page;
             }
-            if (x_img == image_width) {
+            if (x_img == ctx.width) {
                 // end of scan line, go to next line
                 x_img = 0;
-                if (y_img >= top) {
-                    x_page = x;
-                    if (y_img == bottom) {
+                if (y_img >= ctx.top) {
+                    x_page = ctx.x;
+                    if (y_img == ctx.bottom) {
                         // bottom of image reached.
                         return;
                     }
                     ++y_page;
-                    buffer = display_buffer(x_page, y_page);
+                    buffer = sys_display_buffer_at(x_page, y_page);
                 }
                 ++y_img;
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
                 if (y_img == next_index_bound) {
                     // Index bound reached, reset decoder state. The encoder must make sure this
                     // never happens when within a raw or RLE sequence.
@@ -815,9 +883,8 @@ draw:
 #endif //RUNTIME_CHECKS
                     state = 0;
                     raw_seq_length = 0;
-                    next_index_bound += index_gran;
+                    next_index_bound += ctx.index_gran;
                 }
-#endif //GRAPHICS_NO_INDEXED_IMAGE
             } else {
                 ++x_img;
             }
@@ -826,401 +893,312 @@ draw:
     }
 }
 
-#endif //GRAPHICS_NO_4BIT_MIXED_IMAGE
 
-#endif //GRAPHICS_NO_4BIT_IMAGE
+#else  //BOOTLOADER
 
-static void graphics_image_internal(graphics_image_t data, const disp_x_t x, const disp_y_t y,
-                                    const uint8_t left, const uint8_t top, uint8_t right,
-                                    uint8_t bottom, const bool full) {
+void graphics_pixel_fast(disp_x_t, disp_y_t);
+
+void graphics_hline_fast(disp_x_t, disp_x_t, disp_y_t);
+
+void graphics_create_context(image_context_t*, graphics_image_t, disp_x_t,
+                             disp_y_t, uint8_t, uint8_t);
+
+void graphics_image_1bit_mixed_internal(graphics_image_t, disp_x_t, disp_y_t y, uint8_t, uint8_t);
+
+void graphics_image_4bit_mixed_internal(graphics_image_t, disp_x_t, disp_y_t y, uint8_t, uint8_t);
+
+#endif  //BOOTLOADER
+
+void graphics_set_color(disp_color_t c) {
+#ifdef RUNTIME_CHECKS
+    if (c > DISPLAY_COLOR_WHITE) {
+        trace("invalid color");
+        return;
+    }
+#endif
+    color = c;
+}
+
+disp_color_t graphics_get_color(void) {
+    return color;
+}
+
+graphics_font_t graphics_get_font(void) {
+    return graphics_font.addr - FONT_HEADER_SIZE;
+}
+
+void graphics_pixel(const disp_x_t x, const disp_y_t y) {
 #ifdef RUNTIME_CHECKS
     if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
-        trace("out of bounds");
+        trace("drawing outside bounds");
         return;
     }
 #endif
-
-    // read image header and index header (even if not indexed)
-    uint8_t header[IMAGE_HEADER_SIZE + IMAGE_INDEX_HEADER_SIZE];
-    data_read(data, sizeof header, header);
-    if (header[0] != IMAGE_SIGNATURE) {
-        trace("invalid image signature");
-        return;
+    if (y >= sys_display_page_ystart && y <= sys_display_page_yend) {
+        graphics_pixel_fast(x, y - sys_display_page_ystart);
     }
-    const uint8_t flags = header[1];
-    const uint8_t width = header[2];
-    const uint8_t height = header[3];
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-    uint8_t index_gran = header[4];
-    const uint8_t index_size = header[5];
-#else
-    uint8_t index_gran = 0;
-#endif
+}
 
-#ifndef GRAPHICS_NO_4BIT_IMAGE
-    uint8_t alpha_color = IMAGE_ALPHA_COLOR_NONE;
-#ifndef GRAPHICS_NO_TRANSPARENT_IMAGE
-    if (flags & IMAGE_FLAG_ALPHA) {
-        alpha_color = flags & 0xf;
+void graphics_line(disp_x_t x0, disp_y_t y0, disp_x_t x1, disp_y_t y1) {
 #ifdef RUNTIME_CHECKS
-        if (flags & IMAGE_FLAG_BINARY) {
-            trace("binary images do not support transparency");
-            return;
+    if (x0 >= DISPLAY_WIDTH || x1 >= DISPLAY_WIDTH ||
+        y0 >= DISPLAY_HEIGHT || y1 >= DISPLAY_HEIGHT) {
+        trace("outside of bounds");
+        return;
+    }
+#endif
+    if (x0 == x1) {
+        graphics_vline(y0, y1, x0);
+    } else if (y0 == y1) {
+        graphics_hline(x0, x1, y0);
+    } else {
+        // https://en.wikipedia.org/wiki/Bresenham's_line_algorithm#All_cases
+        // taken from: https://github.com/olikraus/u8g2/blob/7d1108521680fbb14147a867e0ea15769119b78b/csrc/u8g2_line.c
+        // adapted to include out of page fast path.
+        int8_t dx = (int8_t) ((int8_t) x0 - x1);
+        int8_t dy = (int8_t) ((int8_t) y0 - y1);
+        if (dx < 0) dx = (int8_t) -dx;
+        if (dy < 0) dy = (int8_t) -dy;
+        bool swapxy = false;
+        if (dy > dx) {
+            swapxy = true;
+            swap(uint8_t, dx, dy);
+            swap(uint8_t, x0, y0);
+            swap(uint8_t, x1, y1);
         }
-#endif
-    }
-#elif defined(RUNTIME_CHECKS)
-    if (flags & IMAGE_FLAG_ALPHA) {
-        trace("decoding support for transparent images is disabled");
-        return;
-    }
-#endif //GRAPHICS_NO_TRANSPARENT_IMAGE
-#endif
-
-    data += IMAGE_HEADER_SIZE;
-
-    if (full) {
-#ifndef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
-        right = width;
-#endif
-        bottom = height;
-    }
-
-    if (y > display_page_yend || (uint8_t) (y + (bottom - top)) < display_page_ystart) {
-        // out page page, either completely before or after.
-        return;
-    }
-
-#ifdef RUNTIME_CHECKS
-#ifdef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
-    right = width;
-#endif
-    if (x + right - left >= DISPLAY_WIDTH || y + bottom - top >= DISPLAY_HEIGHT) {
-        trace("out of bounds");
-        return;
-    }
-    if (left > right || top > bottom || right > width || bottom > height) {
-        trace("region out of bounds");
-        return;
-    }
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-    if (flags & IMAGE_FLAG_INDEXED) {
-        if (flags & IMAGE_FLAG_RAW) {
-            trace("indexed flag is ignored for raw image");
-        } else if (index_gran == 0) {
-            trace("index granularity == 0 in indexed image");
-            return;
+        if (x0 > x1) {
+            swap(uint8_t, x0, x1);
+            swap(uint8_t, y0, y1);
         }
-    }
-#endif
-#endif //RUNTIME_CHECKS
-
-    // Find the image position and bounds for the current page
-    uint8_t page_y;
-    uint8_t page_top;
-    uint8_t page_bottom;
-    if (flags & IMAGE_FLAG_INDEXED) {
-#ifndef GRAPHICS_NO_INDEXED_IMAGE
-        // Image is indexed, we can skip parts of it that go before the current page or the
-        // specified top coordinate.
-        data += IMAGE_INDEX_HEADER_SIZE;
-        data_ptr_t index_pos = data;
-        data += index_size;
-
-        uint8_t index_buf[IMAGE_INDEX_BUFFER_SIZE];
-        uint8_t index_buf_pos = sizeof index_buf;
-
-        // To use the index, it's necessary to iterate over all pages that the image was drawn on
-        // to know how many rows were drawn on those pages, in order to find the first row to draw
-        // on the current page.
-        uint8_t page_start = 0;
-        uint8_t page_end = max_page_height() - 1;
-        uint8_t index_y = 0;
-        uint8_t actual_top = top;
-        while (true) {
-            // If y is smaller than page end, then the current page is the one on which image starts.
-            if (y <= page_end) {
-                // Get the Y coordinate of the index entry immediately before the actual top position.
-                // at the same time, increment the data pointer to point to this data.
-                const uint8_t bound = saturate_sub(actual_top, index_gran);
-                if (bound > 0) {
-                    // If bound == 0, the 1st index entry has already been read as part of header,
-                    // so the data pointer is already at the right position, and index_y is already 0.
-                    for (; index_y <= bound; index_y += index_gran) {
-                        if (index_buf_pos == sizeof index_buf) {
-                            // index buffer is empty, read more data.
-                            data_read(index_pos, sizeof index_buf, index_buf);
-                            index_pos += sizeof index_buf;
-                            index_buf_pos = 0;
+        int8_t err = (int8_t) (dx >> 1);
+        if (swapxy) {
+            // octants 2, 3, 6, 7
+            const int8_t ystep = y1 > y0 ? 1 : -1;
+            for (; x0 <= x1 && x0 <= sys_display_page_yend; ++x0) {
+                if (x0 >= sys_display_page_ystart) {
+                    graphics_pixel_fast(y0, x0 - sys_display_page_ystart);
+                }
+                err = (int8_t) (err - dy);
+                if (err < 0) {
+                    y0 += ystep;
+                    err = (int8_t) (err + dx);
+                }
+            }
+        } else if (y1 > y0) {
+            // octants 1, 4
+            if (y0 <= sys_display_page_yend) {
+                for (; x0 <= x1; ++x0) {
+                    if (y0 >= sys_display_page_ystart) {
+                        graphics_pixel_fast(x0, y0 - sys_display_page_ystart);
+                    }
+                    err = (int8_t) (err - dy);
+                    if (err < 0) {
+                        ++y0;
+                        if (y0 > sys_display_page_yend) {
+                            break; // out of page
                         }
-                        data += (uint16_t) index_buf[index_buf_pos++] + 1;
+                        err = (int8_t) (err + dx);
                     }
                 }
+            }
+        } else if (y0 >= sys_display_page_ystart) {
+            // octants 5, 8
+            for (; x0 <= x1; ++x0) {
+                if (y0 <= sys_display_page_yend) {
+                    graphics_pixel_fast(x0, y0 - sys_display_page_ystart);
+                }
+                err = (int8_t) (err - dy);
+                if (err < 0) {
+                    --y0;
+                    if (y0 < sys_display_page_ystart) {
+                        break; // out of page
+                    }
+                    err = (int8_t) (err + dx);
+                }
+            }
+        }
+    }
+}
 
-                page_y = saturate_sub(y, page_start);
-                page_top = actual_top - index_y;
-                page_bottom = page_top + min((uint8_t) (page_end - page_start - page_y),
-                                             (uint8_t) (bottom - actual_top));
+static void graphics_image_1bit_raw_internal(graphics_image_t data, const disp_x_t x,
+                                             const disp_y_t y, const uint8_t top,
+                                             const uint8_t bottom) {
+    image_context_t ctx;
+    graphics_create_context(&ctx, data, x, y, top, bottom);
 
-                if (page_end == display_page_yend) {
+#ifdef RUNTIME_CHECKS
+    if (!ctx.valid) {
+        return;
+    }
+    if ((ctx.flags & IMAGE_TYPE_FLAGS) != (IMAGE_FLAG_BINARY | IMAGE_FLAG_RAW)) {
+        trace("wrong image type for call");
+        return;
+    }
+#endif
+
+    uint8_t buf[IMAGE_BUFFER_SIZE];
+    data = ctx.data;
+
+    // current coordinates within the image
+    uint8_t x_img = 0;
+    uint8_t y_img = 0;
+    // current coordinates within the page
+    uint8_t x_page = ctx.x;
+    uint8_t y_page = ctx.y;
+
+    uint8_t* buffer = sys_display_buffer_at(x_page, y_page);
+    while (true) {
+        // fill buffer
+        data_read(data, sizeof buf, buf);
+        data += sizeof buf;
+
+        // draw all pixels in buffer
+        uint8_t buf_pos = 0;
+        while (buf_pos < sizeof buf) {
+            uint8_t shift_reg = buf[buf_pos++];
+            for (uint8_t i = 0; i < 8; ++i) {
+                if (y_img >= ctx.top) {
+                    if (shift_reg & 1) {
+                        set_buffer_pixel(color, x_page, buffer);
+                    } else if (x_page & 1) {
+                        ++buffer;
+                    }
+                    ++x_page;
+                }
+                shift_reg >>= 1;
+                if (x_img == ctx.width) {
+                    // end of scan line, go to next line
+                    x_img = 0;
+                    if (y_img >= ctx.top) {
+                        x_page = ctx.x;
+                        if (y_img == ctx.bottom) {
+                            // bottom of image reached.
+                            return;
+                        }
+                        ++y_page;
+                        buffer = sys_display_buffer_at(x_page, y_page);
+                    }
+                    ++y_img;
+                    // data in byte cannot cross rows
                     break;
+                } else {
+                    ++x_img;
                 }
-
-                uint8_t actual_bottom = index_y + page_bottom;
-                actual_top = actual_bottom + 1;
-            }
-
-            page_start += max_page_height();
-            page_end += max_page_height();
-            if (page_end >= DISPLAY_HEIGHT) {
-                page_end = DISPLAY_HEIGHT - 1;
             }
         }
-#elif defined(RUNTIME_CHECKS)
-        trace("decoding support for indexed images is disabled");
-        return;
-#endif //GRAPHICS_NO_INDEXED_IMAGE
-
-    } else {
-
-#if !defined(GRAPHICS_NO_UNINDEXED_IMAGE) || !defined(GRAPHICS_NO_RAW_IMAGE)
-        // Not indexed: the whole image data is iterated on for every page.
-        const uint8_t first_y = max(display_page_ystart, y);
-        page_y = saturate_sub(y, display_page_ystart);
-        page_top = top + (first_y - y);
-        page_bottom = page_top + display_page_yend - first_y;
-        if (page_bottom > bottom || bottom < page_top) {
-            page_bottom = bottom;
-        }
-        if (flags & IMAGE_FLAG_RAW) {
-#ifndef GRAPHICS_NO_RAW_IMAGE
-            // Image has raw encoding, skipping rows in data is trivial without need for an index.
-#ifdef GRAPHICS_NO_1BIT_IMAGE
-            uint8_t bytes_per_row = width / 2 + 1;  // 4-bit image, 2 px per byte
-#elif defined(GRAPHICS_NO_4BIT_IMAGE)
-            uint8_t bytes_per_row = width / 8 + 1;  // 1-bit image, 8 px per byte
-#else
-            uint8_t bytes_per_row = width / (flags & IMAGE_FLAG_BINARY ? 8 : 2) + 1;
-#endif
-            data += page_top * bytes_per_row;
-            page_bottom -= page_top;
-            page_top = 0;
-#endif
-        } else {
-#ifndef GRAPHICS_NO_UNINDEXED_IMAGE
-            // set to zero to make sure the state of the decoder in never reset on index bound.
-            index_gran = 0;
-#endif
-        }
-#elif defined(GRAPHICS_NO_UNINDEXED_IMAGE) && defined(RUNTIME_CHECKS)
-        trace("decoding support for unindexed images is disabled");
-        return;
-#endif //GRAPHICS_NO_UNINDEXED_IMAGE
-
-    }
-
-    // decode selected image data and draw image on page
-    if (flags & IMAGE_FLAG_BINARY) {
-#ifndef GRAPHICS_NO_1BIT_IMAGE
-
-        if (flags & IMAGE_FLAG_RAW) {
-#ifndef GRAPHICS_NO_1BIT_RAW_IMAGE
-            graphics_image_1bit_raw(data, x, page_y,
-                                    left, page_top, right, page_bottom,
-                                    width);
-#elif defined(RUNTIME_CHECKS)
-            trace("decoding support for 1-bit raw images is disabled");
-#endif //GRAPHICS_NO_1BIT_RAW_IMAGE
-
-        } else {
-
-#ifndef GRAPHICS_NO_1BIT_MIXED_IMAGE
-            graphics_image_1bit_mixed(data, x, page_y,
-                                      left, page_top, right, page_bottom,
-                                      width, index_gran);
-#elif defined(RUNTIME_CHECKS)
-            trace("decoding support for 1-bit mixed images is disabled");
-#endif //GRAPHICS_NO_1BIT_MIXED_IMAGE
-        }
-#elif defined(RUNTIME_CHECKS)
-        trace("decoding support for 1-bit images is disabled");
-
-#endif //GRAPHICS_NO_1BIT_IMAGE
-    } else {
-#ifndef GRAPHICS_NO_4BIT_IMAGE
-
-        if (flags & IMAGE_FLAG_RAW) {
-#ifndef GRAPHICS_NO_4BIT_RAW_IMAGE
-            graphics_image_4bit_raw(data, x, page_y,
-                                    left, page_top, right, page_bottom,
-                                    width, alpha_color);
-#elif defined(RUNTIME_CHECKS)
-            trace("decoding support for 4-bit raw images is disabled");
-#endif //GRAPHICS_NO_4BIT_RAW_IMAGE
-
-        } else {
-
-#ifndef GRAPHICS_NO_4BIT_MIXED_IMAGE
-            graphics_image_4bit_mixed(data, x, page_y,
-                                      left, page_top, right, page_bottom,
-                                      width, index_gran, alpha_color);
-#elif defined(RUNTIME_CHECKS)
-            trace("decoding support for 4-bit mixed images is disabled");
-#endif //GRAPHICS_NO_4BIT_MIXED_IMAGE
-
-        }
-
-#elif defined(RUNTIME_CHECKS)
-        trace("decoding support for 1-bit images is disabled");
-#endif //GRAPHICS_NO_4BIT_IMAGE
-
     }
 }
 
-void graphics_image(const graphics_image_t data, const disp_x_t x, const disp_y_t y) {
-    graphics_image_internal(data, x, y, 0, 0, 0, 0, true);
+void graphics_image_1bit_raw(graphics_image_t data, const disp_x_t x, const disp_y_t y) {
+    graphics_image_1bit_raw_internal(data, x, y, 0, IMAGE_BOTTOM_NONE);
 }
 
-#ifndef GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
-
-void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
-                           uint8_t left, uint8_t top, uint8_t right, uint8_t bottom) {
-    graphics_image_internal(data, x, y, left, top, right, bottom, false);
+void graphics_image_1bit_raw_region(graphics_image_t data, const disp_x_t x, const disp_y_t y,
+                                    const uint8_t top, const uint8_t bottom) {
+    graphics_image_1bit_raw_internal(data, x, y, top, bottom);
 }
 
-#else
-
-void graphics_image_region(graphics_image_t data, disp_x_t x, disp_y_t y,
-                           uint8_t top, uint8_t bottom) {
-    graphics_image_internal(data, x, y, 0, top, 0, bottom, false);
+void graphics_image_1bit_mixed(graphics_image_t data, const disp_x_t x, const disp_y_t y) {
+    graphics_image_1bit_mixed_internal(data, x, y, 0, IMAGE_BOTTOM_NONE);
 }
 
-#endif //GRAPHICS_NO_HORIZONTAL_IMAGE_REGION
+void graphics_image_1bit_mixed_region(graphics_image_t data, const disp_x_t x, const disp_y_t y,
+                                    const uint8_t top, const uint8_t bottom) {
+    graphics_image_1bit_mixed_internal(data, x, y, top, bottom);
+}
 
-void graphics_glyph(int8_t x, int8_t y, char c) {
+static void graphics_image_4bit_raw_internal(graphics_image_t data, const disp_x_t x,
+                                             const disp_y_t y, const uint8_t top,
+                                             const uint8_t bottom) {
+    image_context_t ctx;
+    graphics_create_context(&ctx, data, x, y, top, bottom);
+
 #ifdef RUNTIME_CHECKS
-    if (font.addr == 0) {
-        trace("no font set");
+    if (!ctx.valid) {
+        return;
+    }
+    if ((ctx.flags & IMAGE_TYPE_FLAGS) != IMAGE_FLAG_RAW) {
+        trace("wrong image type for call");
         return;
     }
 #endif
 
-    int8_t curr_x = x;
-    int8_t curr_y = (int8_t) (y - display_page_ystart);
-    if (curr_y >= page_height()) {
-        return;  // glyph fully out of page
-    }
+    uint8_t buf[IMAGE_BUFFER_SIZE];
+    data = ctx.data;
 
-    // get the glyph position with glyph data.
-    uint8_t pos = c;
-    if (pos < FONT_RANGE0_START) {
-        // 0x00-0x20
-        return;
-    }
-    if (pos > FONT_RANGE0_END) {
-        if (pos < FONT_RANGE1_START) {
-            // 0x60-0x9f
-            return;
-        }
-        // 0xa0-0xff
-        pos -= FONT_RANGE1_START - FONT_RANGE0_LEN;
-    } else {
-        // 0x21-0x7f
-        pos -= FONT_RANGE0_START;
-    }
-    if (pos > font.glyph_count) {
-        // Not encoded by the font data. This is the defined path for the space symbol notably,
-        // but should probably be reported for non-blank other symbols.
-#ifdef RUNTIME_CHECKS
-        if (!isspace(c) && !iscntrl(c)) {
-            trace("unencoded character %#02x", c);
-        }
-#endif
-        return;
-    }
+    // current coordinates within the image
+    uint8_t x_img = 0;
+    uint8_t y_img = 0;
+    // current coordinates within the page
+    uint8_t x_page = ctx.x;
+    uint8_t y_page = ctx.y;
 
-    // read all glyph data
-    data_ptr_t addr = font.addr + pos * font.glyph_size;
-    uint8_t buf[FONT_MAX_GLYPH_SIZE];
-    data_read(addr, font.glyph_size, buf);
+    uint8_t* buffer = sys_display_buffer_at(x_page, y_page);
+    while (true) {
+        // fill buffer
+        data_read(data, sizeof buf, buf);
+        data += sizeof buf;
 
-    uint8_t byte_pos = font.glyph_size - 1;
-    uint8_t bits = 8;
-    uint8_t line_left = font.width;
-
-    // apply glyph offset
-    uint16_t first_byte = buf[byte_pos];
-    first_byte <<= font.offset_bits;
-    curr_y = (int8_t) (curr_y + (first_byte >> 8));
-    if (curr_y >= page_height()) {
-        // Y offset brought top of glyph outside of page.
-        return;
-    }
-    bits -= font.offset_bits;
-    uint8_t byte = first_byte & 0xff;
-    // decode remaining bits in first byte
-    goto glyph_read;
-
-    while (byte_pos--) {
-        bits = 8;
-        byte = buf[byte_pos];
-glyph_read:
-        while (bits--) {
-            if ((byte & 0x80) && curr_x >= 0 && curr_y >= 0) {
-                // Pixel is set and on display.
-                graphics_pixel_fast(curr_x, curr_y);
-            }
-            --line_left;
-            if (line_left == 0) {
-                // End of glyph line, either naturally or because
-                // we're past the right side of display. Start next line.
-                line_left = font.width;
-                curr_x = x;
-                ++curr_y;
-                if (curr_y >= page_height()) {
-                    return;  // out of page or display
+        // draw all pixels in buffer
+        uint8_t buf_pos = 0;
+        while (buf_pos < sizeof buf) {
+            uint8_t byte = buf[buf_pos++];
+            for (uint8_t i = 0; i < 2; ++i) {
+                if (y_img >= ctx.top) {
+                    const uint8_t c = byte & 0xf;
+                    if (c != ctx.alpha_color) {
+                        set_buffer_pixel(c, x_page, buffer);
+                    } else if (x_page & 1) {
+                        ++buffer;
+                    }
+                    byte = nibble_swap(byte);
+                    ++x_page;
                 }
-            } else {
-#ifdef __AVR__
-                ++curr_x;  // will overflow to -128 on AVR
-#else
-                if (__builtin_add_overflow(curr_x, 1, &curr_x)) {
-                    curr_x = INT8_MIN;
+                if (x_img == ctx.width) {
+                    // end of scan line, go to next line
+                    x_img = 0;
+                    if (y_img >= ctx.top) {
+                        x_page = ctx.x;
+                        if (y_img == ctx.bottom) {
+                            // bottom of image reached.
+                            return;
+                        }
+                        ++y_page;
+                        buffer = sys_display_buffer_at(x_page, y_page);
+                    }
+                    ++y_img;
+                    // data in byte cannot cross rows
+                    break;
+                } else {
+                    ++x_img;
                 }
-#endif
             }
-            byte <<= 1;
         }
     }
 }
 
-void graphics_text(int8_t x, const int8_t y, const char* text) {
-#ifdef RUNTIME_CHECKS
-    if (font.addr == 0) {
-        trace("no font set");
-        return;
-    }
-    if (x < -128 + font.width || y < -128 + font.line_spacing) {
-        trace("position out of bounds");
-        return;
-    }
-#endif
-    if (y + font.height + font.offset_max < display_page_ystart || y > display_page_yend) {
-        return;  // out of page
-    }
-    while (*text) {
-        graphics_glyph(x, y, *text++);
-        int8_t next_x;
-        if (__builtin_add_overflow(x, font.width + GRAPHICS_GLYPH_SPACING, &next_x)) {
-            return;
-        }
-        x = next_x;
-    }
+
+void graphics_image_4bit_raw(graphics_image_t data, const disp_x_t x, const disp_y_t y) {
+    graphics_image_4bit_raw_internal(data, x, y, 0, IMAGE_BOTTOM_NONE);
+}
+
+void graphics_image_4bit_raw_region(graphics_image_t data, const disp_x_t x, const disp_y_t y,
+                                      const uint8_t top, const uint8_t bottom) {
+    graphics_image_4bit_raw_internal(data, x, y, top, bottom);
+}
+
+void graphics_image_4bit_mixed(graphics_image_t data, const disp_x_t x, const disp_y_t y) {
+    graphics_image_4bit_mixed_internal(data, x, y, 0, IMAGE_BOTTOM_NONE);
+}
+
+void graphics_image_4bit_mixed_region(graphics_image_t data, const disp_x_t x, const disp_y_t y,
+                                    const uint8_t top, const uint8_t bottom) {
+    graphics_image_4bit_mixed_internal(data, x, y, top, bottom);
 }
 
 void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, const char* text) {
 #ifdef RUNTIME_CHECKS
-    if (font.addr == 0) {
+    if (graphics_font.addr == 0) {
         trace("no font set");
         return;
     }
@@ -1228,29 +1206,29 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
         trace("wrap_x out of bounds");
         return;
     }
-    if (x < -128 + 2 * font.width || y < -128 + font.line_spacing) {
+    if (x < -128 + 2 * graphics_font.width || y < -128 + graphics_font.line_spacing) {
         trace("position out of bounds");
         return;
     }
 #endif
     int8_t curr_x = x;
     int8_t curr_y = y;
-    if (y > display_page_yend) {
+    if (y > sys_display_page_yend) {
         return;  // text fully out of page
     }
 
-    if (x + font.width > wrap_x) {
+    if (x + graphics_font.width > wrap_x) {
         // text width less than glyph width, no text can be drawn.
         return;
     }
-    const uint8_t glyph_spacing = font.width + GRAPHICS_GLYPH_SPACING;
+    const uint8_t glyph_spacing = graphics_font.width + GRAPHICS_GLYPH_SPACING;
 
     const char* next_wrap_pos = 0;
     while (*text) {
         if (!next_wrap_pos) {
             // find the last space before text line wraps.
             int8_t glyph_end_x;
-            bool overflow = __builtin_add_overflow(x, font.glyph_size, &glyph_end_x);
+            bool overflow = __builtin_add_overflow(x, graphics_font.glyph_size, &glyph_end_x);
             const char* pos = text;
             while (true) {
                 if (!*pos) {
@@ -1271,15 +1249,15 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
                 // no space within text line, wrap on last character
                 next_wrap_pos = pos - 1;
             }
-            if (curr_y + font.height + font.offset_max < display_page_ystart) {
+            if (curr_y + graphics_font.height + graphics_font.offset_max < sys_display_page_ystart) {
                 // text line doesn't appear on page, skip it entirely.
                 text = next_wrap_pos;
             }
         } else if (text == next_wrap_pos) {
             // wrap line
             int8_t new_y;
-            bool overflow = __builtin_add_overflow(curr_y, font.line_spacing, &new_y);
-            if (overflow || new_y > display_page_yend) {
+            bool overflow = __builtin_add_overflow(curr_y, graphics_font.line_spacing, &new_y);
+            if (overflow || new_y > sys_display_page_yend) {
                 return;  // out of page or display
             }
             curr_y = new_y;
@@ -1297,7 +1275,7 @@ uint8_t graphics_text_width(const char* text) {
         return 0;
     }
     uint8_t width = 0;
-    const uint8_t glyph_spacing = font.width + GRAPHICS_GLYPH_SPACING;
+    const uint8_t glyph_spacing = graphics_font.width + GRAPHICS_GLYPH_SPACING;
     while (*text++) {
         width += glyph_spacing;
         if (width >= DISPLAY_WIDTH + GRAPHICS_GLYPH_SPACING) {
@@ -1309,13 +1287,13 @@ uint8_t graphics_text_width(const char* text) {
 }
 
 uint8_t graphics_glyph_width(void) {
-    return font.width;
+    return graphics_font.width;
 }
 
 uint8_t graphics_text_height(void) {
-    return font.height;
+    return graphics_font.height;
 }
 
 uint8_t graphics_text_max_height(void) {
-    return font.height + font.offset_max;
+    return graphics_font.height + graphics_font.offset_max;
 }

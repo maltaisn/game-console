@@ -19,43 +19,43 @@
 
 #include <memory.h>
 
-void spi_transceive(uint16_t length, uint8_t data[static length]) {
+void sys_spi_transceive(uint16_t length, uint8_t data[static length]) {
     // not implemented: receive all 0x00
     memset(data, 0x00, length);
 }
 
-void spi_transmit(uint16_t length, const uint8_t data[static length]) {
+void sys_spi_transmit(uint16_t length, const uint8_t data[static length]) {
     // not implemented.
 }
 
-void spi_transmit_single(uint8_t byte) {
+void sys_spi_transmit_single(uint8_t byte) {
     // not implemented.
 }
 
-void spi_select_flash(void) {
+void sys_spi_select_flash(void) {
     // no-op
 }
 
-void spi_select_eeprom(void) {
+void sys_spi_select_eeprom(void) {
     // no-op
 }
 
-void spi_select_display(void) {
+void sys_spi_select_display(void) {
     // no-op
 }
 
-void spi_deselect_flash(void) {
+void sys_spi_deselect_flash(void) {
     // no-op
 }
 
-void spi_deselect_eeprom(void) {
+void sys_spi_deselect_eeprom(void) {
     // no-op
 }
 
-void spi_deselect_display(void) {
+void sys_spi_deselect_display(void) {
     // no-op
 }
 
-void spi_deselect_all(void) {
+void sys_spi_deselect_all(void) {
     // no-op
 }

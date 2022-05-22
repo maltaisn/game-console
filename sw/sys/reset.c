@@ -15,11 +15,12 @@
  */
 
 #include <sys/reset.h>
-#include <sys/uart.h>
+#include <sys/defs.h>
 
 #include <avr/io.h>
 
-void reset_system(void) {
+ALWAYS_INLINE
+void sys_reset_system(void) {
     // trigger software reset
     _PROTECTED_WRITE(RSTCTRL.SWRR, RSTCTRL_SWRE_bm);
     __builtin_unreachable();

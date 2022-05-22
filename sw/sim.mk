@@ -1,21 +1,30 @@
 
-SRC_DIRS += sim
-BUILD_DIR := build/sim
+PLATFORM := sim
 
 include common.mk
+
+CSOURCES += app/callbacks.c
+SRC_DIRS += sim
+INCLUDE_DIRS += boot/include
+
+ifneq ($(TARGET),boot)
+SRC_DIRS += boot/src
+endif
 
 CC := gcc
 
 LIBS += m glut pthread portaudio png
 
-DEFINES += SIMULATION
+DEFINES += SIMULATION BOOTLOADER
 
-CFLAGS += -Wextra -Wno-unused-parameter -std=gnu11 -g3 -O0 -fshort-enums -fpack-struct \
+CFLAGS += -Wno-unused-parameter -std=gnu11 -g3 -O0 -fshort-enums -fpack-struct \
           -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined
 CFLAGS += ${shell pkg-config --cflags glu}
 LDFLAGS += ${shell pkg-config --libs glu}
 
-all: $(MAIN_TARGET)
+compile: $(MAIN_TARGET)
+
+all: compile
 
 $(MAIN_TARGET): $(OBJECTS)
 ifneq ($(E),)
