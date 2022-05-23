@@ -47,7 +47,7 @@ void callback_setup(void) {
 #endif
 
     sound_set_channel_volume(2, SOUND_CHANNEL2_VOLUME1);
-    dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, GRAPHICS_BUILTIN_FONT);
+    dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, ASSET_FONT_3X5_BUILTIN);
 
     // load saved (or default) settings and apply them.
     load_from_eeprom();

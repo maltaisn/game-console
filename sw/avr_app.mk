@@ -19,5 +19,5 @@ endif
 
 compile: sym_check $(MAIN_TARGET).hex size
 
-all: assets compile
+all: $(TARGET_CONFIG_FILE) assets compile
 	$(E)python3 utils/app_packer.py $(TARGET)

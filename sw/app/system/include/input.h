@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +15,17 @@
  * limitations under the License.
  */
 
-#include <sys/reset.h>
+#ifndef SYSTEM_INPUT_H
+#define SYSTEM_INPUT_H
 
-#include <core/trace.h>
+#include <system.h>
 
-#include <stdlib.h>
+#define BUTTON_UP BUTTON2
+#define BUTTON_DOWN BUTTON3
 
-void sys_reset_system(void) {
-    // reset is used to crash the app and go back to bootloader.
-    // there is no bootloader in simulator so we just terminate the process.
-    trace("system reset, exiting.");
-    exit(1);
-}
+/**
+ * Handle dialog input and input within a dialog.
+ */
+void handle_input(void);
+
+#endif //SYSTEM_INPUT_H

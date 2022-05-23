@@ -72,7 +72,7 @@ void sim_flash_load(flash_t address, size_t length, const uint8_t data[static le
 void sim_flash_load_file(const char* filename) {
     FILE* file = fopen(filename, "rb");
     if (!file || ferror(file)) {
-        trace("could not read flash file '%s'", filename);
+        trace("could not read flash file '%s', exiting", filename);
         exit(1);
     }
     uint8_t* ptr = flash;

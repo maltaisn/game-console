@@ -22,7 +22,7 @@ CXX := g++
 
 # tests run in "headless" simulator mode.
 # the simulator will have no GUI, produce no sound, and time will be controllable.
-DEFINES += SIMULATION SIMULATION_HEADLESS BOOTLOADER
+DEFINES += SIMULATION SIMULATION_HEADLESS BOOTLOADER EEPROM_ABSOLUTE
 
 CFLAGS += -Wextra -Wno-unused-parameter -g3 \
           -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined -pthread

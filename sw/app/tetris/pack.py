@@ -28,8 +28,8 @@ with p.group("sound"):
 
 # images
 with p.group("image"):
-    p.image(f"menu.png", raw=False)
-    p.image(f"tile-ghost.png", raw=False)
+    p.image(f"menu.png")
+    p.image(f"tile-ghost.png")
 
 # fonts
 with p.group("font"):

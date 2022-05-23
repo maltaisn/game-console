@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +15,11 @@
  * limitations under the License.
  */
 
-#include <sys/reset.h>
+#ifndef SYSTEM_RENDER_H
+#define SYSTEM_RENDER_H
 
-#include <core/trace.h>
+#define MEMORY_APPS_PER_SCREEN 3
 
-#include <stdlib.h>
+void draw(void);
 
-void sys_reset_system(void) {
-    // reset is used to crash the app and go back to bootloader.
-    // there is no bootloader in simulator so we just terminate the process.
-    trace("system reset, exiting.");
-    exit(1);
-}
+#endif //SYSTEM_RENDER_H

@@ -7,21 +7,23 @@ INCLUDE_DIRS += $(TARGET)/include include
 LIB_DIRS +=
 LIBS +=
 
+# Packaging
+TARGET_CONFIG_FILENAME := target.cfg
+TARGET_CONFIG_FILE := $(TARGET)/target.cfg
+ASSETS_FILE := $(TARGET)/assets.dat
+APP_PACK_FILE := $(TARGET)/target.app
+
 # Boot configuration file
-include boot/target.cfg
-DEFINES += BOOT_VERSION=$(version)
+include boot/$(TARGET_CONFIG_FILENAME)
+DEFINES += BOOT_VERSION=$(boot_version)
 
 # App configuration file
-ifneq ($(wildcard $(TARGET)/target.cfg),)
-  eeprom_space = 0
-  include $(TARGET)/target.cfg
+ifneq ($(wildcard $(TARGET_CONFIG_FILE)),)
+  eeprom_space := 0
+  include $(TARGET_CONFIG_FILE)
   DEFINES += DISPLAY_PAGE_HEIGHT=$(display_page_height) APP_ID=$(id) APP_VERSION=$(version) \
              EEPROM_RESERVED_SPACE=$(eeprom_space)
 endif
-
-# Packaging
-ASSETS_FILE := $(TARGET)/assets.dat
-APP_PACK_FILE := $(TARGET)/target.app
 
 # Compilation
 BUILD_TARGET := main
@@ -50,7 +52,7 @@ else
   E := @
 endif
 
-$(BUILD_DIR)/%.o: %.c
+$(BUILD_DIR)/%.o: %.c $(TARGET_CONFIG_FILE)
 	@mkdir -p $(@D)
 ifneq ($(E),)
 	@echo $(CC) $<

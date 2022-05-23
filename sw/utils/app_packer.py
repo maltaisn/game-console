@@ -117,7 +117,7 @@ def read_target_config(target_path: Path) -> TargetConfig:
         app_id = int(config["id"], 0)
         version = int(config["version"], 0)
         title = config["title"]
-        author = config["author"]
+        author = config["author"].upper()
         eeprom_space = int(config.get("eeprom_space", "0"), 0)
         page_height = int(config["display_page_height"], 0)
     except KeyError as e:
@@ -132,7 +132,7 @@ def read_target_config(target_path: Path) -> TargetConfig:
         raise PackError("version must be between 0 and 0xffff")
     if not re.match(r"^[A-Za-z\d\-_ .]{1,15}$", title):
         raise PackError("title has an invalid format")
-    if not re.match(r"^[A-Za-z\d\-_ .]{1,15}$", author):
+    if not re.match(r"^[A-Z\d\-_ .]{1,15}$", author):
         raise PackError("author has an invalid format")
     if not (0 <= eeprom_space <= 0xffff):
         raise PackError(f"EEPROM space out of bounds")
@@ -146,7 +146,9 @@ def read_boot_version() -> int:
     """Read bootloader version from its configuration file."""
     if Path(BOOT_TARGET_CONF_FILE).exists():
         config = read_config_file(BOOT_TARGET_CONF_FILE)
-        boot_version = int(config.get("version", "-1"), 0)
+        boot_version = int(config.get("boot_version", "-1"), 0)
+        if boot_version == -1:
+            raise PackError("boot version not specified in configuration file")
         if not (0x0000 <= boot_version <= 0xffff):
             raise PackError("boot version must be between 0 and 0xffff")
         return boot_version

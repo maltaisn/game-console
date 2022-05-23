@@ -23,6 +23,7 @@
 #include <boot/power.h>
 #include <boot/display.h>
 #include <boot/input.h>
+#include <boot/sound.h>
 
 #include <sys/callback.h>
 #include <sys/power.h>
@@ -117,6 +118,8 @@ void sys_power_schedule_sleep_if_low_battery(bool countdown) {
         sys_power_schedule_sleep(SLEEP_CAUSE_LOW_POWER, false, countdown);
         // prevent the screen from being dimmed in the meantime.
         sys_input_reset_inactivity();
+        // disable sound output since display has been replaced with low battery warning anyway.
+        sys_sound_set_output_enabled(false);
     }
 }
 

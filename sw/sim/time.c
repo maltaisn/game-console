@@ -16,22 +16,79 @@
 
 #include <sim/time.h>
 #include <sys/time.h>
+#include <core/power.h>
 
 #include <boot/input.h>
 #include <boot/sound.h>
 #include <boot/led.h>
 
 #ifndef SIMULATION_HEADLESS
+
 #include <time.h>
 #include <math.h>
+
 #endif
 
 #define SYSTICK_MAX 0xffffff
+#define SYSTICK_RATE (1.0 / SYSTICK_FREQUENCY)
+#define POWER_MONITOR_RATE 1.0
 
-void sim_time_update(void) {
+static bool rtc_enabled;
+static bool power_monitor_enabled;
+
+static double last_time_update;
+static double last_power_monitor_update;
+
+static void sim_time_update_single(void) {
     sys_input_update_state();
     sys_sound_update();
     sys_led_blink_update();
+}
+
+void sim_time_update(void) {
+#ifdef SIMULATION_HEADLESS
+    sim_time_update_single();
+#else
+    const double time = sim_time_get();
+
+    // RTC update
+    // Of course the OS can't keep up at the 256 Hz rate, make up for any missed updates
+    // by calling sim_time_update() multiple times.
+    long systick_elapsed = (long) ((time - last_time_update) / SYSTICK_RATE);
+    if (systick_elapsed > 10) {
+        // If 10 updates were missed it's probably not normal, do a single update.
+        systick_elapsed = 1;
+        last_time_update = time - SYSTICK_RATE;
+    }
+    if (systick_elapsed > 0) {
+        while (systick_elapsed--) {
+            if (rtc_enabled) {
+                sim_time_update_single();
+            }
+            last_time_update += SYSTICK_RATE;
+        }
+    }
+
+    // Power monitor update
+    if (time - last_power_monitor_update >= POWER_MONITOR_RATE) {
+        if (power_monitor_enabled) {
+            sim_power_monitor_update();
+        }
+        last_power_monitor_update = time;
+    }
+#endif //SIMULATION_HEADLESS
+}
+
+void sim_time_start(void) {
+    rtc_enabled = true;
+    last_time_update = sim_time_get();
+    last_power_monitor_update = sim_time_get();
+    power_monitor_enabled = true;
+}
+
+void sim_time_stop(void) {
+    rtc_enabled = false;
+    power_monitor_enabled = false;
 }
 
 #ifndef SIMULATION_HEADLESS

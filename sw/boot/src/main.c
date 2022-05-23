@@ -26,6 +26,7 @@
 #include <sys/callback.h>
 #include <sys/sound.h>
 #include <sys/power.h>
+#include <sys/display.h>
 
 #include <core/input.h>
 #include <core/sound.h>
@@ -40,11 +41,14 @@
 #include <stdbool.h>
 
 #ifdef SIMULATION
-#include <GL/glut.h>
+#include <GL/freeglut.h>
 #include <sim/glut.h>
 #include <pthread.h>
 #include <unistd.h>
 #endif
+
+#define SYSTICK_RATE (1.0 / SYSTICK_FREQUENCY)
+#define POWER_MONITOR_RATE 1.0
 
 #define DISPLAY_MAX_FPS 8
 
@@ -115,10 +119,16 @@ int main(void) {
     // this part is equivalent to what the bootloader does.
     __callback_setup();
 
+    // run the app in a separate thread. The reason this is done instead of calling loop() from
+    // a GLUT timer is that when sleep is enabled, execution is expected to stop at that point
+    // until wakeup.
     pthread_t thread;
     pthread_create(&thread, NULL, loop_thread, NULL);
 
-    glutMainLoop();
+    while (true) {
+        glutMainLoopEvent();
+        sim_time_update();
+    }
 #else
     if (load_get_app_count() == 0) {
         // either flash wasn't initialized, or bootloader was just updated and all the apps
@@ -174,7 +184,7 @@ static void loop(void) {
 static void draw_low_battery_overlay(void) {
     graphics_clear(DISPLAY_COLOR_BLACK);
     graphics_set_color(DISPLAY_COLOR_WHITE);
-    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_set_font(ASSET_FONT_3X5_BUILTIN);
     graphics_text(30, 42, "LOW BATTERY LEVEL");
     graphics_text(33, 81, "SHUTTING DOWN...");
     graphics_set_color(11);

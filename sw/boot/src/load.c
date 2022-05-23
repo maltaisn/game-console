@@ -20,6 +20,7 @@
 
 #include <sys/eeprom.h>
 #include <sys/callback.h>
+#include <sys/display.h>
 
 #include <core/graphics.h>
 #include <core/flash.h>
@@ -44,16 +45,16 @@ typedef struct {
     uint8_t id;
     uint16_t crc_all;
     uint16_t crc_code;
-    uint16_t version;
+    uint16_t app_version;
     uint16_t boot_version;
     uint16_t code_size;
     uint8_t page_height;
     eeprom_t eeprom_offset;
     uint16_t eeprom_size;
     flash_t address;
-} __attribute__((packed)) app_t;
+} __attribute__((packed)) app_flash_t;
 
-static BOOTLOADER_ONLY app_t _app_index[APP_INDEX_SIZE];
+static BOOTLOADER_ONLY app_flash_t _app_index[APP_INDEX_SIZE];
 static BOOTLOADER_ONLY uint8_t _app_count;
 
 void load_read_index(void) {
@@ -67,10 +68,10 @@ void load_read_index(void) {
 
     // read index
     uint16_t address = SYS_FLASH_INDEX_ADDR;
-    app_t *index = _app_index;
+    app_flash_t *index = _app_index;
     _app_count = 0;
     for (uint8_t i = 0; i < APP_INDEX_SIZE; ++i) {
-        sys_flash_read_absolute(address, sizeof(app_t), index);
+        sys_flash_read_absolute(address, sizeof(app_flash_t), index);
         if (index->id != APP_ID_NONE && index->boot_version == BOOT_VERSION) {
             ++index;
             ++_app_count;
@@ -88,7 +89,7 @@ uint8_t load_get_loaded(void) {
 #endif
 }
 
-static bool _flash_app_code(app_t *app) {
+static bool _flash_app_code(app_flash_t *app) {
 #ifdef SIMULATION
     // do nothing, this can't be done in simulation.
     trace("app with ID %d loaded.", app->id);
@@ -125,7 +126,7 @@ static bool _flash_app_code(app_t *app) {
 }
 
 void _load_app(uint8_t index) {
-    app_t *app = &_app_index[index];
+    app_flash_t *app = &_app_index[index];
 
     uint8_t curr_app[3];
     sys_eeprom_read_absolute(SYS_EEPROM_APP_ID_ADDR, sizeof curr_app, &curr_app);
@@ -152,7 +153,7 @@ void _load_app(uint8_t index) {
 }
 
 graphics_image_t load_get_app_image(uint8_t index) {
-    app_t *app = &_app_index[index];
+    app_flash_t *app = &_app_index[index];
     return data_flash(app->address + app->code_size);
 }
 

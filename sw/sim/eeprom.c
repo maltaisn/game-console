@@ -28,7 +28,7 @@
 #define WRITE_BUFFER_SIZE 8192
 #define ERASE_BYTE 0xff
 
-#if APP_ID == 0 || defined(SIMULATION_HEADLESS)
+#ifdef SIM_EEPROM_ABSOLUTE
 #define EEPROM_SIZE SYS_EEPROM_SIZE
 #else
 #define EEPROM_SIZE EEPROM_RESERVED_SPACE
@@ -119,7 +119,9 @@ void sim_eeprom_load_file(const char* filename) {
 }
 
 void sim_eeprom_load_erased(void) {
+#if defined(SIM_EEPROM_ABSOLUTE) || EEPROM_RESERVED_SPACE > 0
     memset(eeprom, ERASE_BYTE, EEPROM_SIZE);
+#endif
 }
 
 void sim_eeprom_save(const char* filename) {

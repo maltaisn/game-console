@@ -24,7 +24,7 @@ LDFLAGS += ${shell pkg-config --libs glu}
 
 compile: $(MAIN_TARGET)
 
-all: compile
+all: assets compile
 
 $(MAIN_TARGET): $(OBJECTS)
 ifneq ($(E),)

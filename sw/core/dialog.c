@@ -18,21 +18,31 @@
 #include <core/dialog.h>
 #include <core/utils.h>
 
+#ifndef DIALOG_NO_TEXT
 #include <string.h>
+#endif
 
 #ifdef RUNTIME_CHECKS
 #include <core/trace.h>
 #endif
 
+#if defined(DIALOG_NO_CHOICE) && defined(DIALOG_NO_NUMBER)
+#define DIALOG_NO_SPINNER
+
+#else
 // dialog-arrow-left.png, 3x5, 1-bit mixed, unindexed.
 static const uint8_t ARROW_LEFT[] = {0xf1, 0x10, 0x02, 0x04, 0x17, 0x6c, 0x40};
 
 // dialog-arrow-right.png, 3x5, 1-bit mixed, unindexed.
 static const uint8_t ARROW_RIGHT[] = {0xf1, 0x10, 0x02, 0x04, 0x4d, 0x7a, 0x00};
 
+#endif
+
+#ifndef DIALOG_NO_TEXT
 // characters allowed in text fields
 static const char TEXT_FIELD_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-*!";
 #define TEXT_FIELD_CHARS_COUNT 30
+#endif
 
 dialog_t dialog;
 
@@ -53,12 +63,19 @@ void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height) {
     dialog.cursor_pos = 0;
 }
 
+#ifndef DIALOG_NO_ITEM_TEXT
 void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
                      graphics_font_t item_font) {
     dialog.title_font = title_font;
     dialog.action_font = action_font;
     dialog.item_font = item_font;
 }
+#else
+void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font) {
+    dialog.title_font = title_font;
+    dialog.action_font = action_font;
+}
+#endif //DIALOG_NO_ITEM_TEXT
 
 #ifdef RUNTIME_CHECKS
 static bool dialog_add_item_check(void) {
@@ -83,6 +100,8 @@ void dialog_add_item_button(const char* name, dialog_result_t result) {
     ++dialog.item_count;
 }
 
+#ifndef DIALOG_NO_CHOICE
+
 void dialog_add_item_choice(const char* name, uint8_t selection,
                             uint8_t choices_count, const char** choices) {
 #ifdef RUNTIME_CHECKS
@@ -99,6 +118,9 @@ void dialog_add_item_choice(const char* name, uint8_t selection,
     ++dialog.item_count;
 }
 
+#endif //DIALOG_NO_CHOICE
+
+#ifndef DIALOG_NO_NUMBER
 void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
                             uint8_t mul, uint8_t value) {
 #ifdef RUNTIME_CHECKS
@@ -119,7 +141,9 @@ void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
     item->number.mul = mul;
     ++dialog.item_count;
 }
+#endif //DIALOG_NO_NUMBER
 
+#ifndef DIALOG_NO_TEXT
 void dialog_add_item_text(const char* name, uint8_t max_length, char text[max_length]) {
 #ifdef RUNTIME_CHECKS
     if (!dialog_add_item_check()) {
@@ -132,7 +156,6 @@ void dialog_add_item_text(const char* name, uint8_t max_length, char text[max_le
     item->text.max_length = max_length;
     item->text.text = text;
     ++dialog.item_count;
-
 }
 
 static void trim_text_field(dialog_text_t* item) {
@@ -197,6 +220,7 @@ static void change_text_field_char(dialog_text_t* item, int8_t direction) {
         dialog.cursor_pos = length;
     }
 }
+#endif //DIALOG_NO_TEXT
 
 dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
     dialog_item_t* curr_item = dialog.selection >= dialog.item_count ? 0 :
@@ -220,9 +244,11 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
             } else if (curr_item) {
                 if (curr_item->type == DIALOG_ITEM_BUTTON) {
                     result = curr_item->button.result;
-                } else if (curr_item->type == DIALOG_ITEM_TEXT) {
-                    // in a text field, enter button changes the character under cursor.
-                    change_text_field_char(&curr_item->text, +1);
+#ifndef DIALOG_NO_TEXT
+                    } else if (curr_item->type == DIALOG_ITEM_TEXT) {
+                        // in a text field, enter button changes the character under cursor.
+                        change_text_field_char(&curr_item->text, +1);
+#endif //DIALOG_NO_TEXT
                 } else {
                     // otherwise move to next item below
                     if (dialog.selection == dialog.item_count - 1) {
@@ -236,11 +262,13 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
             }
 
         } else if (clicked & DIALOG_BUTTON_DISMISS) {
+#ifndef DIALOG_NO_TEXT
             if (curr_item && curr_item->type == DIALOG_ITEM_TEXT) {
                 // in a text field, dismiss button changes the character under cursor.
                 change_text_field_char(&curr_item->text, -1);
-
-            } else if (dialog.flags & DIALOG_FLAG_DISMISSABLE) {
+            } else
+#endif //DIALOG_NO_TEXT
+            if (dialog.flags & DIALOG_FLAG_DISMISSABLE) {
                 if (dialog.dismiss_result == DIALOG_RESULT_NONE) {
                     result = dialog.neg_result;
                 } else {
@@ -257,19 +285,23 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
             } else if (dialog.selection != 0) {
                 // go to previous item if not already on first.
                 --dialog.selection;
+#ifndef DIALOG_NO_TEXT
                 if (curr_item && curr_item->type == DIALOG_ITEM_TEXT) {
                     // leaving text field, validate text and reset cursor
                     trim_text_field(&curr_item->text);
                     dialog.cursor_pos = 0;
                 }
+#endif //DIALOG_NO_TEXT
             }
 
         } else if (clicked & DIALOG_BUTTON_DOWN) {
+#ifndef DIALOG_NO_TEXT
             if (curr_item && curr_item->type == DIALOG_ITEM_TEXT) {
                 // leaving text field, validate text and reset cursor
                 trim_text_field(&curr_item->text);
                 dialog.cursor_pos = 0;
             }
+#endif //DIALOG_NO_TEXT
             if (dialog.selection < dialog.item_count - 1) {
                 // go to next item if not already on last.
                 ++dialog.selection;
@@ -283,6 +315,7 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
                 // there's a negative button on the left of the positive button, select it.
                 dialog.selection = DIALOG_SELECTION_NEG;
             } else if (curr_item) {
+#ifndef DIALOG_NO_CHOICE
                 if (curr_item->type == DIALOG_ITEM_CHOICE) {
                     // go to previous choice in item or wrap around if on first choice.
                     dialog_choice_t* choice = &curr_item->choice;
@@ -291,18 +324,25 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
                     } else {
                         --choice->selection;
                     }
-                } else if (curr_item->type == DIALOG_ITEM_NUMBER) {
+                }
+#endif //DIALOG_NO_CHOICE
+#ifndef DIALOG_NO_NUMBER
+                if (curr_item->type == DIALOG_ITEM_NUMBER) {
                     // decrement the number by one.
                     dialog_number_t* number = &curr_item->number;
                     if (number->value > number->min) {
                         --number->value;
                     }
-                } else if (curr_item->type == DIALOG_ITEM_TEXT) {
+                }
+#endif //DIALOG_NO_NUMBER
+#ifndef DIALOG_NO_TEXT
+                if (curr_item->type == DIALOG_ITEM_TEXT) {
                     // move cursor left if not at the start of text.
                     if (dialog.cursor_pos != 0) {
                         --dialog.cursor_pos;
                     }
                 }
+#endif //DIALOG_NO_NUMBER
             }
 
         } else if (clicked & DIALOG_BUTTON_RIGHT) {
@@ -310,6 +350,7 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
                 // if there's a negative button there's necessarily a positive one too.
                 dialog.selection = DIALOG_SELECTION_POS;
             } else if (curr_item) {
+#ifndef DIALOG_NO_CHOICE
                 if (curr_item->type == DIALOG_ITEM_CHOICE) {
                     // go to next choice in item or wrap around if on last choice.
                     dialog_choice_t* choice = &curr_item->choice;
@@ -317,13 +358,19 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
                     if (choice->selection == choice->choices_count) {
                         choice->selection = 0;
                     }
-                } else if (curr_item->type == DIALOG_ITEM_NUMBER) {
+                }
+#endif //DIALOG_NO_CHOICE
+#ifndef DIALOG_NO_NUMBER
+                if (curr_item->type == DIALOG_ITEM_NUMBER) {
                     // increment the number by one.
                     dialog_number_t* number = &curr_item->number;
                     if (number->value < number->max) {
                         ++number->value;
                     }
-                } else if (curr_item->type == DIALOG_ITEM_TEXT) {
+                }
+#endif //DIALOG_NO_NUMBER
+#ifndef DIALOG_NO_TEXT
+                if (curr_item->type == DIALOG_ITEM_TEXT) {
                     // move cursor right if not at the end of text and under max length.
                     dialog_text_t* text = &curr_item->text;
                     trim_text_field_end(text);
@@ -331,6 +378,7 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
                         ++dialog.cursor_pos;
                     }
                 }
+#endif //DIALOG_NO_NUMBER
             }
         }
     }
@@ -356,6 +404,7 @@ static void draw_action(disp_color_t color, disp_x_t x, disp_y_t y, uint8_t widt
     graphics_text((int8_t) (x + (width - text_width) / 2), (int8_t) (y + 2), text);
 }
 
+#ifndef DIALOG_NO_TEXT
 static void draw_text_field(disp_x_t x, disp_y_t y, uint8_t width, dialog_text_t* item,
                             bool selected) {
     graphics_set_color(DISPLAY_COLOR_WHITE);
@@ -374,6 +423,7 @@ static void draw_text_field(disp_x_t x, disp_y_t y, uint8_t width, dialog_text_t
         graphics_glyph((int8_t) cursor_x, (int8_t) y, item->text[dialog.cursor_pos]);
     }
 }
+#endif
 
 void dialog_draw(void) {
     // title frame & text
@@ -403,9 +453,11 @@ void dialog_draw(void) {
         graphics_fill_rect(dialog.x + 1, y + 1, dialog.width - 2, height - 2);
     }
 
+#ifndef DIALOG_NO_ITEM_TEXT
     // get item font height
     graphics_set_font(dialog.item_font);
     uint8_t item_font_height = graphics_text_height();
+#endif  //DIALOG_NO_ITEM_TEXT
 
     // action buttons
     graphics_set_font(dialog.action_font);
@@ -443,18 +495,26 @@ void dialog_draw(void) {
         if (item->type == DIALOG_ITEM_BUTTON) {
             draw_action(DISPLAY_COLOR_WHITE, dialog.x + 4, action_y, dialog.width - 8,
                         action_height, item->name, selected, true);
-
-        } else if (item->type == DIALOG_ITEM_TEXT) {
+        }
+#ifndef DIALOG_NO_TEXT
+        else if (item->type == DIALOG_ITEM_TEXT) {
             action_y += item_font_height + 5;  // space for text field title (item name)
             draw_text_field(dialog.x + 4, action_y, dialog.width - 8, &item->text, selected);
-
-        } else {
-            char buf[4];
+        }
+#endif //DIALOG_NO_TEXT
+#ifndef DIALOG_NO_SPINNER
+        else {
             const char* choice_str;
+#ifndef DIALOG_NO_NUMBER
+            char buf[4];
             if (item->type == DIALOG_ITEM_NUMBER) {
                 choice_str = uint8_to_str(buf, item->number.value * item->number.mul);
-            } else {
+            } else
+#endif //DIALOG_NO_NUMBER
+            {
+#ifndef DIALOG_NO_CHOICE
                 choice_str = item->choice.choices[item->choice.selection];
+#endif //DIALOG_NO_CHOICE
             }
 
             uint8_t choice_width = graphics_text_width(choice_str);
@@ -470,9 +530,11 @@ void dialog_draw(void) {
             graphics_image_1bit_mixed(data_mcu(ARROW_RIGHT), arrow_right_x, arrow_y);
             graphics_image_1bit_mixed(data_mcu(ARROW_LEFT), action_x - 4, arrow_y);
         }
+#endif //DIALOG_NO_SPINNER
         action_y += action_height + 2;
     }
 
+#ifndef DIALOG_NO_ITEM_TEXT
     // item names
     graphics_set_font(dialog.item_font);
     graphics_set_color(DISPLAY_COLOR_WHITE);
@@ -482,11 +544,14 @@ void dialog_draw(void) {
         dialog_item_t* item = &dialog.items[i];
         if (item->type != DIALOG_ITEM_BUTTON) {
             uint8_t name_y = action_y;
+#ifndef DIALOG_NO_TEXT
             if (item->type == DIALOG_ITEM_TEXT) {
                 // name is displayed on top of action
                 action_y += item_font_height + 5;
                 name_y += 2;
-            } else {
+            } else
+#endif //DIALOG_NO_TEXT
+            {
                 // name displayed on the left, vertically aligned with action on the right
                 name_y += name_y_offset;
             }
@@ -494,6 +559,7 @@ void dialog_draw(void) {
         }
         action_y += action_height + 2;
     }
+#endif //DIALOG_NO_ITEM_TEXT
 
     // dialog outline
     if (height >= 2) {

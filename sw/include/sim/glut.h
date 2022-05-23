@@ -20,8 +20,6 @@
 #ifndef SIM_GLUT_H
 #define SIM_GLUT_H
 
-#include <sys/display.h>
-
 #define DISPLAY_FPS 24
 
 #define DISPLAY_PIXEL_SIZE 5

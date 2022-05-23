@@ -35,7 +35,7 @@
  * [0..1]: flash signature (0x6367)
  * [2..31]: --reserved--
  * [32..2079]: index entries
- * [2081..]: app data
+ * [2080..]: app data
  *
  * Each index entry has the following format:
  * [0]: app ID
@@ -67,6 +67,7 @@
 
 #define SYS_FLASH_INDEX_ADDR 32
 #define SYS_FLASH_INDEX_ENTRY_SIZE 64
+#define SYS_FLASH_DATA_START_ADDR 2080
 
 extern flash_t sys_flash_offset;
 

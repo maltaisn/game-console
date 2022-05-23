@@ -21,8 +21,9 @@
 #define SIM_POWER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#include <sys/power.h>
+#include <core/power.h>
 
 /**
  * Called every second.

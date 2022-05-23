@@ -20,8 +20,7 @@
 #ifndef SIM_TIME_H
 #define SIM_TIME_H
 
-#include <time.h>
-#include <sys/time.h>
+#include <stdint.h>
 
 /**
  * Initialize time module.
@@ -29,9 +28,19 @@
 void sim_time_init(void);
 
 /**
- * Do an update of the time module, must be called once every system tick.
+ * Do systick updates depending on how much time passed since last call.
  */
 void sim_time_update(void);
+
+/**
+ * Initialize and start simulator time module.
+ */
+void sim_time_start(void);
+
+/**
+ * Stop simulator time module (for sleeping).
+ */
+void sim_time_stop(void);
 
 /**
  * Return time elapsed since start of simulation, in seconds.

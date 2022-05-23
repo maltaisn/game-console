@@ -21,10 +21,12 @@
 #include <sim/display.h>
 #include <sim/led.h>
 #include <sim/power.h>
+#include <sim/sound.h>
 
+#include <core/display.h>
 #include <core/trace.h>
 
-#include <GL/glut.h>
+#include <GL/freeglut.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -125,6 +127,10 @@ static void callback_redisplay_timer(int arg) {
     glutPostRedisplay();
 }
 
+static void callback_close(void) {
+    sim_sound_terminate();
+}
+
 void glut_init(void) {
     // double buffered, RGB display.
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
@@ -134,6 +140,7 @@ void glut_init(void) {
 
     glutDisplayFunc(callback_display);
     glutTimerFunc((unsigned int) (1000.0 / DISPLAY_FPS + 0.5), callback_redisplay_timer, 0);
+    glutCloseFunc(callback_close);
 
     glutMouseFunc(callback_mouse);
 }

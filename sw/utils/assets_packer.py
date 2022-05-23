@@ -326,7 +326,7 @@ class Packer:
     # ==========================
 
     def image(self, filename: PathLike, *,
-              region: Tuple[int, int, int, int] = None, raw: bool = None, binary: bool = None,
+              region: Tuple[int, int, int, int] = None, raw: bool = False, binary: bool = None,
               opaque: bool = None, indexed: bool = None, index_granularity: str = None,
               name: str = None) -> None:
         pass  # implemented by registered builder

@@ -18,7 +18,20 @@
 #ifndef CORE_DIALOG_H
 #define CORE_DIALOG_H
 
-#include <sys/display.h>
+/*
+ * The dialog library provides a very basic UI dialog with a title, action buttons,
+ * and a list of items: buttons, choice list, number picker and text field.
+ * Dialogs can be customized by drawing on top of the content area and handling user input
+ * appropriatedly while the dialog is shown.
+ *
+ * To reduce code size, the following defines are available to disable some features:
+ * - DIALOG_NO_CHOICE: disable choice items
+ * - DIALOG_NO_NUMBER: disable number items
+ * - DIALOG_NO_TEXT: disable text field items
+ * - DIALOG_MAX_ITEMS: indicates the maximum number of items that will be used (limits RAM usage).
+ */
+
+#include <core/display.h>
 #include <core/input.h>
 
 #include <core/graphics.h>
@@ -27,6 +40,10 @@
 
 #ifndef DIALOG_MAX_ITEMS
 #define DIALOG_MAX_ITEMS 5
+#endif
+
+#if defined(DIALOG_NO_CHOICE) && defined(DIALOG_NO_NUMBER) && defined(DIALOG_NO_TEXT)
+#define DIALOG_NO_ITEM_TEXT
 #endif
 
 // keybindings in a dialog
@@ -50,42 +67,60 @@ typedef enum {
 
 typedef enum {
     DIALOG_ITEM_BUTTON,
+#ifndef DIALOG_NO_CHOICE
     DIALOG_ITEM_CHOICE,
+#endif
+#ifndef DIALOG_NO_NUMBER
     DIALOG_ITEM_NUMBER,
+#endif
+#ifndef DIALOG_NO_TEXT
     DIALOG_ITEM_TEXT,
+#endif
 } dialog_item_type_t;
 
 typedef struct {
     dialog_result_t result;
 } dialog_button_t;
 
+#ifndef DIALOG_NO_CHOICE
 typedef struct {
     uint8_t choices_count;
     uint8_t selection;
     const char** choices;
 } dialog_choice_t;
+#endif
 
+#ifndef DIALOG_NO_NUMBER
 typedef struct {
     uint8_t value;
     uint8_t min;
     uint8_t max;
     uint8_t mul;
 } dialog_number_t;
+#endif
 
+#ifndef DIALOG_NO_TEXT
 typedef struct {
     uint8_t length;
     uint8_t max_length;
     char* text;
 } dialog_text_t;
+#endif
 
 typedef struct {
     dialog_item_type_t type;
     const char* name;
     union {
         dialog_button_t button;
+#ifndef DIALOG_NO_CHOICE
         dialog_choice_t choice;
+#endif
+#ifndef DIALOG_NO_NUMBER
         dialog_number_t number;
+#endif
+#ifndef DIALOG_NO_TEXT
         dialog_text_t text;
+#endif
     };
 } dialog_item_t;
 
@@ -104,7 +139,9 @@ typedef struct {
 
     graphics_font_t title_font;
     graphics_font_t action_font;
+#ifndef DIALOG_NO_ITEM_TEXT
     graphics_font_t item_font;
+#endif
 
     const char* title;
     const char* pos_btn;
@@ -151,8 +188,11 @@ void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height);
 /**
  * Set the fonts used by the dialog.
  */
-void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
-                     graphics_font_t item_font);
+void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font
+#ifndef DIALOG_NO_ITEM_TEXT
+                     , graphics_font_t item_font
+#endif
+                     );
 
 /**
  * Add a button item to the dialog. The item is added following the last one.
@@ -160,24 +200,30 @@ void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
  */
 void dialog_add_item_button(const char* name, dialog_result_t result);
 
+#ifndef DIALOG_NO_CHOICE
 /**
  * Add an item with a list of choices to the dialog. The item is added following the last one.
  * The choices list is drawn with action font while the item's name is drawn with item font.
  */
 void dialog_add_item_choice(const char* name, uint8_t selection,
                             uint8_t choices_count, const char** choices);
+#endif
 
+#ifndef DIALOG_NO_NUMBER
 /**
  * Add an item with a number picker to the dialog. The item is added following the last one.
  * The current value is drawn with action font while the item's name is drawn with item font.
  */
 void dialog_add_item_number(const char* name, uint8_t min, uint8_t max, uint8_t mul, uint8_t value);
+#endif
 
+#ifndef DIALOG_NO_TEXT
 /**
  * Add an item with a text field to the dialog. The item is added following the last one.
  * The item's name is drawn with item font font and the text field is drawn with action font.
  */
 void dialog_add_item_text(const char* name, uint8_t max_length, char text[]);
+#endif
 
 /**
  * Handle buttons input to navigate the dialog, given the last and current input state.

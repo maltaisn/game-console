@@ -9,6 +9,3 @@ __pycache__/
 # Jetbrains
 .idea/
 
-# Data files for assets and eeprom
-*.dat
-assets.c

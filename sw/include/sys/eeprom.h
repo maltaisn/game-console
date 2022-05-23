@@ -62,6 +62,7 @@
 #define SYS_EEPROM_WRITE_SIZE_ADDR 189
 #define SYS_EEPROM_WRITE_ADDR_ADDR 190
 #define SYS_EEPROM_WRITE_BUF_ADDR 192
+#define SYS_EEPROM_DATA_START_ADDR 448
 
 extern eeprom_t sys_eeprom_offset;
 extern eeprom_t sys_eeprom_size;

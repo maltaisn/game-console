@@ -19,6 +19,7 @@
 #include <boot/display.h>
 
 #include <sys/power.h>
+#include <sys/display.h>
 
 #include <sim/input.h>
 #include <sim/power.h>

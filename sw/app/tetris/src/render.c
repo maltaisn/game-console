@@ -257,7 +257,7 @@ static void draw_game(void) {
 
     // last clear bonus info
     graphics_set_color(11);
-    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_set_font(ASSET_FONT_3X5_BUILTIN);
     write_last_clear_info(buf);
 
     // level
@@ -312,7 +312,7 @@ static void draw_controls_overlay(void) {
  * Draw the content for the leaderboard dialog.
  */
 static void draw_leaderboard_overlay(void) {
-    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_set_font(ASSET_FONT_3X5_BUILTIN);
     graphics_set_color(DISPLAY_COLOR_WHITE);
     disp_y_t y = 25;
     for (uint8_t i = 0; i < game.leaderboard.size; ++i) {

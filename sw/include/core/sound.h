@@ -18,8 +18,7 @@
 #ifndef CORE_SOUND_H
 #define CORE_SOUND_H
 
-#include <sys/time.h>
-
+#include <core/time.h>
 #include <core/data.h>
 
 #include <stdint.h>

@@ -1,3 +1,10 @@
 # Packaged app images
 *.app
 
+# Data files for assets and eeprom
+*.dat
+assets.c
+
+# Simulator screenshots
+screenshot.png
+

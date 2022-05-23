@@ -20,8 +20,6 @@
 #ifndef SIM_DISPLAY_H
 #define SIM_DISPLAY_H
 
-#include <sys/display.h>
-
 #include <stdint.h>
 #include <stdbool.h>
 

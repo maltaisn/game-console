@@ -187,8 +187,8 @@ class AppManager:
 
     @staticmethod
     def _print_app(app: App) -> None:
-        print(f"[{app.app_id}] {app.name} v{app.app_version}")
-        print(f"  Author: {app.author}")
+        print(f"[{app.app_id}] {app.name.title()} v{app.app_version}")
+        print(f"  Author: {app.author.title()}")
         print(f"  Build date: {app.build_date.isoformat()}")
         print(f"  Size: {readable_size(app.flash_location.size)} "
               f"({readable_size(app.code_size)} code, "
@@ -259,7 +259,7 @@ class AppManager:
             if old_location:
                 next_loc = next(loc for i, loc in enumerate(used_space)
                                 if loc.address > old_location.address)
-                if old_location.address + old_location.size < next_loc.address:
+                if old_location.address + old_location.size <= next_loc.address:
                     # app can be written in place at the same location
                     return old_location.address
 
@@ -342,8 +342,9 @@ class AppManager:
             # show install info and confirm
             print("Updating existing app:")
             print(f"  Version: v{old.app_version} -> v{new.app_version}")
-            print(f"  Name: {old.name} -> {new.name}")
-            print(f"  Author: {old.author} -> {new.author}")
+            print(f"  Name: {old.name.title()} -> {new.name.title()}")
+            print(f"  Author: {old.author.title()} -> {new.author.title()}")
+            print(f"  Build date: v{old.build_date.isoformat()} -> v{new.build_date.isoformat()}")
             print(f"  Size: {readable_size(old.flash_location.size)} "
                   f"-> {readable_size(new.flash_location.size)}")
             print(f"  EEPROM size: {readable_size(old.eeprom_location.size)} "
