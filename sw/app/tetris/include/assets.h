@@ -21,10 +21,10 @@
 #define ASSET_SOUND_TSPIN data_flash(0x0ea6)
 
 #define ASSET_IMAGE_MENU data_flash(0x0ef2)
-#define ASSET_IMAGE_TILE_GHOST data_flash(0x1e02)
+#define ASSET_IMAGE_TILE_GHOST data_flash(0x1ccc)
 
-#define ASSET_FONT_5X7 data_flash(0x1e0c)
-#define ASSET_FONT_7X7 data_flash(0x1fd4)
+#define ASSET_FONT_5X7 data_flash(0x1cd6)
+#define ASSET_FONT_7X7 data_flash(0x1e9e)
 
 #define ASSET_SOUND_CLEAR_SIZE 4
 #define ASSET_SOUND_CLEAR_ADDR 0x0eb6

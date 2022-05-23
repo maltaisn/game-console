@@ -35,13 +35,14 @@ static void init_empty_dialog(game_state_t result) {
 }
 
 void open_main_menu_dialog(void) {
-    dialog_init_hcentered(56, 96, 56);
+    dialog_init_hcentered(48, 96, 69);
     dialog.selection = 0;
 
     dialog_add_item_button("NEW GAME", RESULT_NEW_GAME);
     dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_CONTROLS);
     dialog_add_item_button("OPTIONS", RESULT_OPEN_OPTIONS);
     dialog_add_item_button("LEADERBOARD", RESULT_OPEN_LEADERBOARD);
+    dialog_add_item_button("EXIT", RESULT_TERMINATE);
 }
 
 void open_pause_dialog(void) {

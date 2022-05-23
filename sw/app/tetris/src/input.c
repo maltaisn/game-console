@@ -21,6 +21,7 @@
 #include <music.h>
 #include <tetris.h>
 
+#include <core/app.h>
 #include <core/dialog.h>
 
 static uint8_t last_input_state;
@@ -122,6 +123,8 @@ game_state_t game_handle_input_dialog(void) {
         if (res == RESULT_CANCEL_OPTIONS_PLAY) {
             return GAME_STATE_PAUSE;
         }
+    } else if (res == RESULT_TERMINATE) {
+        app_terminate();
     }
 
     game_music_start(ASSET_MUSIC_MENU, MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);
