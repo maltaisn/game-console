@@ -30,6 +30,7 @@ from typing import List, Optional, Generator, Callable, Tuple
 
 from PIL import Image
 
+sys.path.append(str(Path(__file__).absolute().parent.parent))  # for standalone run
 from assets.types import PackResult, DataObject, PackError
 
 STD_IO = "-"
@@ -62,7 +63,7 @@ class IndexGranularity:
         if mode == IndexGranularityMode.MAX_SIZE and \
                 not (0 < value <= ImageIndex.MAX_ENTRY) or \
                 mode == IndexGranularityMode.ROW_COUNT and \
-                not (0 < value < ImageEncoder.MAX_IMAGE_SIZE):
+                not (0 < value < ImageEncoder.MAX_IMAGE_HEIGHT):
             raise ValueError("value out of bounds")
 
         return IndexGranularity(mode, value)
@@ -171,7 +172,8 @@ class ImageEncoder(abc.ABC):
     _last_color: int
     _last_data_len: int
 
-    MAX_IMAGE_SIZE = 256
+    MAX_IMAGE_WIDTH = 128
+    MAX_IMAGE_HEIGHT = 256
 
     DEFAULT_INDEX_GRANULARITY = IndexGranularity(IndexGranularityMode.MAX_SIZE, 64)
 
@@ -319,6 +321,7 @@ class ImageEncoderBinaryRaw(ImageEncoderBinary):
         if align_and_reset:
             if self._color_bits != 0:
                 data.append(self._color_byte)
+                self._color_byte = 0
                 self._color_bits = 0
         else:
             self._color_byte |= color << self._color_bits
@@ -670,8 +673,8 @@ def create_config(args: argparse.Namespace) -> Config:
     raw = False
     if args.force_raw:
         raw = True
-    if args.force_4bit:
-        if args.force_1bit:
+    if args.force_mixed:
+        if args.force_raw:
             raise EncodeError("cannot specify both --mixed (-M) and --raw (-R)")
         raw = False
 
@@ -731,6 +734,10 @@ def create_image_data(config: Config) -> ImageData:
     elif config.region.left >= image.width or config.region.right >= image.width or \
             config.region.top >= image.height or config.region.bottom >= image.height:
         raise EncodeError("region exceeds image dimensions")
+    elif config.region.width() > ImageEncoder.MAX_IMAGE_WIDTH:
+        raise EncodeError(f"region width exceeds maximum ({ImageEncoder.MAX_IMAGE_WIDTH} px)")
+    elif config.region.height() > ImageEncoder.MAX_IMAGE_HEIGHT:
+        raise EncodeError(f"region height exceeds maximum ({ImageEncoder.MAX_IMAGE_HEIGHT} px)")
 
     if image.mode != "LA":
         # convert image to grayscale + alpha if not already
@@ -816,6 +823,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except EncodeError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    except EncodeError as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
         exit(1)

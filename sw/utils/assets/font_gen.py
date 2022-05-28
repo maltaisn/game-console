@@ -33,8 +33,8 @@ from typing import List
 
 from PIL import Image
 
+sys.path.append(str(Path(__file__).absolute().parent.parent))  # for standalone run
 from assets.types import PackResult, DataObject, PackError
-from utils import PathLike
 
 STD_IO = "-"
 
@@ -319,6 +319,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except EncodeError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    except EncodeError as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
         exit(1)

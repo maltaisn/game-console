@@ -410,7 +410,7 @@ static void graphics_create_context(image_context_t* ctx, graphics_image_t data,
     }
 
 #ifdef RUNTIME_CHECKS
-    if (y + bottom - top >= DISPLAY_HEIGHT) {
+    if (x + width >= DISPLAY_WIDTH || y + bottom - top >= DISPLAY_HEIGHT) {
         trace("out of bounds");
         return;
     }

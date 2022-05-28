@@ -36,7 +36,7 @@ from typing import List, Optional, Tuple
 
 from mido import MidiFile
 
-# =============================
+sys.path.append(str(Path(__file__).absolute().parent.parent))  # for standalone run
 from assets.types import PackResult, DataObject, PackError
 
 FramesNotes = List[List[List[int]]]
