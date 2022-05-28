@@ -189,7 +189,7 @@ class MemoryManager:
         self.clear()
 
     def _check_addr(self, addr: int, size: int) -> int:
-        return addr < 0 or addr + size >= self.driver.get_size()
+        return addr < 0 or addr + size > self.driver.get_size()
 
     def read(self, address: int, size: int) -> None:
         if self._check_addr(address, size):

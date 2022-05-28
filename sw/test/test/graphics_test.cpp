@@ -29,10 +29,13 @@
 #include <numeric>
 
 extern "C" {
+#include <core/display.h>
 #include <core/graphics.h>
-#include <sim/display.h>
+
 #include <boot/init.h>
 #include <boot/display.h>
+
+#include <sys/display.h>
 }
 
 // when set to true, test that have no reference frames will save them and skip the test.

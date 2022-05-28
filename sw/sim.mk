@@ -7,6 +7,8 @@ CSOURCES += app/callbacks.c
 SRC_DIRS += sim
 INCLUDE_DIRS += boot/include
 
+# Include the bootloader source since this is also the entry point for the simulator.
+# If target is boot, don't include its source twice.
 ifneq ($(TARGET),boot)
 SRC_DIRS += boot/src
 endif
@@ -17,7 +19,7 @@ LIBS += m glut pthread portaudio png
 
 DEFINES += SIMULATION BOOTLOADER
 
-CFLAGS += -Wno-unused-parameter -std=gnu11 -g3 -O0 -fshort-enums -fpack-struct \
+CFLAGS += -Wno-unused-parameter -g3 -O0 -fshort-enums -fpack-struct \
           -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined
 CFLAGS += ${shell pkg-config --cflags glu}
 LDFLAGS += ${shell pkg-config --libs glu}

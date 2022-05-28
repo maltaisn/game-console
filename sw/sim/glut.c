@@ -21,7 +21,7 @@
 #include <sim/display.h>
 #include <sim/led.h>
 #include <sim/power.h>
-#include <sim/sound.h>
+#include <sim/init.h>
 
 #include <core/display.h>
 #include <core/trace.h>
@@ -128,7 +128,7 @@ static void callback_redisplay_timer(int arg) {
 }
 
 static void callback_close(void) {
-    sim_sound_terminate();
+    sim_deinit();
 }
 
 void glut_init(void) {

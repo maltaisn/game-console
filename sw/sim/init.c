@@ -26,10 +26,14 @@
 #include <sim/sound.h>
 #include <sim/flash.h>
 #include <sim/eeprom.h>
+#include <sim/uart.h>
 
 void sys_init(void) {
-    sim_eeprom_load_erased();
-    sim_flash_load_erased();
+    sim_time_init();
+    sim_sound_init();
+
+    sim_eeprom_init();
+    sim_flash_init();
 
     sys_init_wakeup();
 }
@@ -66,4 +70,13 @@ void sys_init_wakeup(void) {
     sim_sound_open_stream();
 
     sys_flash_wakeup();
+}
+
+void sim_deinit(void) {
+#ifdef SYS_UART_ENABLE
+    sim_uart_end();
+#endif
+    sim_flash_free();
+    sim_eeprom_free();
+    sim_sound_terminate();
 }

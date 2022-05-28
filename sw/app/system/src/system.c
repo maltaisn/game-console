@@ -28,7 +28,6 @@
 
 #include <core/callback.h>
 #include <core/data.h>
-#include <core/graphics.h>
 #include <core/dialog.h>
 #include <core/flash.h>
 #include <core/eeprom.h>
@@ -44,12 +43,6 @@ system_t state;
 static systime_t last_draw_time;
 
 void callback_setup(void) {
-#ifdef SIMULATION
-    // for bootloader, load flash and eeprom from local files used by gcprog.
-    sim_flash_load_file("../../dev/flash.dat");
-    sim_eeprom_load_file("../../dev/eeprom.dat");
-#endif
-
     // required for reasons highlighted in boot/src/main.c
     sys_display_init_page(DISPLAY_PAGE_HEIGHT);
 

@@ -1,3 +1,3 @@
 
-# use absolute EEPROM access in simulation
-DEFINES += SIM_EEPROM_ABSOLUTE
+# use absolute memory access in simulation
+DEFINES += SIM_MEMORY_ABSOLUTE

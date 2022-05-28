@@ -30,24 +30,35 @@
  */
 
 /**
- * Load EEPROM content from an array.
- */
-void sim_eeprom_load(eeprom_t address, size_t length, const uint8_t data[]);
-
-/**
- * Load EEPROM content from a file.
- */
-void sim_eeprom_load_file(const char* filename);
-
-/**
  * Load EEPROM content as all erased bytes.
+ * `sim_eeprom_free` should be called after memory becomes unused.
  */
-void sim_eeprom_load_erased(void);
+void sim_eeprom_init(void);
 
 /**
- * Save EEPROM content to a file.
+ * Free allocated EEPROM memory.
  */
-void sim_eeprom_save(const char* filename);
+void sim_eeprom_free(void);
+
+/**
+ * Load EEPROM content from the file.
+ */
+void sim_eeprom_load(const char* filename);
+
+/**
+ * Save EEPROM content to the file previously loaded.
+ */
+void sim_eeprom_save(void);
+
+/**
+ * Transceive SPI data by emulating EEPROM device.
+ */
+void sim_eeprom_spi_transceive(size_t length, uint8_t data[]);
+
+/**
+ * Reset SPI interface of emulated EEPROM device.
+ */
+void sim_eeprom_spi_reset(void);
 
 #endif //SIM_EEPROM_H
 

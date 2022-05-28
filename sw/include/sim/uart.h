@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +15,22 @@
  * limitations under the License.
  */
 
-#include <sys/reset.h>
+#ifndef SIM_UART_H
+#define SIM_UART_H
 
-#include <core/trace.h>
+/**
+ * Listen for client connection for the UART socket.
+ */
+void sim_uart_listen(void);
 
-#include <stdlib.h>
+/**
+ * Close the simulated UART pipe, after it has been initialized.
+ */
+void sim_uart_end(void);
 
-void sys_reset_system(void) {
-    // reset is used to crash the app and go back to bootloader.
-    // there is no bootloader in simulator so we just terminate the process.
-    trace("system reset, exiting.");
-    exit(EXIT_FAILURE);
-}
+/**
+ * Function called when the client connection is lost on the UART server.
+ */
+void sim_uart_connection_lost_callback(void);
+
+#endif //SIM_UART_H

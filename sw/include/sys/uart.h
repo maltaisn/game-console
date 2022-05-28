@@ -30,7 +30,7 @@
 #define SYS_UART_TX_BUFFER_SIZE 32
 
 #ifdef SIMULATION
-#define SYS_UART_BAUD_RATE(baud) 0
+#define SYS_UART_BAUD_RATE(baud) ((baud) / 100)
 #else
 // As given by datasheet formula, Table 23-1, Rev. C 01/2021, for asynchronous USART with CLK2X=1
 #define SYS_UART_BAUD_RATE(baud) ((uint16_t) ((64.0 * F_CPU / (8.0 * baud)) + 0.5))

@@ -54,4 +54,6 @@ void display_set_contrast(uint8_t contrast);
  */
 uint8_t display_get_contrast(void);
 
+#include <sim/display.h>
+
 #endif //CORE_DISPLAY_H

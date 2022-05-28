@@ -87,7 +87,7 @@ void save_to_eeprom(void) {
     eeprom_write(0, EEPROM_SAVE_SIZE, save_buf);
 
 #ifdef SIMULATION
-    sim_eeprom_save("eeprom.dat");
+    sim_eeprom_save();
 #endif
 }
 

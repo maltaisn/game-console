@@ -26,7 +26,7 @@ BOOT_SYMBOLS_FILE := boot/build/boot.sym
 
 DEFINES += F_CPU=$(F_CPU)
 
-CFLAGS += -mmcu=$(MCU) -Os -Wno-attributes \
+CFLAGS += -mmcu=$(MCU) -Os \
           -ffunction-sections -fdata-sections -fshort-enums -fpack-struct -flto \
           -B$(ATMEGA_TOOLCHAIN_DIR)/gcc/dev/$(MCU) -Wl,-T,$(LINKER_SCRIPT)      \
           -Wl,-Map=$(MAP_FILE) -Wl,--defsym=DISPLAY_PAGE_HEIGHT=$(display_page_height)

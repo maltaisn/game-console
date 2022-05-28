@@ -42,8 +42,8 @@ static game_state_t game_state_update(uint8_t dt);
 
 void callback_setup(void) {
 #ifdef SIMULATION
-    sim_flash_load_file("assets.dat");
-    sim_eeprom_load_file("eeprom.dat");
+    sim_flash_load("assets.dat");
+    sim_eeprom_load("eeprom.dat");
 #endif
 
     sound_set_channel_volume(2, SOUND_CHANNEL2_VOLUME1);

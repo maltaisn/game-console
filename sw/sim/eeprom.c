@@ -15,145 +15,146 @@
  * limitations under the License.
  */
 
-#include <core/eeprom.h>
+#include <sim/eeprom.h>
+#include <sim/memory.h>
+#include <sim/time.h>
+
 #include <sys/eeprom.h>
+
+#include <core/eeprom.h>
 #include <core/trace.h>
 
-#include <memory.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <stdio.h>
 
-#define READ_BUFFER_SIZE 8192
-#define WRITE_BUFFER_SIZE 8192
 #define ERASE_BYTE 0xff
 
-#ifdef SIM_EEPROM_ABSOLUTE
+#ifdef SIM_MEMORY_ABSOLUTE
 #define EEPROM_SIZE SYS_EEPROM_SIZE
 #else
 #define EEPROM_SIZE EEPROM_RESERVED_SPACE
 #endif
 
-static uint8_t eeprom[EEPROM_SIZE];
+#define STATUS_WREN_MASK 0x02
+#define STATUS_BUSY_MASK 0x01
 
-void sys_eeprom_read_absolute(eeprom_t address, uint8_t length, void* dest) {
-    if (address >= EEPROM_SIZE) {
-        return;
-    } else if (address + length >= EEPROM_SIZE) {
-        length = EEPROM_SIZE - address;
-    }
-    memcpy(dest, &eeprom[address], length);
+#define PAGE_MASK 0x1f  // page size = 32
+
+enum {
+    INSTRUCTION_WREN = 0x06,
+    INSTRUCTION_WRDI = 0x04,
+    INSTRUCTION_RDSR = 0x05,
+    INSTRUCTION_WRSR = 0x01,
+    INSTRUCTION_READ = 0x03,
+    INSTRUCTION_WRITE = 0x02,
+};
+
+sim_mem_t* eeprom;
+
+static struct {
+    uint8_t status;
+    uint8_t instr;
+    eeprom_t address;
+    size_t pos;
+    bool writing;
+} spi_eeprom;
+
+
+void sim_eeprom_init(void) {
+    eeprom = sim_mem_init(EEPROM_SIZE, ERASE_BYTE);
+    // in simulation, EEPROM always starts at address 0, but has the correct size.
+    sys_eeprom_set_location(0, EEPROM_SIZE);
 }
 
-void sys_eeprom_write_absolute(eeprom_t address, uint8_t length, const void* src) {
-    if (address >= EEPROM_SIZE) {
-        return;
-    } else if (address + length >= EEPROM_SIZE) {
-        length = EEPROM_SIZE - address;
-    }
-    memcpy(&eeprom[address], src, length);
+void sim_eeprom_free(void) {
+    sim_mem_free(eeprom);
+    eeprom = 0;
 }
 
-void sys_eeprom_check_write(void) {
-    // nothing to do, write is considered always atomic in simulator.
+void sim_eeprom_load(const char* filename) {
+    sim_mem_load(eeprom, filename);
 }
 
-void sys_eeprom_set_location(eeprom_t address, uint16_t size) {
-    // nothing to do, read is always absolute in simulator.
+void sim_eeprom_save(void) {
+    sim_mem_save(eeprom);
 }
 
-void sys_eeprom_read_relative(eeprom_t address, uint8_t length, void* dest) {
-    if (address >= EEPROM_SIZE) {
-        return;
-    } else if (address + length >= EEPROM_SIZE) {
-        length = EEPROM_SIZE - address;
-    }
-    memcpy(dest, &eeprom[address], length);
-}
-
-void sys_eeprom_write_relative(eeprom_t address, uint8_t length, const void* src) {
-    if (address >= EEPROM_SIZE) {
-        return;
-    } else if (address + length >= EEPROM_SIZE) {
-        length = EEPROM_SIZE - address;
-    }
-    memcpy(&eeprom[address], src, length);
-}
-
-void sim_eeprom_load(eeprom_t address, size_t length, const uint8_t data[static length]) {
-    if (length + address > EEPROM_SIZE) {
-        length = EEPROM_SIZE - address;
-    } else if (address > EEPROM_SIZE) {
-        return;
-    }
-    memcpy(eeprom, data, length);
-}
-
-void sim_eeprom_load_file(const char* filename) {
-    FILE* file = fopen(filename, "rb");
-    if (!file || ferror(file)) {
-        trace("could not read EERPOM file '%s'", filename);
-        return;
-    }
-    uint8_t* ptr = eeprom;
-    while (true) {
-        size_t n = READ_BUFFER_SIZE;
-        if (ptr + n >= eeprom + EEPROM_SIZE) {
-            n = (size_t) (EEPROM_SIZE - (ptrdiff_t) ptr + eeprom);
-        }
-        size_t read = fread(ptr, 1, n, file);
-        ptr += read;
-        if (read < READ_BUFFER_SIZE) {
-            // end of file reached, short count.
-            break;
-        }
-        if (ptr >= eeprom + EEPROM_SIZE) {
-            // end of EEPROM reached.
-            break;
-        }
-    }
-    // erase the rest of memory
-    memset(ptr, ERASE_BYTE, EEPROM_SIZE - (ptr - eeprom));
-
-    fclose(file);
-}
-
-void sim_eeprom_load_erased(void) {
-#if defined(SIM_EEPROM_ABSOLUTE) || EEPROM_RESERVED_SPACE > 0
-    memset(eeprom, ERASE_BYTE, EEPROM_SIZE);
-#endif
-}
-
-void sim_eeprom_save(const char* filename) {
-    FILE* file = fopen(filename, "wb");
-    if (!file || ferror(file)) {
+void sim_eeprom_spi_transceive(size_t length, uint8_t data[static length]) {
+    if (!eeprom) {
         return;
     }
 
-    size_t write_size = 0;
-    for (size_t i = 0; i < EEPROM_SIZE; ++i) {
-        if (eeprom[i] != ERASE_BYTE) {
-            write_size = i + 1;
-        }
-    }
+    for (size_t i = 0; i < length; ++i) {
+        uint8_t b = data[i];
+        size_t pos = spi_eeprom.pos;
 
-    uint8_t* ptr = eeprom;
-    while (true) {
-        size_t n = WRITE_BUFFER_SIZE;
-        if (ptr + n >= eeprom + write_size) {
-            n = (size_t) (write_size - (ptrdiff_t) ptr + eeprom);
+        if (spi_eeprom.instr == 0 && pos == 0) {
+            // set new instruction
+            spi_eeprom.instr = b;
         }
-        size_t written = fwrite(ptr, 1, n, file);
-        if (written < WRITE_BUFFER_SIZE) {
-            // short count, unknown error occured.
-            break;
-        }
-        ptr += written;
-        if (ptr >= eeprom + EEPROM_SIZE) {
-            // end of EEPROM reached.
-            break;
-        }
-    }
 
-    fclose(file);
+        switch (spi_eeprom.instr) {
+            case INSTRUCTION_WREN: {
+                spi_eeprom.status |= STATUS_WREN_MASK;
+                break;
+            }
+            case INSTRUCTION_WRDI: {
+                spi_eeprom.status &= ~STATUS_WREN_MASK;
+                break;
+            }
+            case INSTRUCTION_RDSR: {
+                if (pos == 1) {
+                    data[i] = spi_eeprom.status;
+                    // after write, status will read as busy once, then ready.
+                    spi_eeprom.status &= ~STATUS_BUSY_MASK;
+                }
+                break;
+            }
+            case INSTRUCTION_WRSR: {
+                spi_eeprom.status = b & 0x8c;
+                break;
+            }
+            case INSTRUCTION_READ: {
+                if (pos == 1) {
+                    spi_eeprom.address = b << 8;
+                } else if (pos == 2) {
+                    spi_eeprom.address |= b;
+                } else if (pos >= 3) {
+                    data[i] = eeprom->data[spi_eeprom.address];
+                    spi_eeprom.address = (spi_eeprom.address + 1) % SYS_EEPROM_SIZE;
+                }
+                break;
+            }
+            case INSTRUCTION_WRITE: {
+                if (pos == 0) {
+                    spi_eeprom.writing = (spi_eeprom.status & STATUS_WREN_MASK) != 0;
+                    spi_eeprom.status &= ~STATUS_WREN_MASK;
+                    spi_eeprom.status |= STATUS_BUSY_MASK;
+                } else if (pos == 1) {
+                    spi_eeprom.address = b << 8;
+                } else if (pos == 2) {
+                    spi_eeprom.address |= b;
+                } else if (spi_eeprom.writing) {
+                    eeprom->data[spi_eeprom.address] = b;
+                    spi_eeprom.address = (spi_eeprom.address & ~PAGE_MASK) |
+                                         ((spi_eeprom.address + 1) & PAGE_MASK);
+                }
+                break;
+            }
+            default:
+                if (pos == 0) {
+                    trace("unsupported EEPROM instruction 0x%02x", spi_eeprom.instr);
+                }
+                break;
+        }
+
+        ++spi_eeprom.pos;
+    }
+}
+
+void sim_eeprom_spi_reset(void) {
+    spi_eeprom.instr = 0;
+    spi_eeprom.address = 0;
+    spi_eeprom.pos = 0;
+    spi_eeprom.writing = false;
 }

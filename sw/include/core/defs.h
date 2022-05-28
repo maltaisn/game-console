@@ -31,6 +31,10 @@ typedef __int24 int24_t;
 
 // Temporary data placed alongside display buffer, to save RAM.
 // This data must not be used across or during display refresh.
+#ifdef SIMULATION
+#define SHARED_DISP_BUF
+#else
 #define SHARED_DISP_BUF __attribute__((section(".shared_disp_buf")))
+#endif
 
 #endif //CORE_DEFS_H

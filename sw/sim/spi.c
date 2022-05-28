@@ -16,46 +16,105 @@
  */
 
 #include <sys/spi.h>
+#include <sys/flash.h>
+#include <sys/eeprom.h>
+#include <sys/display.h>
+
+#include <core/trace.h>
 
 #include <memory.h>
 
+typedef enum {
+    DEVICE_NONE,
+    DEVICE_FLASH,
+    DEVICE_EEPROM,
+    DEVICE_DISPLAY,
+} spi_device_t;
+
+spi_device_t selected_device;
+
 void sys_spi_transceive(uint16_t length, uint8_t data[static length]) {
-    // not implemented: receive all 0x00
-    memset(data, 0x00, length);
+    if (length == 0) {
+        return;
+    }
+    switch (selected_device) {
+        case DEVICE_FLASH:
+            sim_flash_spi_transceive(length, data);
+            break;
+        case DEVICE_EEPROM:
+            sim_eeprom_spi_transceive(length, data);
+            break;
+        case DEVICE_DISPLAY:
+            sim_display_spi_transceive(length, data);
+            break;
+        default:
+            // no device selected
+            break;
+    }
 }
 
 void sys_spi_transmit(uint16_t length, const uint8_t data[static length]) {
-    // not implemented.
+    // copy data locally to use be able to transceive normally.
+    uint8_t local_data[length];
+    memcpy(local_data, data, length);
+    sys_spi_transceive(length, local_data);
 }
 
 void sys_spi_transmit_single(uint8_t byte) {
-    // not implemented.
+    sys_spi_transmit(1, &byte);
+}
+
+static bool select_spi_device(spi_device_t device) {
+    if (selected_device == device) {
+        // Don't reselect the device as selecting has side effects.
+        return false;
+    }
+    if (selected_device != DEVICE_NONE) {
+        trace("cannot select SPI device, another device already selected");
+        return false;
+    }
+    selected_device = device;
+    return true;
 }
 
 void sys_spi_select_flash(void) {
-    // no-op
+    if (select_spi_device(DEVICE_FLASH)) {
+        sim_flash_spi_reset();
+    }
 }
 
 void sys_spi_select_eeprom(void) {
-    // no-op
+    if (select_spi_device(DEVICE_EEPROM)) {
+        sim_eeprom_spi_reset();
+    }
 }
 
 void sys_spi_select_display(void) {
-    // no-op
+    if (select_spi_device(DEVICE_DISPLAY)) {
+        sim_display_spi_reset();
+    }
 }
 
 void sys_spi_deselect_flash(void) {
-    // no-op
+    if (selected_device == DEVICE_FLASH) {
+        selected_device = DEVICE_NONE;
+    }
 }
 
 void sys_spi_deselect_eeprom(void) {
-    // no-op
+    if (selected_device == DEVICE_EEPROM) {
+        selected_device = DEVICE_NONE;
+    }
 }
 
 void sys_spi_deselect_display(void) {
-    // no-op
+    if (selected_device == DEVICE_DISPLAY) {
+        selected_device = DEVICE_NONE;
+    }
 }
 
 void sys_spi_deselect_all(void) {
-    // no-op
+    sys_spi_deselect_flash();
+    sys_spi_deselect_eeprom();
+    sys_spi_deselect_display();
 }

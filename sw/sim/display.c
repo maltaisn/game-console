@@ -310,3 +310,11 @@ void sim_display_save(FILE* file) {
 const uint8_t* sim_display_data(void) {
     return display.data;
 }
+
+void sim_display_spi_transceive(size_t length, uint8_t data[static length]) {
+    // not implemented.
+}
+
+void sim_display_spi_reset(void) {
+    // not implemented.
+}

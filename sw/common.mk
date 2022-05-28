@@ -29,7 +29,7 @@ endif
 BUILD_TARGET := main
 MAIN_TARGET = $(BUILD_DIR)/$(BUILD_TARGET)
 
-CFLAGS += -Wall $(addprefix -D,$(DEFINES)) $(addprefix -I,$(INCLUDE_DIRS)) \
+CFLAGS += -Wall -Wno-attributes $(addprefix -D,$(DEFINES)) $(addprefix -I,$(INCLUDE_DIRS)) \
           $(addprefix -L,$(LIB_DIRS)) $(addprefix -l,$(LIBS))
 CC_FLAGS += -std=gnu11
 LDFLAGS += -Wl,--gc-sections
@@ -66,8 +66,9 @@ clean:
 
 # Assets packing
 
+ifneq ($(TARGET),boot)
 $(ASSETS_FILE): $(TARGET)/pack.py $(TARGET)/assets/*
 	$(E)export PYTHONPATH="$(PWD)/utils"; cd $(TARGET); python3 pack.py
 
 assets: $(ASSETS_FILE)
-
+endif

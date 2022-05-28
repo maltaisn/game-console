@@ -50,6 +50,16 @@ void sim_display_save(FILE* file);
  */
 const uint8_t* sim_display_data(void);
 
+/**
+ * Transceive SPI data by emulating display device.
+ */
+void sim_display_spi_transceive(size_t length, uint8_t data[]);
+
+/**
+ * Reset SPI interface of emulated display device.
+ */
+void sim_display_spi_reset(void);
+
 #endif //SIM_DISPLAY_H
 
 #endif //SIMULATION

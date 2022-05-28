@@ -5,8 +5,8 @@ DEFINES += SYS_UART_ENABLE UART_BAUD=9600 UART_BAUD_FAST=500000
 # gcprog version compatibility
 DEFINES += VERSION_PROG_COMP=3
 
-# use absolute EEPROM access in simulation
-DEFINES += SIM_EEPROM_ABSOLUTE
+# use absolute memory access in simulation
+DEFINES += SIM_MEMORY_ABSOLUTE
 
 # dialog setup
 DEFINES += DIALOG_MAX_ITEMS=5 DIALOG_NO_CHOICE DIALOG_NO_NUMBER DIALOG_NO_TEXT

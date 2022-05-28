@@ -31,19 +31,35 @@
  */
 
 /**
- * Load flash content from an array.
+ * Load flash content as all erased bytes.
+ * `sim_flash_free` should be called after memory becomes unused.
  */
-void sim_flash_load(flash_t address, size_t length, const uint8_t data[]);
+void sim_flash_init(void);
+
+/**
+ * Free allocated flash memory.
+ */
+void sim_flash_free(void);
 
 /**
  * Load flash content from a file, starting an address 0.
  */
-void sim_flash_load_file(const char* filename);
+void sim_flash_load(const char* filename);
 
 /**
- * Load flash content as all erased bytes.
+ * Save flash content to the file previously loaded.
  */
-void sim_flash_load_erased(void);
+void sim_flash_save(void);
+
+/**
+ * Transceive SPI data by emulating flash device.
+ */
+void sim_flash_spi_transceive(size_t length, uint8_t data[]);
+
+/**
+ * Reset SPI interface of emulated flash device.
+ */
+void sim_flash_spi_reset(void);
 
 #endif //SIM_FLASH_H
 

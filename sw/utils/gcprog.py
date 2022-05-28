@@ -68,8 +68,11 @@ parser.add_argument(
     help="Show utility version, and device version info if connected")
 parser.add_argument(
     "--local", action="store_true", dest="local_run",
-    help="Enable local run, no connection is made, flash and eeprom are simulated using "
+    help="Enable local run, no connection is made, flash and EEPROM are simulated using "
          "local files.")
+parser.add_argument(
+    "--sim", action="store_true", dest="simulator",
+    help="Connect to the simulator socket instead of the actual device.")
 
 subparsers = parser.add_subparsers(dest="command")
 
@@ -183,8 +186,11 @@ class Prog(CommInterface):
         self.fast_mode_enabled = False
         signal.signal(signal.SIGINT, self.sigint_handler)
 
+        if args.local_run and args.simulator:
+            raise ProgError("--local and --sim options are mutually exclusive")
+
         # connect to serial device
-        self.comm = Comm(args.device)
+        self.comm = Comm(args.device, simulator=self.args.simulator)
         self.system_version = None
         self.boot_version = None
         self.system_version_comp = None
@@ -257,7 +263,8 @@ class Prog(CommInterface):
         print(f"gcprog v{VERSION}")
         if self.system_version:
             print(
-                f"system v{self.system_version}, compatible with gcprog v{self.system_version_comp}")
+                f"bootloader v{self.boot_version}, system v{self.system_version}, "
+                f"compatible with gcprog v{self.system_version_comp}")
 
     def interrupt_exit(self) -> None:
         self.interrupted = False

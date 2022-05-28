@@ -23,6 +23,12 @@
 
 #include <core/defs.h>
 
+#ifdef SIMULATION
+#include <sim/uart.h>
+#include <sim/flash.h>
+#include <sim/eeprom.h>
+#endif
+
 enum {
     SPI_CS_FLASH = 0x0,
     SPI_CS_EEPROM = 0x1,
@@ -42,7 +48,7 @@ static void handle_packet_version(void) {
     comm_payload_buf[3] = BOOT_VERSION >> 8;
     comm_payload_buf[4] = VERSION_PROG_COMP & 0xff;
     comm_payload_buf[5] = VERSION_PROG_COMP >> 8;
-    comm_transmit(PACKET_VERSION, 2);
+    comm_transmit(PACKET_VERSION, 6);
 }
 
 static void handle_packet_spi(uint8_t length) {
@@ -119,3 +125,11 @@ void comm_transmit(uint8_t type, uint8_t length) {
         sys_uart_write(*payload++);
     }
 }
+
+#ifdef SIMULATION
+void sim_uart_connection_lost_callback(void) {
+    // Flash and EEPROM may have been changed, save them.
+    sim_flash_save();
+    sim_eeprom_save();
+}
+#endif

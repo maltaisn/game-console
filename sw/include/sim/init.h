@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2021 Nicolas Maltais
+ * Copyright 2022 Nicolas Maltais
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +15,12 @@
  * limitations under the License.
  */
 
-#include <sys/reset.h>
+#ifndef SIM_INIT_H
+#define SIM_INIT_H
 
-#include <core/trace.h>
+/**
+ * De-initialize simulator. This should be called just before exiting.
+ */
+void sim_deinit(void);
 
-#include <stdlib.h>
-
-void sys_reset_system(void) {
-    // reset is used to crash the app and go back to bootloader.
-    // there is no bootloader in simulator so we just terminate the process.
-    trace("system reset, exiting.");
-    exit(EXIT_FAILURE);
-}
+#endif //SIM_INIT_H

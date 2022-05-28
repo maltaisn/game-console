@@ -33,22 +33,31 @@
 #include <core/sysui.h>
 #include <core/graphics.h>
 #include <core/time.h>
-#include <core/flash.h>
-#include <core/eeprom.h>
 
 #include <load.h>
 
 #include <stdbool.h>
 
 #ifdef SIMULATION
-#include <GL/freeglut.h>
 #include <sim/glut.h>
+#include <sim/uart.h>
+
+#include <sys/eeprom.h>
+
+#include <core/flash.h>
+#include <core/eeprom.h>
+
+#include <GL/freeglut.h>
 #include <pthread.h>
 #include <unistd.h>
-#endif
 
 #define SYSTICK_RATE (1.0 / SYSTICK_FREQUENCY)
 #define POWER_MONITOR_RATE 1.0
+
+#define SIM_FLASH_FILE "dev/flash.dat"
+#define SIM_EEPROM_FILE "dev/eeprom.dat"
+
+#endif
 
 #define DISPLAY_MAX_FPS 8
 
@@ -77,6 +86,10 @@ static void* loop_thread(void* arg) {
     while (true) {
         loop();
 
+#ifdef SYS_UART_ENABLE
+        sim_uart_listen();
+#endif
+
         // 1 ms sleep (fixes responsiveness issues with keyboard input)
         sim_time_sleep(1000);
     }
@@ -89,34 +102,31 @@ static void* loop_thread(void* arg) {
  * The main loop takes care of calling `loop` and `draw` callbacks among other things.
  */
 int main(void) {
-#ifdef SIMULATION
-    sim_time_init();
-    sim_sound_init();
-#endif
-
     sys_init();
     sys_display_init_page(DISPLAY_PAGE_HEIGHT);
 
-#if defined(SIMULATION) && APP_ID == APP_ID_NONE
-    // for bootloader, load flash and eeprom from local files used by gcprog.
-    sim_flash_load_file("../dev/flash.dat");
-    sim_eeprom_load_file("../dev/flash.dat");
+#ifdef SIM_MEMORY_ABSOLUTE
+#ifdef SIMULATION
+    // for bootloader, load flash and eeprom from local files written by gcprog --local.
+#if APP_ID == APP_ID_NONE
+    sim_flash_load("../" SIM_FLASH_FILE);
+    sim_eeprom_load("../" SIM_EEPROM_FILE);
+#else
+    sim_flash_load("../../" SIM_FLASH_FILE);
+    sim_eeprom_load("../../" SIM_EEPROM_FILE);
 #endif
-
+#endif //SIMULATION
     sys_eeprom_check_write();
-
     load_read_index();
+#endif //SIM_MEMORY_ABSOLUTE
 
 #ifdef SIMULATION
-    sim_time_init();
-    sim_sound_init();
-
     int argc = 0;
     glutInit(&argc, 0);
     glut_init();
     sim_input_init();
 
-    // this part is equivalent to what the bootloader does.
+    // normally called when loading an app, but we never load apps in simulation.
     __callback_setup();
 
     // run the app in a separate thread. The reason this is done instead of calling loop() from

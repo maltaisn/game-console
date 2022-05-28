@@ -18,7 +18,9 @@ from enum import Enum
 from typing import Optional, Sequence, Union
 
 import serial
-from serial import Serial, SerialException
+from serial import Serial
+
+import socket
 
 
 class ProgError(Exception):
@@ -65,6 +67,34 @@ class Packet:
         return Packet(type, payload)
 
 
+class SimulatorSerial:
+    SOCKET_NAME = "/tmp/gcsim"
+
+    socket: socket.socket
+
+    def __init__(self):
+        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
+        self.socket.connect(SimulatorSerial.SOCKET_NAME)
+
+    def read(self, n: int) -> bytes:
+        received = bytearray()
+        while len(received) < n:
+            received += self.socket.recv(n)
+        return received
+
+    def write(self, data: bytes) -> None:
+        self.socket.send(data)
+
+    def read_all(self) -> None:
+        pass  # not implemented
+
+    def flush(self) -> None:
+        pass  # no-op
+
+    def close(self) -> None:
+        self.socket.close()
+
+
 class CommInterface(abc.ABC):
     def write(self, packet: Packet) -> None:
         """Write a packet to the communication interface."""
@@ -74,13 +104,13 @@ class CommInterface(abc.ABC):
         """Read a packet from the communication interface (optionally a specific packet type)."""
         raise NotImplementedError
 
-
 class Comm(CommInterface):
     """Class used for communication with firmware. Uses pyserial to send and receive packets."""
     filename: str
     baud_rate: int
     baud_rate_fast: int
-    serial: Optional[Serial]
+    simulator: bool
+    serial: Optional[Union[Serial, SimulatorSerial]]
 
     DEFAULT_FILENAME = "/dev/ttyACM1"
     DEFAULT_BAUD_RATE = 9_600
@@ -88,26 +118,34 @@ class Comm(CommInterface):
 
     def __init__(self, filename: str = DEFAULT_FILENAME,
                  baud_rate: int = DEFAULT_BAUD_RATE,
-                 baud_rate_fast: int = DEFAULT_BAUD_RATE_FAST):
+                 baud_rate_fast: int = DEFAULT_BAUD_RATE_FAST,
+                 simulator: bool = False):
         self.filename = filename
         self.baud_rate = baud_rate
         self.baud_rate_fast = baud_rate_fast
         self.serial = None
+        self.simulator = simulator
 
     def connect(self) -> None:
         try:
-            self.serial = Serial(
-                port=self.filename,
-                baudrate=self.baud_rate,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
-                bytesize=serial.EIGHTBITS,
-                timeout=0.1,
-            )
-            self.serial.read_all()  # discard content from before program started
-            # set timeout in relation with normal baud rate (faster = smaller timeout)
-            self.serial.timeout = max(0.5, 10000 / self.baud_rate)
-        except SerialException as e:
+            if self.simulator:
+                # connect to simulator socket
+                self.serial = SimulatorSerial()
+            else:
+                # connect to actual device
+                self.serial = Serial(
+                    port=self.filename,
+                    baudrate=self.baud_rate,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    bytesize=serial.EIGHTBITS,
+                    timeout=0.1,
+                )
+                self.serial.read_all()  # discard content from before program started
+                # set timeout in relation with normal baud rate (faster = smaller timeout)
+                self.serial.timeout = max(0.5, 10000 / self.baud_rate)
+
+        except IOError as e:
             raise ProgError("could not connect to device") from e
 
     def disconnect(self) -> None:
@@ -122,16 +160,22 @@ class Comm(CommInterface):
 
     def read(self, expected_type: Optional[PacketType] = None) -> Packet:
         while True:
-            header = self.serial.read(3)
-            if len(header) != 3:
+            # find signature byte
+            signature = self.serial.read(1)
+            if len(signature) != 1:
                 raise ProgError("incomplete packet")
-            if header[0] != Packet.SIGNATURE_BYTE:
+            if signature[0] != Packet.SIGNATURE_BYTE:
                 continue
-            length = header[2]
+
+            header = self.serial.read(2)
+            if len(header) != 2:
+                raise ProgError("incomplete packet")
+            length = header[1]
+
             payload = self.serial.read(length)
             if len(payload) != length:
                 raise ProgError("incomplete packet")
-            packet = Packet.decode(header + payload)
+            packet = Packet.decode(signature + header + payload)
             if not expected_type or packet.packet_type == expected_type.value:
                 return packet
 

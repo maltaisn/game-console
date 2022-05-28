@@ -73,8 +73,8 @@ SECTIONS {
         *(.data*)
         __data_end = .;
     } > ram AT> flash
-     __data_load_start = LOADADDR(.data);
-     __data_load_end = __data_load_start + SIZEOF(.data);
+    __data_load_start = LOADADDR(.shared_data);
+    __data_load_end = __data_load_start + SIZEOF(.shared_data);
 
     /* Global data cleared after reset.  */
     .shared_bss : {
@@ -82,9 +82,9 @@ SECTIONS {
         *(.bss)
         *(.bss*)
         *(COMMON)
-        /* Bootloader-only data ends here. */
+        /* Shared data ends here. */
         __ram_end = .;
-    }
+    } > ram
 
     /* ============ RAM: DISPLAY BUFFER ============ */
 
