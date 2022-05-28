@@ -1,6 +1,6 @@
 # Backups
 *.bck
-*.bck
+*.bak
 *.*-bak
 *-backups/
 *.FCStd?

@@ -7,7 +7,7 @@
   (title_block
     (title "Handheld game console")
     (date "2021-11-16")
-    (rev "2021B")
+    (rev "2022A")
   )
 
   (lib_symbols
@@ -2048,6 +2048,7 @@
 
   (no_connect (at 158.75 117.475) (uuid 009a4fb4-fcc0-4623-ae5d-c1bae3219583))
   (no_connect (at 51.435 172.085) (uuid b59f18ce-2e34-4b6e-b14d-8d73b8268179))
+  (no_connect (at 82.55 49.53) (uuid c2589dcb-5f6b-40ab-8595-f27c548512ab))
 
   (wire (pts (xy 227.33 39.37) (xy 227.33 41.91))
     (stroke (width 0) (type default) (color 0 0 0 0))
@@ -2730,10 +2731,6 @@
   (label "DS_SS" (at 82.55 54.61 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 4c843bdb-6c9e-40dd-85e2-0567846e18ba)
-  )
-  (label "POWER_MON" (at 82.55 49.53 0)
-    (effects (font (size 1.27 1.27)) (justify left bottom))
-    (uuid 528fd7da-c9a6-40ae-9f1a-60f6a7f4d534)
   )
   (label "BTN5" (at 237.49 40.64 90)
     (effects (font (size 1.27 1.27)) (justify left bottom))
@@ -4508,15 +4505,6 @@
     (path "/00000000-0000-0000-0000-000061a5eef1"
       (reference "#PWR01") (unit 1) (value "+2.8V") (footprint "")
     )
-    (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-0000619e49b2"
-      (reference "#PWR02") (unit 1) (value "VBAT") (footprint "")
-    )
-    (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-0000619f1728"
-      (reference "#PWR03") (unit 1) (value "+2.8V") (footprint "")
-    )
-    (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-0000619e9629"
-      (reference "#PWR04") (unit 1) (value "GND") (footprint "")
-    )
     (path "/00000000-0000-0000-0000-000061a109a7"
       (reference "#PWR05") (unit 1) (value "GND") (footprint "")
     )
@@ -4865,9 +4853,6 @@
     (path "/00000000-0000-0000-0000-0000616bda35"
       (reference "Q7") (unit 1) (value "AP2302") (footprint "Package_TO_SOT_SMD:SOT-23")
     )
-    (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-000061a67816"
-      (reference "Q8") (unit 1) (value "AP2301") (footprint "Package_TO_SOT_SMD:SOT-23")
-    )
     (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-0000618c396b"
       (reference "R1") (unit 1) (value "330k") (footprint "Resistor_SMD:R_0603_1608Metric")
     )
@@ -4933,9 +4918,6 @@
     )
     (path "/00000000-0000-0000-0000-000061a173f9"
       (reference "R22") (unit 1) (value "470R") (footprint "Resistor_SMD:R_0603_1608Metric")
-    )
-    (path "/00000000-0000-0000-0000-00006188ce03/00000000-0000-0000-0000-0000619dc5d0"
-      (reference "R23") (unit 1) (value "100k") (footprint "Resistor_SMD:R_0603_1608Metric")
     )
     (path "/00000000-0000-0000-0000-000061c06cd0"
       (reference "R24") (unit 1) (value "100k") (footprint "Resistor_SMD:R_0603_1608Metric")
