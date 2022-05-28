@@ -119,6 +119,7 @@ void sim_eeprom_spi_transceive(size_t length, uint8_t data[static length]) {
                     spi_eeprom.address = b << 8;
                 } else if (pos == 2) {
                     spi_eeprom.address |= b;
+                    spi_eeprom.address %= SYS_EEPROM_SIZE;
                 } else if (pos >= 3) {
                     data[i] = eeprom->data[spi_eeprom.address];
                     spi_eeprom.address = (spi_eeprom.address + 1) % SYS_EEPROM_SIZE;
@@ -134,6 +135,7 @@ void sim_eeprom_spi_transceive(size_t length, uint8_t data[static length]) {
                     spi_eeprom.address = b << 8;
                 } else if (pos == 2) {
                     spi_eeprom.address |= b;
+                    spi_eeprom.address %= SYS_EEPROM_SIZE;
                 } else if (spi_eeprom.writing) {
                     eeprom->data[spi_eeprom.address] = b;
                     spi_eeprom.address = (spi_eeprom.address & ~PAGE_MASK) |

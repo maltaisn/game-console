@@ -22,6 +22,8 @@
 #include <boot/input.h>
 
 #include <sys/led.h>
+#include <sys/spi.h>
+
 #include <sim/time.h>
 #include <sim/sound.h>
 #include <sim/flash.h>
@@ -70,6 +72,8 @@ void sys_init_wakeup(void) {
     sim_sound_open_stream();
 
     sys_flash_wakeup();
+
+    sys_spi_deselect_all();
 }
 
 void sim_deinit(void) {

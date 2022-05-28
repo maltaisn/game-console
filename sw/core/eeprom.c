@@ -32,6 +32,7 @@ void eeprom_write(eeprom_t address, uint8_t length, const void* src) {
 #include <boot/defs.h>
 
 #include <sys/spi.h>
+#include <stdlib.h>
 
 #define INSTRUCTION_WREN 0x06
 #define INSTRUCTION_RDSR 0x05
@@ -114,9 +115,10 @@ void sys_eeprom_check_write(void) {
         // data was no fully copied; restore the old data from the buffer.
         eeprom_t addr_abs;
         sys_eeprom_read_absolute(SYS_EEPROM_WRITE_ADDR_ADDR, 2, &addr_abs);
-        sys_eeprom_read_absolute(addr_abs, write_size, eeprom_buf);
+        sys_eeprom_read_absolute(SYS_EEPROM_WRITE_BUF_ADDR, write_size, eeprom_buf);
         sys_eeprom_write_absolute(addr_abs, write_size, eeprom_buf);
-        sys_eeprom_write_absolute(SYS_EEPROM_WRITE_SIZE_ADDR, 1, 0);
+        uint8_t zero = 0;
+        sys_eeprom_write_absolute(SYS_EEPROM_WRITE_SIZE_ADDR, 1, &zero);
     }
 }
 
@@ -149,10 +151,11 @@ void sys_eeprom_write_relative(eeprom_t address, uint8_t length, const void* src
     sys_eeprom_write_absolute(SYS_EEPROM_WRITE_BUF_ADDR, length, eeprom_buf);
 
     // copy new data
-    sys_eeprom_read_absolute(SYS_EEPROM_WRITE_ADDR_ADDR, 2, &addr_abs);
-    sys_eeprom_read_absolute(SYS_EEPROM_WRITE_SIZE_ADDR, 1, &length);
+    sys_eeprom_write_absolute(SYS_EEPROM_WRITE_ADDR_ADDR, 2, &addr_abs);
+    sys_eeprom_write_absolute(SYS_EEPROM_WRITE_SIZE_ADDR, 1, &length);
     sys_eeprom_write_absolute(addr_abs, length, src);
-    sys_eeprom_read_absolute(SYS_EEPROM_WRITE_SIZE_ADDR, 1, 0);
+    uint8_t zero = 0;
+    sys_eeprom_write_absolute(SYS_EEPROM_WRITE_SIZE_ADDR, 1, &zero);
 #else
     // copy new data
     sys_eeprom_write_absolute(addr_abs, length, src);

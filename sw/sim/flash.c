@@ -111,6 +111,7 @@ void sim_flash_spi_transceive(size_t length, uint8_t data[static length]) {
                     spi_flash.address |= b << 8;
                 } else if (pos == 3) {
                     spi_flash.address |= b;
+                    spi_flash.address %= SYS_FLASH_SIZE;
                 } else if (pos >= 4) {
                     data[i] = flash->data[spi_flash.address];
                     spi_flash.address = (spi_flash.address + 1) % SYS_FLASH_SIZE;
@@ -128,6 +129,7 @@ void sim_flash_spi_transceive(size_t length, uint8_t data[static length]) {
                     spi_flash.address |= b << 8;
                 } else if (pos == 3) {
                     spi_flash.address |= b;
+                    spi_flash.address %= SYS_FLASH_SIZE;
                 } else if (spi_flash.writing) {
                     // data AND with existing data like the real flash device.
                     flash->data[spi_flash.address] &= b;
@@ -149,6 +151,7 @@ void sim_flash_spi_transceive(size_t length, uint8_t data[static length]) {
                     spi_flash.address |= b << 8;
                 } else if (pos == 3) {
                     spi_flash.address |= b;
+                    spi_flash.address %= SYS_FLASH_SIZE;
 
                     // erase the block
                     size_t size;
