@@ -28,13 +28,11 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Union, Dict
-
-import crc
+from typing import Dict
 
 import assets_packer
 from prog.app import App, DataLocation
-from utils import readable_size, PathLike
+from utils import readable_size, PathLike, boot_crc16
 
 # filename for the target configuration file
 TARGET_CONF_FILE = "target.cfg"
@@ -201,9 +199,8 @@ def main() -> None:
     app_size = len(packed_app)
 
     # create the app object
-    crc_calc = crc.CrcCalculator(crc.Crc16.CCITT)
-    app_crc = crc_calc.calculate_checksum(packed_app)
-    code_crc = crc_calc.calculate_checksum(app_code)
+    app_crc = boot_crc16(packed_app)
+    code_crc = boot_crc16(app_code)
 
     app = App(config.app_id, app_crc, code_crc, config.version, boot_version, len(app_code),
               config.page_height, DataLocation(0, app_size), DataLocation(0, config.eeprom_space),

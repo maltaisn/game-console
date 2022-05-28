@@ -17,10 +17,11 @@ import time
 from pathlib import Path
 from typing import Callable, Union, Any
 
+from bitarray import bitarray
+import crcmod
+
 # A function that takes into argument a current position and a total,
 # the progress is the ratio of the two.
-from bitarray import bitarray
-
 ProgressCallback = Callable[[int, int], None]
 
 PathLike = Union[str, Path]
@@ -55,6 +56,11 @@ class DataWriter:
         for j in range(n):
             self.data.append(value & 0xff)
             value >>= 8
+
+
+# The CRC calculation used by the bootloader to verify app data
+# This matches with the _crc_ccitt_update function in AVR util/crc.h
+boot_crc16: Callable[[bytes], int] = crcmod.mkCrcFun(0x11021, initCrc=0xffff, rev=True, xorOut=0)
 
 
 def no_progress(c, t) -> None:

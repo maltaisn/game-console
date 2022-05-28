@@ -15,7 +15,6 @@
 from dataclasses import dataclass
 from datetime import date
 from typing import List, Optional
-import crc
 
 from prog.comm import ProgError
 from prog.eeprom import EEPROM_SIZE
@@ -259,7 +258,7 @@ class AppManager:
             if old_location:
                 next_loc = next(loc for i, loc in enumerate(used_space)
                                 if loc.address > old_location.address)
-                if old_location.address + old_location.size <= next_loc.address:
+                if old_location.address + new_size <= next_loc.address:
                     # app can be written in place at the same location
                     return old_location.address
 
@@ -312,9 +311,8 @@ class AppManager:
         app_id = new.app_id
 
         # check CRCs for good measure...
-        crc_calc = crc.CrcCalculator(crc.Crc16.CCITT)
-        app_crc = crc_calc.calculate_checksum(app_data)
-        code_crc = crc_calc.calculate_checksum(app_data[:new.code_size])
+        app_crc = boot_crc16(app_data)
+        code_crc = boot_crc16(app_data[:new.code_size])
         if app_crc != new.crc_app:
             raise ProgError("App CRC doesn't match the CRC bundled in the app image")
         if code_crc != new.crc_code:
@@ -410,7 +408,7 @@ class AppManager:
             # pack app data in eeprom
             eeprom_addr = EEPROM_DATA_START
             for i, a in enumerate(self.eeprom_index):
-                if a.app_id != app_id:
+                if a.app_id != app_id and a.app_id != APP_ID_NONE:
                     a.location.address = eeprom_addr
                     eeprom_writer.copy(a.location.address, eeprom_addr, a.location.size)
                     eeprom_writer.write(EEPROM_INDEX_START + EEPROM_ENTRY_SIZE * i, a.encode())
@@ -448,9 +446,9 @@ class AppManager:
             # pack apps in flash
             flash_addr = FLASH_DATA_START
             for i, a in enumerate(self.flash_index):
-                if a.app_id != app_id:
-                    a.flash_location.address = flash_addr
+                if a.app_id != app_id and a.app_id != APP_ID_NONE:
                     flash_writer.copy(a.flash_location.address, flash_addr, a.flash_location.size)
+                    a.flash_location.address = flash_addr
                     flash_writer.write(FLASH_INDEX_START + FLASH_ENTRY_SIZE * i, a.encode())
                     flash_addr += a.flash_location.size
         flash_writer.write(flash_addr, app_data)
