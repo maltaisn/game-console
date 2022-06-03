@@ -32,9 +32,14 @@
 
 /**
  * Type used to store system time.
- * The 24-bit counter overflows after 65536 seconds (~18.2 h).
+ * The 16-bit counter overflows after 256 seconds (4 min 16 sec).
+ * As such, the system time should not be used as an absolute value because of frequent overflows,
+ * but rather as a difference of a previous system time, in which case overflow has no impact
+ * (e.g. 0xffff - 0x0001 correctly gives a result of 2 ticks. However, care must be taken to never
+ * measure time difference greater than the system time maximum which would give a wrong result
+ * (the system time counter must not overflow more than once since last time value was saved).
  */
-typedef uint24_t systime_t;
+typedef uint16_t systime_t;
 
 /**
  * Returns the system time value.

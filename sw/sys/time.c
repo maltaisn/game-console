@@ -34,8 +34,7 @@ ISR(RTC_CNT_vect) {
     // called 256 times per second
     RTC.INTFLAGS = RTC_OVF_bm;
 
-    systime_t time = sys_time_counter + 1;
-    sys_time_counter = time;
+    ++sys_time_counter;
 
     sys_input_update_state();
     sys_sound_update();
