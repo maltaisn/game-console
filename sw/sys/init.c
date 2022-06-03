@@ -43,13 +43,17 @@
 #define ADC_ENABLE() (ADC0.CTRLA = ADC_RESSEL_10BIT_gc | ADC_ENABLE_bm)
 
 static void sys_init_registers(void) {
-    // ====== CLOCK =====
+    // ====== CLOCK ======
     // 10 MHz clock (maximum for 2.8 V supply voltage)
     _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm);
 
+    // ====== CPU ======
+    // the boot section has the interrupt vector table.
+    _PROTECTED_WRITE(CPUINT.CTRLA, CPUINT_IVSEL_bm);
+
     // ====== PORT ======
     // TX, buzzer -, buzzer +, MOSI, SCK
-    VPORTA.DIR = PIN0_bm | PIN2_bm | PIN3_bm | PIN4_bm | PIN6_bm;
+    VPORTA.DIR = PIN2_bm | PIN3_bm | PIN4_bm | PIN6_bm;
     // status LED, display SS, display reset, display D/C
     VPORTC.DIR = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm;
     // flash SS, eeprom SS, enable VBAT level
@@ -61,7 +65,6 @@ static void sys_init_registers(void) {
     // set all CS lines high
     sys_spi_deselect_all();
 
-#ifndef DISABLE_INACTIVE_SLEEP
     // note: both edges is needed for asynchronous sensing, needed to wake up from deep power down.
     PORTD.PIN0CTRL = PORT_ISC_BOTHEDGES_gc;
     PORTD.PIN1CTRL = PORT_ISC_BOTHEDGES_gc;
@@ -69,7 +72,6 @@ static void sys_init_registers(void) {
     PORTD.PIN3CTRL = PORT_ISC_BOTHEDGES_gc;
     PORTD.PIN4CTRL = PORT_ISC_BOTHEDGES_gc;
     PORTD.PIN5CTRL = PORT_ISC_BOTHEDGES_gc;
-#endif
 
     // ====== SPI ======
     // master, 5 MHz SCK, mode 0, MSB first, buffered, no interrupts.
@@ -135,7 +137,6 @@ void sys_init(void) {
     if (reset_flags == 0) {
         // dirty reset, reset cleanly.
         sys_led_set();
-        sys_led_clear();
         _delay_ms(1000);
         sys_reset_system();
     }

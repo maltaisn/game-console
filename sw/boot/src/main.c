@@ -16,6 +16,8 @@
 
 #ifndef SIMULATION_HEADLESS
 
+#include <load.h>
+
 #include <boot/defs.h>
 #include <boot/init.h>
 #include <boot/input.h>
@@ -27,14 +29,13 @@
 #include <sys/sound.h>
 #include <sys/power.h>
 #include <sys/display.h>
+#include <sys/app.h>
 
 #include <core/input.h>
 #include <core/sound.h>
 #include <core/sysui.h>
 #include <core/graphics.h>
 #include <core/time.h>
-
-#include <load.h>
 
 #include <stdbool.h>
 
@@ -57,7 +58,20 @@
 #define SIM_FLASH_FILE "dev/flash.dat"
 #define SIM_EEPROM_FILE "dev/eeprom.dat"
 
-#endif
+#endif //SIMULATION
+
+#ifndef SIMULATION
+FUSES = {
+        .WDTCFG = FUSE_WDTCFG_DEFAULT,
+        .BODCFG = BOD_LVL_BODLEVEL0_gc | BOD_SAMPFREQ_1KHZ_gc |
+                  BOD_ACTIVE_SAMPLED_gc | BOD_SLEEP_DIS_gc,
+        .OSCCFG = FUSE_OSCCFG_DEFAULT,
+        .SYSCFG0 = FUSE_SYSCFG0_DEFAULT,
+        .SYSCFG1 = FUSE_SYSCFG1_DEFAULT,
+        .APPEND = 0x00,
+        .BOOTEND = 0x20,  // 0x20 * 256 = 8192 B
+};
+#endif //SIMULATION
 
 #define DISPLAY_MAX_FPS 8
 
@@ -95,7 +109,7 @@ static void* loop_thread(void* arg) {
     }
     return 0;
 }
-#endif
+#endif //SIMULATION
 
 /**
  * This function is the entry point for both the bootloader and the simulator.
@@ -104,6 +118,10 @@ static void* loop_thread(void* arg) {
 int main(void) {
     sys_init();
     sys_display_init_page(DISPLAY_PAGE_HEIGHT);
+
+    // initialize last input state to prevent pushed button registered as clicked
+    // immediately on launch, like when an app has an exit button.
+    _last_input_state = input_get_state();
 
 #ifdef SIM_MEMORY_ABSOLUTE
 #ifdef SIMULATION
@@ -118,6 +136,11 @@ int main(void) {
 #endif //SIMULATION
     sys_eeprom_check_write();
     load_read_index();
+    _selected_index = load_get_loaded_app_index();
+    if (_selected_index == LOADED_APP_NONE) {
+        // no app is currently loaded, select first by default.
+        _selected_index = 0;
+    }
 #endif //SIM_MEMORY_ABSOLUTE
 
 #ifdef SIMULATION
@@ -140,19 +163,10 @@ int main(void) {
         sim_time_update();
     }
 #else
-    if (load_get_app_count() == 0) {
-        // either flash wasn't initialized, or bootloader was just updated and all the apps
-        // target the old bootloader version... in this case we'll suppose that the debug app
-        // was bundled along with the bootloader and we can just jump to it directly.
-        // note that this means the debug app must partially initialize itself (display page height),
-        // and may not store any data in flash and eeprom since the offset hasn't been set.
-        __callback_setup();
-    }
-
     while (true) {
         loop();
     }
-#endif
+#endif //SIMULATION
 }
 
 static void loop(void) {
@@ -160,14 +174,19 @@ static void loop(void) {
     sys_input_dim_if_inactive();
 
     bool is_sleep_due = sys_power_is_sleep_due();
-    bool should_draw = false;
 
-    if (load_get_loaded() != APP_ID_NONE) {
+    bool should_draw;
+    if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
         // app active
         should_draw = __callback_loop();
     } else {
         // bootloader active
         handle_input();
+
+        if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
+            // app was just loaded, start loop over from app perspective.
+            return;
+        }
 
         systime_t time = time_get();
         should_draw = (time - _last_draw_time > millis_to_ticks(1000.0 / DISPLAY_MAX_FPS));
@@ -213,7 +232,7 @@ static void draw(void) {
         return;
     }
 
-    if (load_get_loaded() != APP_ID_NONE) {
+    if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
         // draw the app
         __callback_draw();
     } else {
@@ -251,6 +270,7 @@ static void draw(void) {
 static void handle_input(void) {
     const uint8_t state = input_get_state();
     const uint8_t clicked = state & ~_last_input_state;
+    _last_input_state = state;
 
     if (clicked & BUTTON2) {
         // move selection up
@@ -269,13 +289,9 @@ static void handle_input(void) {
             }
         }
     } else if (clicked & BUTTON4) {
-        if (load_get_app_count() > 0) {
-            // load selected app
-            _load_app(_selected_index);
-        }
+        // load selected app
+        _load_app(_selected_index);
     }
-
-    _last_input_state = state;
 }
 
 #endif //SIMULATION_HEADLESS

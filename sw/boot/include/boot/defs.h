@@ -28,7 +28,9 @@
 
 // Attribute put on functions used by bootloader so that they aren't inlined
 // and can be called from the app instead of duplicating their code.
-#define BOOTLOADER_NOINLINE __attribute__((noinline))
+// The goal of all these attributes is to ensure the signature of the function stays unchanged.
+#define BOOTLOADER_NOINLINE __attribute__((noinline)) __attribute__((noclone)) \
+                            __attribute__((no_icf))
 
 // Attribute put on variables only written but never read by the bootloader,
 // so that they aren't removed and can be used from the app.

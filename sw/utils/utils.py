@@ -92,7 +92,7 @@ def progress_bar(left: str, right: str, progress: float) -> str:
     if progress > 0 and n == 0:
         n = 1
     return (f"{left.ljust(PROGRESS_BAR_MARGIN, ' ')} "
-            f"[{('#' * n)}{' ' * (PROGRESS_BAR_WIDTH - n - 1)}] "
+            f"[{('#' * n)}{' ' * (PROGRESS_BAR_WIDTH - n)}] "
             f"{f'{round(progress * 1000) / 10:.1f}%,':<8}{right}")
 
 
@@ -130,7 +130,7 @@ def process_bitarray_sequences(driver, mask: bitarray, name: str,
     start = 0
     total_bytes = 0
     total_to_process = mask.count() * block_size
-    while start < mem_size:
+    while start < block_count:
         while not mask[start]:
             start += 1
             if start == block_count:

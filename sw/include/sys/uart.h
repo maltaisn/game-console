@@ -23,11 +23,19 @@
 
 /*
  * To use the UART module, a SYS_UART_ENABLE define must be set during compilation.
- * This is to avoid the declaration of the uart callbacks when it's not used.
+ * This is to avoid the declaration of the UART callbacks when it's not used.
+ * The size of the RX and TX buffer can be customized.
  */
 
+#ifndef SYS_UART_RX_BUFFER_SIZE
+// The maximum supported buffer size is 256 bytes
 #define SYS_UART_RX_BUFFER_SIZE 64
+#endif
+
+#ifndef SYS_UART_TX_BUFFER_SIZE
+// The maximum supported buffer size is 256 bytes
 #define SYS_UART_TX_BUFFER_SIZE 32
+#endif
 
 #ifdef SIMULATION
 #define SYS_UART_BAUD_RATE(baud) ((baud) / 100)
@@ -76,5 +84,10 @@ bool sys_uart_available(void);
  */
 void sys_uart_flush(void);
 
+/**
+ * Callback called when the RX buffer is almost full.
+ * Note that this is called from an interrupt.
+ */
+void sys_uart_rx_full_callback(void);
 
 #endif //SYS_UART_H

@@ -1,6 +1,7 @@
 
 # UART communication setup
-DEFINES += SYS_UART_ENABLE UART_BAUD=9600 UART_BAUD_FAST=500000
+# The RX buffer size is 256 bytes to fit at most one full size packet.
+DEFINES += SYS_UART_ENABLE UART_BAUD=250000 SYS_UART_RX_BUFFER_SIZE=256
 
 # gcprog version compatibility
 DEFINES += VERSION_PROG_COMP=3

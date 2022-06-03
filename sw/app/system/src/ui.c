@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2022 Nicolas Maltais
  *
@@ -21,7 +20,7 @@
 
 #define SUB_DIALOG_COUNT 4
 
-static const char* SUB_DIALOG_TITLES[SUB_DIALOG_COUNT] = {
+static const char* const SUB_DIALOG_TITLES[SUB_DIALOG_COUNT] = {
         "APPS",
         "FLASH",
         "EEPROM",
@@ -51,10 +50,10 @@ void open_main_dialog(void) {
     dialog_add_item_button("EXIT", STATE_TERMINATE);
 }
 
-void open_sub_dialog(state_t state) {
-    uint8_t height = SUB_DIALOG_HEIGHT[state];
+void open_sub_dialog(state_t s) {
+    uint8_t height = SUB_DIALOG_HEIGHT[s];
     dialog_init(2, (DISPLAY_HEIGHT - height - 10) / 2, 124, height);
-    dialog.title = SUB_DIALOG_TITLES[state];
+    dialog.title = SUB_DIALOG_TITLES[s];
     dialog.pos_btn = "OK";
     dialog.pos_result = STATE_MAIN_MENU;
     dialog.dismiss_result = STATE_MAIN_MENU;

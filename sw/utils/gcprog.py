@@ -47,8 +47,6 @@ from utils import DataReader
 
 VERSION = 3
 
-STD_IO = "-"
-
 EEPROM_LOCAL_FILE = "dev/eeprom.dat"
 FLASH_LOCAL_FILE = "dev/flash.dat"
 
@@ -176,14 +174,12 @@ class Prog(CommInterface):
 
     interrupted: bool
     operation_in_progress: bool
-    fast_mode_enabled: bool
 
     def __init__(self, args):
         self.args = args
         self.local_run = args.local_run
         self.interrupted = False
         self.operation_in_progress = False
-        self.fast_mode_enabled = False
         signal.signal(signal.SIGINT, self.sigint_handler)
 
         if args.local_run and args.simulator:
@@ -216,8 +212,7 @@ class Prog(CommInterface):
             return
         self.check_version()
 
-        self.set_fast_baud_rate(True)
-
+        self.lock()
         cmd = self.args.command
         if cmd == "eeprom":
             self.command_eeprom()
@@ -238,7 +233,7 @@ class Prog(CommInterface):
             self.eeprom.save()
             self.flash.save()
 
-        self.set_fast_baud_rate(False)
+        self.unlock()
         self.comm.disconnect()
 
     def get_version(self) -> None:
@@ -268,8 +263,6 @@ class Prog(CommInterface):
 
     def interrupt_exit(self) -> None:
         self.interrupted = False
-        if self.fast_mode_enabled:
-            self.set_fast_baud_rate(False)
         self.comm.disconnect()
         exit(1)
 
@@ -293,20 +286,21 @@ class Prog(CommInterface):
         self.operation_in_progress = False
         return packet
 
-    def set_fast_baud_rate(self, enabled: bool) -> None:
-        if self.local_run:
-            return
-        self.write(Packet(PacketType.FAST_MODE, [0x01 if enabled else 0x00]))
-        self.comm.serial.flush()
-        self.fast_mode_enabled = enabled
-        self.read(PacketType.FAST_MODE)
-        self.comm.set_fast_baud_rate(enabled)
-
     def sigint_handler(self, signum, frame):
         if self.operation_in_progress:
             self.interrupted = True
         else:
             self.interrupt_exit()
+
+    def lock(self) -> None:
+        if not self.local_run:
+            self.comm.write(Packet(PacketType.LOCK, [0xff]))
+            self.comm.read(PacketType.LOCK)
+
+    def unlock(self) -> None:
+        if not self.local_run:
+            self.comm.write(Packet(PacketType.LOCK, [0x00]))
+            self.comm.read(PacketType.LOCK)
 
     def create_app_manager(self) -> app.AppManager:
         manager = app.AppManager(self.eeprom, self.flash)

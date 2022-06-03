@@ -48,7 +48,7 @@ static const disp_color_t TILE_COLORS[PIECES_COUNT] = {
         0xfc,  // Z
 };
 
-static const char* CONTROL_NAMES[CONTROLS_COUNT] = {
+static const char* const CONTROL_NAMES[CONTROLS_COUNT] = {
         "Pause",
         "Move left",
         "Move right",

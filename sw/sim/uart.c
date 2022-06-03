@@ -27,6 +27,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 static const char* SOCKET_NAME = "/tmp/gcsim";
 
@@ -99,7 +100,7 @@ void sim_uart_listen(void) {
         // check if socket connection is still alive by pinging with a 0x00 byte
         // this byte should be ignored by the client.
         uint8_t c = 0;
-        if (send(connected_fd, &c, 1, MSG_DONTWAIT | MSG_NOSIGNAL) < 0) {
+        if (send(connected_fd, &c, 1, MSG_DONTWAIT | MSG_NOSIGNAL) < 0 && errno != EAGAIN) {
             connected_fd = -1;
             trace("UART server lost connection.");
             sim_uart_connection_lost_callback();

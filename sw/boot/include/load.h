@@ -22,24 +22,21 @@
 #include <sys/flash.h>
 #include <core/graphics.h>
 
-// This app ID is used to identify the bootloader.
-// It's also used to identify when no app is present.
-#define APP_ID_NONE 0
+#define LOADED_APP_NONE 0xff
 
 /**
  * Load all app entries compatible with this bootloader version from the index.
+ * Note that after calling this function, the currently loaded app ID must be checked before
+ * accessing any boot-only variables as bootloader may not be active anymore.
  */
 void load_read_index(void);
 
 /**
- * Returns the ID of the loaded app, or `APP_BOOTLOADER` if none is loaded.
- */
-uint8_t load_get_loaded(void);
-
-/**
  * Load the app at a position in the flash index.
  * The app is copied in program memory, checksum is checked, then setup callback is called.
- * After returning from this function, boot-only variables must not be used.
+ * If checksum check fails, no app is loaded and the bootloader remains active.
+ * Note that after calling this function, the currently loaded app ID must be checked before
+ * accessing any boot-only variables as bootloader may not be active anymore.
  */
 void _load_app(uint8_t index);
 
@@ -53,5 +50,11 @@ graphics_image_t load_get_app_image(uint8_t index);
  * Returns the number of apps in the flash index.
  */
 uint8_t load_get_app_count(void);
+
+/**
+ * Returns the position of the currently loaded app (the one written in flash) in the index.
+ * If no app in the index is currently loaded, returns `LOADED_APP_NONE`.
+ */
+uint8_t load_get_loaded_app_index(void);
 
 #endif //LOAD_H

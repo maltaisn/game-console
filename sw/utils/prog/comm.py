@@ -13,14 +13,13 @@
 #  limitations under the License.
 
 import abc
+import socket
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Sequence, Union
 
 import serial
 from serial import Serial
-
-import socket
 
 
 class ProgError(Exception):
@@ -31,7 +30,7 @@ class PacketType(Enum):
     """Packet types defined by firmware."""
     VERSION = 0x00
     SPI = 0x01
-    FAST_MODE = 0x02
+    LOCK = 0x02
 
 
 @dataclass
@@ -40,20 +39,22 @@ class Packet:
     packet_type: int
     payload: bytes
 
-    SIGNATURE_BYTE = 0xc3
-    MAX_PAYLOAD_SIZE = 0xff
+    SIGNATURE_BYTE = 0x73
+    PACKET_MAX_SIZE = 256
+    PACKET_HEADER_SIZE = 3
+    PAYLOAD_MAX_SIZE = PACKET_MAX_SIZE - PACKET_HEADER_SIZE
 
     def __init__(self, packet_type: Union[PacketType, int], payload: Sequence[int] = None):
         self.packet_type = packet_type if isinstance(packet_type, int) else packet_type.value
         self.payload = bytes(payload) if payload else bytes()
 
     def encode(self) -> bytes:
-        if len(self.payload) > Packet.MAX_PAYLOAD_SIZE:
+        if len(self.payload) > Packet.PAYLOAD_MAX_SIZE:
             raise ProgError("packet payload size exceeds maximum")
         packet = bytearray()
         packet.append(Packet.SIGNATURE_BYTE)
         packet.append(self.packet_type)
-        packet.append(len(self.payload))
+        packet.append(len(self.payload) + Packet.PACKET_HEADER_SIZE - 1)
         packet += self.payload
         return packet
 
@@ -61,10 +62,10 @@ class Packet:
     def decode(data: Sequence[int]) -> "Packet":
         if data[0] != Packet.SIGNATURE_BYTE:
             raise ProgError("packet signature is invalid")
-        type = data[1]
-        length = data[2]
-        payload = bytes(data[3:3 + length])
-        return Packet(type, payload)
+        packet_type = data[1]
+        length = max(Packet.PACKET_HEADER_SIZE, data[2] + 1)
+        payload = bytes(data[Packet.PACKET_HEADER_SIZE:length])
+        return Packet(packet_type, payload)
 
 
 class SimulatorSerial:
@@ -79,7 +80,7 @@ class SimulatorSerial:
     def read(self, n: int) -> bytes:
         received = bytearray()
         while len(received) < n:
-            received += self.socket.recv(n)
+            received += self.socket.recv(n - len(received))
         return received
 
     def write(self, data: bytes) -> None:
@@ -104,27 +105,29 @@ class CommInterface(abc.ABC):
         """Read a packet from the communication interface (optionally a specific packet type)."""
         raise NotImplementedError
 
+
 class Comm(CommInterface):
     """Class used for communication with firmware. Uses pyserial to send and receive packets."""
     filename: str
     baud_rate: int
-    baud_rate_fast: int
     simulator: bool
     serial: Optional[Union[Serial, SimulatorSerial]]
 
+    # Used to enforce the "read after write" and "write before read" recommandations
+    # of the system UART communication interface to avoid losing packets.
+    _written: bool
+
     DEFAULT_FILENAME = "/dev/ttyACM1"
-    DEFAULT_BAUD_RATE = 9_600
-    DEFAULT_BAUD_RATE_FAST = 500_000
+    DEFAULT_BAUD_RATE = 250_000
 
     def __init__(self, filename: str = DEFAULT_FILENAME,
                  baud_rate: int = DEFAULT_BAUD_RATE,
-                 baud_rate_fast: int = DEFAULT_BAUD_RATE_FAST,
                  simulator: bool = False):
         self.filename = filename
         self.baud_rate = baud_rate
-        self.baud_rate_fast = baud_rate_fast
         self.serial = None
         self.simulator = simulator
+        self._written = False
 
     def connect(self) -> None:
         try:
@@ -142,8 +145,6 @@ class Comm(CommInterface):
                     timeout=0.1,
                 )
                 self.serial.read_all()  # discard content from before program started
-                # set timeout in relation with normal baud rate (faster = smaller timeout)
-                self.serial.timeout = max(0.5, 10000 / self.baud_rate)
 
         except IOError as e:
             raise ProgError("could not connect to device") from e
@@ -156,9 +157,16 @@ class Comm(CommInterface):
         return self.serial is not None
 
     def write(self, packet: Packet) -> None:
+        if self._written:
+            raise RuntimeError("no read after write")
         self.serial.write(packet.encode())
+        self._written = True
 
     def read(self, expected_type: Optional[PacketType] = None) -> Packet:
+        if not self._written:
+            raise RuntimeError("read without write")
+        self._written = False
+
         while True:
             # find signature byte
             signature = self.serial.read(1)
@@ -170,16 +178,11 @@ class Comm(CommInterface):
             header = self.serial.read(2)
             if len(header) != 2:
                 raise ProgError("incomplete packet")
-            length = header[1]
+            payload_length = max(0, header[1] - Packet.PACKET_HEADER_SIZE + 1)
 
-            payload = self.serial.read(length)
-            if len(payload) != length:
+            payload = self.serial.read(payload_length)
+            if len(payload) != payload_length:
                 raise ProgError("incomplete packet")
             packet = Packet.decode(signature + header + payload)
             if not expected_type or packet.packet_type == expected_type.value:
                 return packet
-
-    def set_fast_baud_rate(self, enabled: bool) -> None:
-        """Enable or disable fast baud rate."""
-        if self.is_connected():
-            self.serial.baudrate = self.baud_rate_fast if enabled else self.baud_rate

@@ -28,7 +28,7 @@ static uint8_t music_start_delay;
 
 // Encoded tempo value for each level, this corresponds to 60 BPM for first level and
 // 120 BPM for last level, with 3 BPM increase by level, as much as encoding allows.
-static uint8_t LEVEL_TEMPO[] = {
+static const uint8_t LEVEL_TEMPO[] = {
         16, 15, 15, 14, 13, 13, 12, 12, 11, 11,
         11, 10, 10, 10, 9, 9, 9, 9, 8, 8, 8,
 };

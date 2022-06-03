@@ -33,6 +33,7 @@ from typing import Dict
 import assets_packer
 from prog.app import App, DataLocation
 from utils import readable_size, PathLike, boot_crc16
+from hex_utils import read_hex_file
 
 # filename for the target configuration file
 TARGET_CONF_FILE = "target.cfg"
@@ -58,42 +59,6 @@ class TargetConfig:
     author: str
     eeprom_space: int
     page_height: int
-
-
-def read_hex_file(filename: PathLike, max_size: int) -> bytes:
-    """Partial implementation of an intel HEX reader to read the program data."""
-    data = bytearray()
-    offset = 0
-    start_address = -1
-    with open(filename, "r") as file:
-        for line in file:
-            line = line.strip()
-            if not line.startswith(":"):
-                continue
-
-            content = bytes.fromhex(line[1:])
-            length = content[0]
-            address = (content[2] | content[1] << 8) + offset
-            if start_address == -1:
-                start_address = address
-            record = content[3]
-            if record == 0x00:
-                # data
-                if address >= max_size:
-                    continue
-                if address - start_address > len(data):
-                    data += bytearray(address - start_address - len(data))
-                data.extend(content[4:4 + length])
-            elif record == 0x01:
-                # end of file
-                break
-            elif record == 0x02:
-                # extended segment address
-                offset = (content[5] | content[4] << 8) << 4
-            elif record == 0x04:
-                # extended linear address
-                offset = (content[5] | content[4] << 8) << 16
-    return data
 
 
 def read_config_file(filename: PathLike) -> Dict[str, str]:

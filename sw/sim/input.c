@@ -152,29 +152,23 @@ void sys_input_update_state_immediate(void) {
 }
 
 void sys_input_dim_if_inactive(void) {
-#ifndef DISABLE_INACTIVE_SLEEP
     bool dimmed = inactive_countdown <= INACTIVITY_COUNTDOWN_DIM;
     if (dimmed && !sys_display_is_dimmed()) {
         trace("input inactive, display dimmed");
     }
     sys_display_set_dimmed(dimmed);
-#endif
 }
 
 void sys_input_reset_inactivity(void) {
-#ifndef DISABLE_INACTIVE_SLEEP
     inactive_countdown = INACTIVITY_COUNTDOWN_START;
-#endif
 }
 
 void sys_input_update_inactivity(void) {
-#ifndef DISABLE_INACTIVE_SLEEP
     if (inactive_countdown == 0) {
         sys_power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
     } else {
         --inactive_countdown;
     }
-#endif
 }
 
 #ifdef SIMULATION_HEADLESS

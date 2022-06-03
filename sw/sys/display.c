@@ -234,7 +234,7 @@ void sys_display_first_page(void) {
 
 bool sys_display_next_page(void) {
     sys_display_set_dc();
-    sys_display_write_data(sys_display_page_height * DISPLAY_NUM_COLS, sys_display_buffer);
+    sys_display_write_data(sys_display_curr_page_height * DISPLAY_NUM_COLS, sys_display_buffer);
     sys_display_page_ystart += sys_display_page_height;
     sys_display_page_yend += sys_display_page_height;
     if (sys_display_page_yend >= DISPLAY_HEIGHT) {

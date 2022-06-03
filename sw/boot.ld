@@ -16,20 +16,29 @@
 
 INCLUDE common.ld
 
+__FUSE_REGION_ORIGIN__ = 0x820000;
+__FUSE_REGION_LENGTH__ = DEFINED(__FUSE_REGION_LENGTH__) ? __FUSE_REGION_LENGTH__ : 1K;
+
 __TEXT_REGION_LENGTH__ = BOOTLOADER_TEXT_SIZE;
 
 __TARGET_TEXT_LENGTH__ = BOOTLOADER_TEXT_SIZE;
 __TARGET_DATA_LENGTH__ = SHARED_DATA_SIZE;
 
-/* The start address at which the app code will be copied to in program memory. */
-__APP_START_ADDRESS = __TEXT_REGION_ORIGIN__ + BOOTLOADER_TEXT_SIZE;
+/* The start address at which the app code will be copied to in program memory,
+   in global memory map. */
+__APP_START_ADDRESS = __FLASH_OFFSET__ + __TEXT_REGION_ORIGIN__ + BOOTLOADER_TEXT_SIZE;
 
 MEMORY {
     flash  (rx) : ORIGIN = __TEXT_REGION_ORIGIN__, LENGTH = __TEXT_REGION_LENGTH__
     ram  (rw!x) : ORIGIN = __DATA_REGION_ORIGIN__, LENGTH = __DATA_REGION_LENGTH__
+    fuse (rw!x) : ORIGIN = __FUSE_REGION_ORIGIN__, LENGTH = __FUSE_REGION_LENGTH__
 }
 
 SECTIONS {
+    .fuse : {
+        KEEP(*(.fuse))
+    } > fuse
+
     /* ============ FLASH: BOOTLOADER TEXT ============ */
 
     /* Bootloader text section. */
@@ -56,7 +65,7 @@ SECTIONS {
     } > flash
 
     /* Bootloader read-only data.  */
-    .boot_rodata ADDR(.boot_text) + SIZEOF(.boot_text) + __RODATA_PM_OFFSET__ : {
+    .boot_rodata ADDR(.boot_text) + SIZEOF(.boot_text) + __FLASH_OFFSET__ : {
         __rodata_start = .;
         *(.rodata)
         *(.rodata*)
@@ -66,7 +75,7 @@ SECTIONS {
     /* ============ RAM: DATA SHARED BETWEEN BOOTLOADER AND APP ============ */
 
     /* Shared data (ram vma / flash lma).  */
-    .shared_data : {
+    .shared_data (NOLOAD) : {
         __ram_start = .;
         __data_start = .;
         *(.data)
@@ -77,7 +86,7 @@ SECTIONS {
     __data_load_end = __data_load_start + SIZEOF(.shared_data);
 
     /* Global data cleared after reset.  */
-    .shared_bss : {
+    .shared_bss (NOLOAD) : {
         __bss_start = .;
         *(.bss)
         *(.bss*)
@@ -107,7 +116,7 @@ SECTIONS {
     /* ============ RAM: BOOTLOADER-ONLY DATA ============ */
 
     /* Data in this section cannot be accessed after the app has been started. */
-    .boot_bss MAX(__disp_buf_end, __shared_disp_buf_end) : {
+    .boot_bss MAX(__disp_buf_end, __shared_disp_buf_end) (NOLOAD) : {
         __boot_only_start = .;
         *(.boot_only*)
         __boot_only_end = .;

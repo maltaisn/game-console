@@ -69,7 +69,14 @@ def main() -> None:
     flash_usage = text_size + rodata_size + data_load_size
     print_section_usage("Flash", flash_usage, flash_size)
 
-    print("=========================================\n")
+    print("=========================================")
+
+    if flash_usage > flash_size:
+        raise MapFileError("flash usage exceeds available capacity!")
+    if ram_usage > ram_size:
+        raise MapFileError("RAM usage exceeds available capacity!")
+
+    print()
 
 
 if __name__ == '__main__':

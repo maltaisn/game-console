@@ -22,7 +22,7 @@
 
 #include <core/dialog.h>
 
-static const char* CHOICES_ON_OFF[] = {"OFF", "ON"};
+static const char* const CHOICES_ON_OFF[] = {"OFF", "ON"};
 
 static char text_field_buffer[11];
 

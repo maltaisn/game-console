@@ -32,7 +32,7 @@ class SpiInterface:
     last_transfer: bool
 
     # maximum size of transfer per SPI packet
-    MAX_TRANSFER_SIZE = 254
+    MAX_TRANSFER_SIZE = Packet.PAYLOAD_MAX_SIZE - 1
 
     def __init__(self, comm: CommInterface):
         self.comm = comm

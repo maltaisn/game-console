@@ -23,7 +23,7 @@
 #include <boot/defs.h>
 
 BOOTLOADER_NOINLINE
-void data_read(data_ptr_t address, uint16_t length, uint8_t dest[static length]) {
+void data_read(data_ptr_t address, uint16_t length, uint8_t dest[]) {
     sys_data_read(address, length, dest);
 }
 

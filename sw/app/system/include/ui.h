@@ -22,6 +22,6 @@
 
 void open_main_dialog(void);
 
-void open_sub_dialog(state_t state);
+void open_sub_dialog(state_t s);
 
 #endif //SYSTEM_UI_H

@@ -424,8 +424,11 @@ def execute_config(driver: MemoryDriver, config: Config) -> None:
     read_data = writer.execute()
     if config.read:
         try:
-            with open(config.output_file, "wb") as file:
-                file.write(read_data[0])
+            if config.output_file == STD_IO:
+                sys.stdout.buffer.write(read_data[0])
+            else:
+                with open(config.output_file, "wb") as file:
+                    file.write(read_data[0])
         except IOError as e:
             raise ProgError(f"could not write to file: {e}")
 

@@ -102,8 +102,8 @@ void dialog_add_item_button(const char* name, dialog_result_t result) {
 
 #ifndef DIALOG_NO_CHOICE
 
-void dialog_add_item_choice(const char* name, uint8_t selection,
-                            uint8_t choices_count, const char** choices) {
+void dialog_add_item_choice(const char* const name, uint8_t selection,
+                            uint8_t choices_count, const char* const* choices) {
 #ifdef RUNTIME_CHECKS
     if (!dialog_add_item_check()) {
         return;
@@ -144,7 +144,7 @@ void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
 #endif //DIALOG_NO_NUMBER
 
 #ifndef DIALOG_NO_TEXT
-void dialog_add_item_text(const char* name, uint8_t max_length, char text[max_length]) {
+void dialog_add_item_text(const char* name, uint8_t max_length, char text[static max_length]) {
 #ifdef RUNTIME_CHECKS
     if (!dialog_add_item_check()) {
         return;

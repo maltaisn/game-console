@@ -22,12 +22,16 @@
 #include <sys/spi.h>
 
 #include <core/defs.h>
+#include <core/time.h>
+#include <core/led.h>
 
 #ifdef SIMULATION
 #include <sim/uart.h>
 #include <sim/flash.h>
 #include <sim/eeprom.h>
 #endif
+
+#define LOCK_BLINK_DURATION 250  // ms
 
 enum {
     SPI_CS_FLASH = 0x0,
@@ -39,7 +43,12 @@ enum {
 // fully received. Hence, the payload buffer can share memory with the display buffer.
 SHARED_DISP_BUF uint8_t comm_payload_buf[PAYLOAD_MAX_SIZE];
 
-static bool in_fast_mode;
+static bool locked;
+
+static void handle_packet_lock(void) {
+    locked = comm_payload_buf[0] == 0xff;
+    comm_transmit(PACKET_LOCK, 0);
+}
 
 static void handle_packet_version(void) {
     comm_payload_buf[0] = APP_VERSION & 0xff;
@@ -51,7 +60,7 @@ static void handle_packet_version(void) {
     comm_transmit(PACKET_VERSION, 6);
 }
 
-static void handle_packet_spi(uint8_t length) {
+static void handle_packet_spi(uint8_t data_length) {
     // assert CS line for the selected peripheral
     const uint8_t options = comm_payload_buf[0];
     const uint8_t cs = options & 0x3;
@@ -66,24 +75,12 @@ static void handle_packet_spi(uint8_t length) {
     }
 
     // transceive SPI data
-    sys_spi_transceive(length - 1, comm_payload_buf + 1);
-    comm_transmit(PACKET_SPI, length);
+    sys_spi_transceive(data_length - 1, comm_payload_buf + 1);
+    comm_transmit(PACKET_SPI, data_length);
 
     // if last transfer, deassert the CS line.
     if (options & 0x80) {
         sys_spi_deselect_all();
-    }
-}
-static void handle_packet_fast_mode(void) {
-    comm_transmit(PACKET_FAST_MODE, 0);
-    sys_uart_flush();
-
-    if (comm_payload_buf[0]) {
-        sys_uart_set_baud(SYS_UART_BAUD_RATE(UART_BAUD_FAST));
-        in_fast_mode = true;
-    } else {
-        sys_uart_set_baud(SYS_UART_BAUD_RATE(UART_BAUD));
-        in_fast_mode = false;
     }
 }
 
@@ -92,8 +89,11 @@ static void comm_receive_internal(void) {
     if (sys_uart_read() != PACKET_SIGNATURE) return;
 
     const packet_type_t type = sys_uart_read();
-    const uint8_t length = sys_uart_read();
-    uint8_t count = length;
+    const uint8_t packet_length = sys_uart_read();
+    uint8_t payload_length = packet_length < PACKET_HEADER_SIZE ? 0 :
+                             packet_length - PACKET_HEADER_SIZE + 1;
+
+    uint8_t count = payload_length;
     uint8_t* ptr = comm_payload_buf;
     while (count--) {
         *ptr++ = sys_uart_read();
@@ -102,26 +102,43 @@ static void comm_receive_internal(void) {
     if (type == PACKET_VERSION) {
         handle_packet_version();
     } else if (type == PACKET_SPI) {
-        handle_packet_spi(length);
-    } else if (type == PACKET_FAST_MODE) {
-        handle_packet_fast_mode();
+        handle_packet_spi(payload_length);
+    } else if (type == PACKET_LOCK) {
+        handle_packet_lock();
     }
 }
 
+static systime_t last_time;
+
 void comm_receive(void) {
-    // in fast mode, we must receive continuously to avoid losing data, since
-    // this function is called only a few times per second and the receive buffer size is limited.
     do {
         comm_receive_internal();
-    } while (in_fast_mode);
+
+        if (locked) {
+            // blink the LED as an indicator that the device is locked.
+            systime_t time = time_get();
+            if (time - last_time > millis_to_ticks(LOCK_BLINK_DURATION)) {
+                led_toggle();
+                last_time = time;
+            }
+        }
+
+#ifdef SIMULATION
+        // listen for connection lost (also done in main loop).
+        sim_uart_listen();
+#endif
+
+    } while (locked);
+
+    led_clear();
 }
 
-void comm_transmit(uint8_t type, uint8_t length) {
+void comm_transmit(uint8_t type, uint8_t payload_length) {
     sys_uart_write(PACKET_SIGNATURE);
     sys_uart_write(type);
-    sys_uart_write(length);
+    sys_uart_write(payload_length + PACKET_HEADER_SIZE - 1);
     const uint8_t* payload = comm_payload_buf;
-    while (length--) {
+    while (payload_length--) {
         sys_uart_write(*payload++);
     }
 }

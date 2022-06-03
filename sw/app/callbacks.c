@@ -16,6 +16,11 @@
 
 #include <core/callback.h>
 
+#ifndef SIMULATION
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#endif
+
 /*
  * This section generates a vector table for the callbacks, without assembly.
  * It simplifies the build a little but there's a few macro hacks.
@@ -78,7 +83,9 @@ CALLBACK_DELEGATE(callback_wakeup, void)
 
 CALLBACK_DELEGATE(callback_sleep_scheduled, void)
 
-// see uart.c for signal attribute explanation.
+// See uart.c for signal attribute explanation.
+// Note that if the `vector_uart_*` symbols aren't defined, the callback vector will erronously
+// contain a single "ret" instruction instead of "reti", but this doesn't matter since it's unused.
 CALLBACK_DELEGATE(vector_uart_dre, void, ATTR_SIGNAL)
 
 CALLBACK_DELEGATE(vector_uart_rxc, void, ATTR_SIGNAL)

@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2022 Nicolas Maltais
  *
@@ -14,11 +15,21 @@
  * limitations under the License.
  */
 
-#include <core/app.h>
+#ifndef SYS_APP_H
+#define SYS_APP_H
 
-#include <sys/reset.h>
+#include <stdint.h>
 
-void app_terminate(void) {
-    sys_reset_system();
-}
+// This app ID is used to identify the bootloader.
+// It's also used to identify when no app is loaded.
+#define SYS_APP_ID_NONE 0
 
+extern uint8_t sys_loaded_app_id;
+
+/**
+ * Get the ID of the currently loaded app, or `SYS_APP_ID_NONE` if the bootloader is active.
+ * This function is implemented in `core/app.c`.
+ */
+uint8_t sys_app_get_loaded_id(void);
+
+#endif //SYS_APP_H

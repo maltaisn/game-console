@@ -30,7 +30,6 @@
 #include <core/data.h>
 #include <core/dialog.h>
 #include <core/flash.h>
-#include <core/eeprom.h>
 #include <core/time.h>
 
 #include <string.h>
@@ -55,6 +54,7 @@ void callback_setup(void) {
 }
 
 void callback_draw(void) {
+    last_draw_time = time_get();
     draw();
 }
 
@@ -134,6 +134,16 @@ void system_load_flash_index(void) {
     }
     state.flags &= ~SYSTEM_FLAG_FLASH_DIRTY;
 
+    // check signature
+    uint16_t signature;
+    sys_flash_read_absolute(0, sizeof signature, &signature);
+    if (signature != SYS_FLASH_SIGNATURE) {
+        // flash wasn't initialized yet, no apps.
+        state.flash_usage.size = 0;
+        state.flash_usage.total = 0;
+        return;
+    }
+
     // read index from flash
     uint16_t address = SYS_FLASH_INDEX_ADDR;
     app_flash_t* index = state.flash_index;
@@ -176,6 +186,16 @@ void system_load_eeprom_index(void) {
         return;
     }
     state.flags &= ~SYSTEM_FLAG_EEPROM_DIRTY;
+
+    // check signature
+    uint16_t signature;
+    sys_eeprom_read_absolute(0, sizeof signature, &signature);
+    if (signature != SYS_EEPROM_SIGNATURE) {
+        // EEPROM wasn't initialized yet, no apps.
+        state.eeprom_usage.size = 0;
+        state.eeprom_usage.total = 0;
+        return;
+    }
 
     // read index from EEPROM
     uint8_t address = SYS_EEPROM_INDEX_ADDR;

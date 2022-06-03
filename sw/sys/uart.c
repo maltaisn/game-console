@@ -86,13 +86,15 @@ void vector_uart_rxc(void) {
 }
 
 void sys_uart_init(uint16_t baud_calc) {
-    USART0.CTRLA = USART_RXCIE_bm;
+    USART0.BAUD = baud_calc;
     USART0.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_RXMODE_CLK2X_gc;
-    CPUINT.LVL1VEC = USART0_RXC_vect_num;
-    sys_uart_set_baud(baud_calc);
+//  USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_CHSIZE_8BIT_gc;
+    VPORTA.DIR |= PIN0_bm;  // TX pin
+    USART0.CTRLA = USART_RXCIE_bm;
 }
 
 void sys_uart_set_baud(uint16_t baud_calc) {
+    sys_uart_flush();
     USART0.BAUD = baud_calc;
 }
 

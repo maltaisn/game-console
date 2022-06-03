@@ -41,11 +41,6 @@ void sys_power_end_sampling(void);
 void sys_power_wait_for_sample(void);
 
 /**
- * Returns true if the +15V regulator is currently enabled.
- */
-bool sys_power_is_15v_reg_enabled(void);
-
-/**
  * Enable or disable the +15V regulator for the display.
  * Must not be called within an interrupt.
  */

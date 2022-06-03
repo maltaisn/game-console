@@ -28,6 +28,7 @@
 #include <boot/input.h>
 
 #include <sys/callback.h>
+#include <sys/app.h>
 
 #include <core/defs.h>
 
@@ -203,10 +204,6 @@ uint16_t sys_power_get_battery_level_average(void) {
     return 0;
 }
 
-bool sys_power_is_15v_reg_enabled(void) {
-    return (_power_state & STATE_15V_ENABLED) != 0;
-}
-
 void sys_power_set_15v_reg_enabled(bool enabled) {
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
         if (enabled) {
@@ -233,7 +230,9 @@ void sys_power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool count
             _sleep_countdown = SYS_POWER_SLEEP_COUNTDOWN;
             sys_power_sleep_cause = cause;
             _power_state = state;
-            __callback_sleep_scheduled();
+            if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
+                __callback_sleep_scheduled();
+            }
         }
         return;
     }
@@ -263,7 +262,11 @@ bool sys_power_is_sleep_due(void) {
 }
 
 void sys_power_enable_sleep(void) {
-    __callback_sleep();
+    if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
+        // The callbacks are located in the app code section, so when no app is loaded,
+        // they must not be called. The same applies to the other callbacks here.
+        __callback_sleep();
+    }
 
     // go to sleep
     sys_init_sleep();
@@ -278,7 +281,9 @@ void sys_power_enable_sleep(void) {
     sys_power_battery_status = BATTERY_UNKNOWN;
     _battery_level_head = BATTERY_BUFFER_HEAD_EMPTY;
     sys_init_wakeup();
-    __callback_wakeup();
+    if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
+        __callback_wakeup();
+    }
 }
 
 #endif //BOOTLOADER

@@ -86,7 +86,7 @@ typedef struct {
 typedef struct {
     uint8_t choices_count;
     uint8_t selection;
-    const char** choices;
+    const char* const * choices;
 } dialog_choice_t;
 #endif
 
@@ -206,7 +206,7 @@ void dialog_add_item_button(const char* name, dialog_result_t result);
  * The choices list is drawn with action font while the item's name is drawn with item font.
  */
 void dialog_add_item_choice(const char* name, uint8_t selection,
-                            uint8_t choices_count, const char** choices);
+                            uint8_t choices_count, const char* const * choices);
 #endif
 
 #ifndef DIALOG_NO_NUMBER

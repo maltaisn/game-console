@@ -68,7 +68,7 @@ SECTIONS {
     } > flash
 
     /* App read-only data.  */
-    .app_rodata ADDR(.app_text) + SIZEOF(.app_text) + __RODATA_PM_OFFSET__ : {
+    .app_rodata ADDR(.app_text) + SIZEOF(.app_text) + __FLASH_OFFSET__ : {
         __rodata_start = .;
         *(.rodata)
         *(.rodata*)
@@ -77,7 +77,7 @@ SECTIONS {
 
     /* ============ RAM: DATA SHARED BETWEEN BOOTLOADER AND APP ============ */
 
-    .shared_data : {
+    .shared_data (NOLOAD) : {
         . += SHARED_DATA_SIZE;
     } > ram
 
@@ -102,7 +102,7 @@ SECTIONS {
     /* ============ RAM: APP-ONLY DATA ============ */
 
     /* App data (ram vma / flash lma).  */
-    .app_data MAX(__disp_buf_end, __shared_disp_buf_end) : {
+    .app_data MAX(__disp_buf_end, __shared_disp_buf_end) (NOLOAD) : {
         __data_start = .;
         *(.data)
         *(.data*)
@@ -112,7 +112,7 @@ SECTIONS {
      __data_load_end = __data_load_start + SIZEOF(.app_data);
 
     /* Global data cleared after reset.  */
-    .app_bss ADDR(.app_data) + SIZEOF(.app_data) : {
+    .app_bss ADDR(.app_data) + SIZEOF(.app_data) (NOLOAD) : {
         __bss_start = .;
         *(.bss)
         *(.bss*)

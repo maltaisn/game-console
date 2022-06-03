@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#include <core/app.h>
+#include <sys/app.h>
 
-#include <sys/reset.h>
+uint8_t sys_loaded_app_id;
 
-void app_terminate(void) {
-    sys_reset_system();
+uint8_t sys_app_get_loaded_id(void) {
+    return sys_loaded_app_id;
 }
-

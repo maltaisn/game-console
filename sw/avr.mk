@@ -2,6 +2,7 @@
 PLATFORM := avr
 
 include common.mk
+include toolchain.mk
 
 # MCU definitions
 MCU := atmega3208
@@ -10,16 +11,13 @@ F_CPU := 10000000
 SRC_DIRS += sys
 
 # AVR compilation
-CC := avr-gcc
-OBJCOPY := avr-objcopy
-OBJDUMP := avr-objdump
-NM := avr-nm
+CC := $(AVR_TOOLCHAIN_DIR)avr-gcc
+OBJCOPY := $(AVR_TOOLCHAIN_DIR)avr-objcopy
+OBJDUMP := $(AVR_TOOLCHAIN_DIR)avr-objdump
+NM := $(AVR_TOOLCHAIN_DIR)avr-nm
 SIZE := utils/avr_size.py
 
-# ATmega toolchain directory for targeting newer parts.
-# It can be downloaded as atpack on Microchip website.
-ATMEGA_TOOLCHAIN_DIR := /opt/avr/Atmel.ATmega_DFP
-INCLUDE_DIRS += $(ATMEGA_TOOLCHAIN_DIR)/include
+INCLUDE_DIRS += $(ATMEGA_DFP_DIR)include
 
 MAP_FILE := $(MAIN_TARGET).map
 BOOT_SYMBOLS_FILE := boot/build/boot.sym
@@ -28,7 +26,7 @@ DEFINES += F_CPU=$(F_CPU)
 
 CFLAGS += -mmcu=$(MCU) -Os \
           -ffunction-sections -fdata-sections -fshort-enums -fpack-struct -flto \
-          -B$(ATMEGA_TOOLCHAIN_DIR)/gcc/dev/$(MCU) -Wl,-T,$(LINKER_SCRIPT)      \
+          -B$(ATMEGA_DFP_DIR)gcc/dev/$(MCU) -Wl,-T,$(LINKER_SCRIPT)      \
           -Wl,-Map=$(MAP_FILE) -Wl,--defsym=DISPLAY_PAGE_HEIGHT=$(display_page_height)
 
 compile: $(MAIN_TARGET).hex $(BOOT_SYMBOLS_FILE) size

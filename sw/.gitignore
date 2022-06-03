@@ -8,3 +8,5 @@ assets.c
 # Simulator screenshots
 screenshot.png
 
+# Toolchain configuration
+toolchain.mk

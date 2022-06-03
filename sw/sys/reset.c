@@ -20,6 +20,7 @@
 #include <avr/io.h>
 
 ALWAYS_INLINE
+__attribute__((noreturn))
 void sys_reset_system(void) {
     // trigger software reset
     _PROTECTED_WRITE(RSTCTRL.SWRR, RSTCTRL_SWRE_bm);

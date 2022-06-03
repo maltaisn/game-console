@@ -38,9 +38,9 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-static const char* SIZE_UNIT[] = {"", "K", "M"};
+static const char* const SIZE_UNIT[] = {"", "K", "M"};
 
-static const char* BATTERY_STATUS_NAME[] = {
+static const char* const BATTERY_STATUS_NAME[] = {
         "Unknown",
         "No battery",
         "Charging",
@@ -114,13 +114,14 @@ static uint8_t format_readable_size(char buf[static 8], uint24_t size) {
         return sprintf(buf, "%" PRIu16 " %sB", int_part, unit);
     } else {
         uint8_t int_part_low = (uint8_t) int_part;
-        uint16_t frac_part = size % SIZE_BOUND * 100 / SIZE_BOUND;
-        uint8_t frac_len = 2;
+        uint8_t frac_part = size % SIZE_BOUND * 100 / SIZE_BOUND;
+        const char* zero_str = "";
         if (int_part_low >= 10) {
-            frac_len = 1;
             frac_part /= 10;
+        } else if (frac_part < 10) {
+            zero_str = "0";
         }
-        return sprintf(buf, "%" PRIu8 ".%0*" PRIu8 " %sB", int_part_low, frac_len, frac_part, unit);
+        return sprintf(buf, "%" PRIu8 ".%s%" PRIu8 " %sB", int_part_low, zero_str, frac_part, unit);
     }
 }
 
@@ -190,15 +191,15 @@ static void draw_apps_overlay(void) {
  * `sizeof_index` indicates the size of the index array elements.
  * `total` is the memory size in 256 bytes blocks.
  */
-static void draw_memory_overlay(const mem_usage_t *usage, const void* index,
+static void draw_memory_overlay(const mem_usage_t* usage, const void* index,
                                 uint8_t sizeof_index, uint16_t total_blocks) {
     char buf[16];
-    uint24_t total = total_blocks << 8;
+    uint24_t total = (uint24_t) total_blocks << 8;
 
     draw_nav_arrows(46);
 
     graphics_set_font(ASSET_FONT_5X7);
-    draw_progress_bar_with_text(24, 11, usage->total * 100 / total);
+    draw_progress_bar_with_text(24, 11, (uint32_t) usage->total * 100 / total);
 
     // total usage / total available
     uint8_t usage_len = format_readable_size(buf, usage->total);
@@ -236,7 +237,8 @@ static void draw_memory_overlay(const mem_usage_t *usage, const void* index,
         y = 53;
         for (uint8_t i = 0; i < items_count; ++i) {
             uint24_t size = 0;
-            memcpy(&size, (uint8_t*) index + sizeof_index * usage->index[i + state.position] + 1, 3);
+            memcpy(&size, (uint8_t*) index + sizeof_index * usage->index[i + state.position] + 1,
+                   3);
             uint8_t size_len = format_readable_size(buf, size);
             graphics_set_color(10);
             graphics_text((int8_t) (123 - size_len * 4), y, buf);

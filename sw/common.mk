@@ -55,7 +55,7 @@ endif
 $(BUILD_DIR)/%.o: %.c $(TARGET_CONFIG_FILE)
 	@mkdir -p $(@D)
 ifneq ($(E),)
-	@echo $(CC) $<
+	@echo gcc $<
 endif
 	$(E)$(CC) -c -o $@ $< $(CFLAGS) $(CC_FLAGS) $(DEPFLAGS)
 

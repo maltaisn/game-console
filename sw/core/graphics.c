@@ -86,7 +86,6 @@ typedef struct {
     uint8_t alpha_color;
 #ifdef RUNTIME_CHECKS
     uint8_t flags;
-    bool valid;
 #endif
 } image_context_t;
 
@@ -361,14 +360,13 @@ void graphics_fill_rect(const disp_x_t x, const disp_y_t y, const uint8_t w, con
  * the full image will be drawn.
  */
 BOOTLOADER_NOINLINE
-static void graphics_create_context(image_context_t* ctx, graphics_image_t data,
+static bool graphics_create_context(image_context_t* ctx, graphics_image_t data,
                                     const disp_x_t x, const disp_y_t y,
                                     const uint8_t top, uint8_t bottom) {
 #ifdef RUNTIME_CHECKS
-    ctx->valid = false;
     if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
         trace("out of bounds");
-        return;
+        return false;
     }
 #endif
 
@@ -378,7 +376,7 @@ static void graphics_create_context(image_context_t* ctx, graphics_image_t data,
 #ifdef RUNTIME_CHECKS
     if (header[0] != IMAGE_SIGNATURE) {
         trace("invalid image signature");
-        return;
+        return false;
     }
 #endif
     const uint8_t flags = header[1];
@@ -393,7 +391,7 @@ static void graphics_create_context(image_context_t* ctx, graphics_image_t data,
 #ifdef RUNTIME_CHECKS
         if (flags & IMAGE_FLAG_BINARY) {
             trace("binary images do not support transparency");
-            return;
+            return false;
         }
 #endif
     }
@@ -405,25 +403,25 @@ static void graphics_create_context(image_context_t* ctx, graphics_image_t data,
     }
 
     if (y > sys_display_page_yend || (uint8_t) (y + (bottom - top)) < sys_display_page_ystart) {
-        // out page page, either completely before or after.
-        return;
+        // out of page, either completely before or after.
+        return false;
     }
 
 #ifdef RUNTIME_CHECKS
     if (x + width >= DISPLAY_WIDTH || y + bottom - top >= DISPLAY_HEIGHT) {
         trace("out of bounds");
-        return;
+        return false;
     }
     if (top > bottom || bottom > height) {
         trace("region out of bounds");
-        return;
+        return false;
     }
     if (flags & IMAGE_FLAG_INDEXED) {
         if (flags & IMAGE_FLAG_RAW) {
             trace("indexed flag is ignored for raw image");
         } else if (index_gran == 0) {
             trace("index granularity == 0 in indexed image");
-            return;
+            return false ;
         }
     }
 #endif //RUNTIME_CHECKS
@@ -526,11 +524,11 @@ static void graphics_create_context(image_context_t* ctx, graphics_image_t data,
     if (ctx->y >= sys_display_curr_page_height || ctx->bottom < ctx->top ||
             (ctx->bottom - ctx->top) >= sys_display_curr_page_height) {
         trace("out of bounds");
-        return;
+        return false;
     }
-
-    ctx->valid = true;
 #endif //RUNTIME_CHECKS
+
+    return true;
 }
 
 BOOTLOADER_NOINLINE
@@ -538,12 +536,11 @@ static void graphics_image_1bit_mixed_internal(graphics_image_t data, const disp
                                                const disp_y_t y, const uint8_t top,
                                                const uint8_t bottom) {
     image_context_t ctx;
-    graphics_create_context(&ctx, data, x, y, top, bottom);
-
-#ifdef RUNTIME_CHECKS
-    if (!ctx.valid) {
+    if (!graphics_create_context(&ctx, data, x, y, top, bottom)) {
         return;
     }
+
+#ifdef RUNTIME_CHECKS
     if ((ctx.flags & IMAGE_TYPE_FLAGS) != IMAGE_FLAG_BINARY) {
         trace("wrong image type for call");
         return;
@@ -752,12 +749,11 @@ static void graphics_image_4bit_mixed_internal(graphics_image_t data, const disp
                                                const disp_y_t y, const uint8_t top,
                                                const uint8_t bottom) {
     image_context_t ctx;
-    graphics_create_context(&ctx, data, x, y, top, bottom);
-
-#ifdef RUNTIME_CHECKS
-    if (!ctx.valid) {
+    if (!graphics_create_context(&ctx, data, x, y, top, bottom)) {
         return;
     }
+
+#ifdef RUNTIME_CHECKS
     if ((ctx.flags & IMAGE_TYPE_FLAGS) != 0) {
         trace("wrong image type for call");
         return;
@@ -900,7 +896,7 @@ void graphics_pixel_fast(disp_x_t, disp_y_t);
 
 void graphics_hline_fast(disp_x_t, disp_x_t, disp_y_t);
 
-void graphics_create_context(image_context_t*, graphics_image_t, disp_x_t,
+bool graphics_create_context(image_context_t*, graphics_image_t, disp_x_t,
                              disp_y_t, uint8_t, uint8_t);
 
 void graphics_image_1bit_mixed_internal(graphics_image_t, disp_x_t, disp_y_t y, uint8_t, uint8_t);
@@ -1024,12 +1020,11 @@ static void graphics_image_1bit_raw_internal(graphics_image_t data, const disp_x
                                              const disp_y_t y, const uint8_t top,
                                              const uint8_t bottom) {
     image_context_t ctx;
-    graphics_create_context(&ctx, data, x, y, top, bottom);
-
-#ifdef RUNTIME_CHECKS
-    if (!ctx.valid) {
+    if (!graphics_create_context(&ctx, data, x, y, top, bottom)) {
         return;
     }
+
+#ifdef RUNTIME_CHECKS
     if ((ctx.flags & IMAGE_TYPE_FLAGS) != (IMAGE_FLAG_BINARY | IMAGE_FLAG_RAW)) {
         trace("wrong image type for call");
         return;
@@ -1111,12 +1106,11 @@ static void graphics_image_4bit_raw_internal(graphics_image_t data, const disp_x
                                              const disp_y_t y, const uint8_t top,
                                              const uint8_t bottom) {
     image_context_t ctx;
-    graphics_create_context(&ctx, data, x, y, top, bottom);
-
-#ifdef RUNTIME_CHECKS
-    if (!ctx.valid) {
+    if (!graphics_create_context(&ctx, data, x, y, top, bottom)) {
         return;
     }
+
+#ifdef RUNTIME_CHECKS
     if ((ctx.flags & IMAGE_TYPE_FLAGS) != IMAGE_FLAG_RAW) {
         trace("wrong image type for call");
         return;
