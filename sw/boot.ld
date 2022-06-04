@@ -88,10 +88,12 @@ SECTIONS {
     /* Global data cleared after reset.  */
     .shared_bss (NOLOAD) : {
         __bss_start = .;
+        __bss_proper_start = .;
         *(.bss)
         *(.bss*)
         *(COMMON)
         /* Shared data ends here. */
+        __bss_proper_end = .;
         __ram_end = .;
     } > ram
 

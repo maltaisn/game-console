@@ -26,6 +26,7 @@
 
 import re
 import sys
+import colorama
 
 
 class MapFileError(Exception):
@@ -33,6 +34,8 @@ class MapFileError(Exception):
 
 
 def main() -> None:
+    colorama.init()
+
     if len(sys.argv) != 2:
         raise MapFileError("wrong number of arguments")
 
@@ -48,28 +51,58 @@ def main() -> None:
             raise MapFileError(f"Symbol not found: {name}")
         return int(match.group(1)[2:], 16)
 
-    def get_section_size(start: str, end: str) -> int:
-        return get_symbol_value(end) - get_symbol_value(start)
+    def get_section_size(name: str) -> int:
+        return get_symbol_value(f"{name}_end") - get_symbol_value(f"{name}_start")
 
     def print_section_usage(name: str, usage: int, size: int) -> None:
-        print(f"{name:<6}   {usage:>7} B   {size:>9} B   {usage / size:>6.1%}")
+        print(f"{name:<16}   {usage:>7} B   {size:>9} B   {usage / size:>6.1%}")
 
-    print("\n=========================================")
-    print("Region   Used size   Region size   % used")
+    def print_subsection_usage(name: str, usage: int) -> None:
+        print(colorama.Fore.LIGHTBLACK_EX + f"  {name:<14}   {usage:>7} B")
+        print(colorama.Fore.BLACK, end="")
 
+    try:
+        get_symbol_value("__boot_only_start")
+        is_boot = True
+    except MapFileError:
+        is_boot = False
+
+    print("\n===================================================")
+    print("Region             Used size   Region size   % used")
+
+    # RAM
     ram_size = get_symbol_value("__TARGET_DATA_LENGTH__")
-    ram_usage = get_section_size("__ram_start", "__ram_end")
+    ram_usage = get_section_size("__ram")
     print_section_usage("RAM", ram_usage, ram_size)
 
-    text_size = get_section_size("__text_start", "__text_end")
-    rodata_size = get_section_size("__rodata_start", "__rodata_end")
-    data_load_size = get_section_size("__data_load_start", "__data_load_end")
+    bss_size = get_section_size("__bss_proper")
+    if bss_size:
+        print_subsection_usage("BSS", bss_size)
+    data_size = get_section_size("__data")
+    if data_size:
+        print_subsection_usage("Data", data_size)
+
+    if is_boot:
+        # put a separator since the following subsections aren't counted in the total RAM.
+        print("  ---------------")
+        print_subsection_usage("Boot-only", get_section_size("__boot_only"))
+    print_subsection_usage("Display buffer", get_section_size("__disp_buf"))
+
+    # FLASH
+    text_size = get_section_size("__text")
+    rodata_size = get_section_size("__rodata")
+    data_load_size = get_section_size("__data_load")
 
     flash_size = get_symbol_value("__TARGET_TEXT_LENGTH__")
     flash_usage = text_size + rodata_size + data_load_size
     print_section_usage("Flash", flash_usage, flash_size)
+    print_subsection_usage("Text", text_size)
+    if rodata_size:
+        print_subsection_usage("Read-only", rodata_size)
+    if data_load_size:
+        print_subsection_usage("Data load", data_load_size)
 
-    print("=========================================")
+    print("===================================================")
 
     if flash_usage > flash_size:
         raise MapFileError("flash usage exceeds available capacity!")

@@ -114,9 +114,11 @@ SECTIONS {
     /* Global data cleared after reset.  */
     .app_bss ADDR(.app_data) + SIZEOF(.app_data) (NOLOAD) : {
         __bss_start = .;
+        __bss_proper_start = .;
         *(.bss)
         *(.bss*)
         *(COMMON)
+        __bss_proper_end = .;
         __bss_end = .;
         __ram_end = .;
     }
