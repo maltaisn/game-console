@@ -247,11 +247,11 @@ void system_init_position(void) {
 }
 
 void system_get_app_name(uint8_t pos, char name[static 16]) {
-    flash_read(SYS_FLASH_INDEX_ADDR + SYS_FLASH_INDEX_ENTRY_SIZE * pos + 32, 16, name);
+    sys_flash_read_absolute(SYS_FLASH_INDEX_ADDR + SYS_FLASH_INDEX_ENTRY_SIZE * pos + 32, 16, name);
 }
 
 void system_get_app_author(uint8_t pos, char name[static 16]) {
-    flash_read(SYS_FLASH_INDEX_ADDR + SYS_FLASH_INDEX_ENTRY_SIZE * pos + 48, 16, name);
+    sys_flash_read_absolute(SYS_FLASH_INDEX_ADDR + SYS_FLASH_INDEX_ENTRY_SIZE * pos + 48, 16, name);
 }
 
 void system_get_app_name_by_id(uint8_t id, char name[static 16]) {

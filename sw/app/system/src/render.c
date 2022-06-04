@@ -261,8 +261,12 @@ static void draw_battery_overlay(void) {
     graphics_set_color(12);
     graphics_text(6, 61, BATTERY_STATUS_NAME[status]);
 
-    uint16_t voltage = sys_power_get_battery_voltage();
-    sprintf(buf, "%" PRIu16 " mV", voltage);
+    if (status == BATTERY_DISCHARGING) {
+        uint16_t voltage = sys_power_get_battery_voltage();
+        sprintf(buf, "%" PRIu16 " mV", voltage);
+    } else {
+        strcpy(buf, "--");
+    }
     graphics_text(6, 81, buf);
 
     graphics_set_font(ASSET_FONT_3X5_BUILTIN);
