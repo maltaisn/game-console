@@ -32,10 +32,27 @@
 #define BUTTONS_ALL (BUTTON0 | BUTTON1 | BUTTON2 | BUTTON3 | BUTTON4 | BUTTON5)
 
 /**
- * Returns a bitfield indicating the current (debounced) state of input.
- * A 1 bit indicates that the button is pressed.
+ * Latch the current input state. This also updates the last input state.
+ */
+void input_latch(void);
+
+/**
+ * Returns a bit field indicating which buttons are currently pressed.
+ * This state is the state that was latched when calling `sys_input_latch`.
  */
 uint8_t input_get_state(void);
+
+/**
+ * Returns a bit field indicating which buttons were pressed in the last latch event.
+ * This state is the state that was latched before calling `sys_input_latch`.
+ */
+uint8_t input_get_last_state(void);
+
+/**
+ * Returns a bit field indicating which buttons were clicked by comparing
+ * the current and last latch input states.
+ */
+uint8_t input_get_clicked(void);
 
 #include <sim/input.h>
 

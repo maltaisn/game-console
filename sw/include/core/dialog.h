@@ -226,11 +226,11 @@ void dialog_add_item_text(const char* name, uint8_t max_length, char text[]);
 #endif
 
 /**
- * Handle buttons input to navigate the dialog, given the last and current input state.
+ * Handle buttons input to navigate the dialog (using `input_get_clicked` function).
  * If a button item or action button is clicked, its result code is returned.
- * Otherwise, `DIALOG_RESULT
+ * Otherwise, `DIALOG_RESULT_NONE` is returned.
  */
-dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state);
+dialog_result_t dialog_handle_input(void);
 
 /**
  * Draw the dialog to the display.

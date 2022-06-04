@@ -23,6 +23,7 @@
 #include <boot/power.h>
 #include <boot/sound.h>
 
+#include <sys/input.h>
 #include <sys/sound.h>
 #include <sys/spi.h>
 #include <sys/display.h>
@@ -174,6 +175,7 @@ void sys_init_wakeup(void) {
     sys_power_set_15v_reg_enabled(true);
     sys_display_set_enabled(true);
 
+    // update input immediately so that the wakeup button pressed is not registered.
     sys_input_update_state_immediate();
     sys_input_reset_inactivity();
 

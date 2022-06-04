@@ -27,6 +27,7 @@ void sys_input_update_state(void);
 
 /**
  * Update the stored input state according to the current input state, without debouncing.
+ * This also the latched current and last input state to the current input state.
  */
 void sys_input_update_state_immediate(void);
 

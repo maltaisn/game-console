@@ -30,8 +30,11 @@
 #include <core/sound.h>
 #include <core/dialog.h>
 #include <core/random.h>
+
+#ifdef SIMULATION
 #include <core/flash.h>
 #include <core/eeprom.h>
+#endif
 
 game_t game;
 
@@ -70,6 +73,8 @@ bool callback_loop(void) {
         dt = MAX_DELTA_TIME;
     }
     last_tick_time = time;
+
+    input_latch();
 
     game_led_update(dt);
     game_music_update(dt);
@@ -194,8 +199,6 @@ void callback_sleep_scheduled(void) {
 }
 
 void callback_wakeup(void) {
-    // ignore whatever button was used to wake up.
-    game_ignore_current_input();
     // last tick has probably happened very long ago, reset last tick time.
     last_tick_time = time_get();
 }

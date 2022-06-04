@@ -31,6 +31,7 @@
 #include <core/trace.h>
 #else
 #include <core/led.h>
+#include <core/input.h>
 #include <avr/io.h>
 #include <util/crc16.h>
 #include <util/delay.h>
@@ -66,6 +67,10 @@ static BOOTLOADER_ONLY uint8_t _loaded_app_index;
 static void _load_app_setup(uint8_t id) {
 #ifndef SIMULATION
     sys_loaded_app_id = id;
+
+    // latch input so that apps don't see a click immediately on startup.
+    input_latch();
+
     __callback_setup();
 #endif
 }

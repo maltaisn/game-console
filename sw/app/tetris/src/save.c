@@ -26,10 +26,6 @@
 
 #include <string.h>
 
-#ifdef SIMULATION
-#include <stdio.h>
-#endif
-
 static void set_default_options(void) {
     game.options = (game_options_t) {
             .features = GAME_FEATURE_MUSIC | GAME_FEATURE_SOUND_EFFECTS,

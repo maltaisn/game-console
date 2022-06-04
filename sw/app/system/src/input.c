@@ -20,14 +20,12 @@
 #include <core/app.h>
 #include <core/dialog.h>
 
-static uint8_t last_input_state;
-
 void handle_input(void) {
-    uint8_t input = input_get_state();
+    input_latch();
 
     // handle horizontal movement within sub dialogs.
     if (state.state < STATE_MAIN_MENU) {
-        uint8_t clicked = input & ~last_input_state;
+        uint8_t clicked = input_get_clicked();
         if (clicked & BUTTON_UP) {
             if (state.position > 0) {
                 --state.position;
@@ -40,7 +38,7 @@ void handle_input(void) {
     }
 
     // handle dialog input
-    dialog_result_t res = dialog_handle_input(last_input_state, input);
+    dialog_result_t res = dialog_handle_input();
     if (res != DIALOG_RESULT_NONE) {
         if (res == STATE_TERMINATE) {
             app_terminate();
@@ -49,6 +47,4 @@ void handle_input(void) {
         state.state = res;
         state.flags &= ~SYSTEM_FLAG_DIALOG_SHOWN;
     }
-
-    last_input_state = input;
 }

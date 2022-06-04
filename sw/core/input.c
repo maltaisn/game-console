@@ -17,6 +17,18 @@
 
 #include <sys/input.h>
 
+void input_latch(void) {
+    sys_input_latch();
+}
+
 uint8_t input_get_state(void) {
     return sys_input_get_state();
+}
+
+uint8_t input_get_last_state(void) {
+    return sys_input_get_last_state();
+}
+
+uint8_t input_get_clicked(void) {
+    return sys_input_get_state() & ~sys_input_get_last_state();
 }

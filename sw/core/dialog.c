@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2022 Nicolas Maltais
  *
@@ -222,7 +221,7 @@ static void change_text_field_char(dialog_text_t* item, int8_t direction) {
 }
 #endif //DIALOG_NO_TEXT
 
-dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
+dialog_result_t dialog_handle_input(void) {
     dialog_item_t* curr_item = dialog.selection >= dialog.item_count ? 0 :
                                &dialog.items[dialog.selection];
     dialog_result_t result = DIALOG_RESULT_NONE;
@@ -234,7 +233,7 @@ dialog_result_t dialog_handle_input(uint8_t last_state, uint8_t curr_state) {
     }
 #endif
 
-    uint8_t clicked = ~last_state & curr_state;
+    uint8_t clicked = input_get_clicked();
     if (clicked) {
         if (clicked & DIALOG_BUTTON_ENTER) {
             if (dialog.selection == DIALOG_SELECTION_POS) {

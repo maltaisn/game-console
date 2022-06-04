@@ -89,11 +89,11 @@ static const uint8_t _ARROW_UP[] = {0xf1, 0x10, 0x04, 0x02, 0x11, 0x6f, 0x40};
 static BOOTLOADER_ONLY uint8_t _first_shown;
 static BOOTLOADER_ONLY uint8_t _selected_index;
 static BOOTLOADER_ONLY systime_t _last_draw_time;
-static BOOTLOADER_ONLY uint8_t _last_input_state;
 
 static void loop(void);
 static void draw(void);
 static void handle_input(void);
+static void init_selection(void);
 
 #ifdef SIMULATION
 static void* loop_thread(void* arg) {
@@ -119,9 +119,9 @@ int main(void) {
     sys_init();
     sys_display_init_page(DISPLAY_PAGE_HEIGHT);
 
-    // initialize last input state to prevent pushed button registered as clicked
+    // update last input state to prevent pushed button registered as clicked
     // immediately on launch, like when an app has an exit button.
-    _last_input_state = input_get_state();
+    input_latch();
 
 #ifdef SIM_MEMORY_ABSOLUTE
 #ifdef SIMULATION
@@ -136,11 +136,7 @@ int main(void) {
 #endif //SIMULATION
     sys_eeprom_check_write();
     load_read_index();
-    _selected_index = load_get_loaded_app_index();
-    if (_selected_index == LOADED_APP_NONE) {
-        // no app is currently loaded, select first by default.
-        _selected_index = 0;
-    }
+    init_selection();
 #endif //SIM_MEMORY_ABSOLUTE
 
 #ifdef SIMULATION
@@ -268,10 +264,9 @@ static void draw(void) {
 }
 
 static void handle_input(void) {
-    const uint8_t state = input_get_state();
-    const uint8_t clicked = state & ~_last_input_state;
-    _last_input_state = state;
+    input_latch();
 
+    uint8_t clicked = input_get_clicked();
     if (clicked & BUTTON2) {
         // move selection up
         if (_selected_index != 0) {
@@ -291,6 +286,25 @@ static void handle_input(void) {
     } else if (clicked & BUTTON4) {
         // load selected app
         _load_app(_selected_index);
+    }
+}
+
+static void init_selection(void) {
+    // if bootloader is still active by now, select the last loaded app by default.
+    if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
+        return;
+    }
+
+    _selected_index = load_get_loaded_app_index();
+    if (_selected_index == LOADED_APP_NONE) {
+        // no app is currently loaded, select first by default.
+        _selected_index = 0;
+    }
+
+    _first_shown = _selected_index;
+    uint8_t max_first_shown = load_get_app_count() - 2;
+    if (_first_shown > max_first_shown) {
+        _first_shown = max_first_shown;
     }
 }
 

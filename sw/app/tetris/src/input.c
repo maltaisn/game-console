@@ -24,7 +24,6 @@
 #include <core/app.h>
 #include <core/dialog.h>
 
-static uint8_t last_input_state;
 // mask indicating buttons which should be considered not pressed until released.
 static uint8_t input_wait_released;
 // number of game ticks that buttons has been held.
@@ -44,8 +43,7 @@ static uint8_t preprocess_input_state() {
 }
 
 game_state_t game_handle_input_dialog(void) {
-    dialog_result_t res = dialog_handle_input(last_input_state, preprocess_input_state());
-    last_input_state = input_get_state();
+    dialog_result_t res = dialog_handle_input();
 
     if (game.state == GAME_STATE_OPTIONS || game.state == GAME_STATE_OPTIONS_PLAY) {
         // apply options as they are changed
@@ -133,7 +131,6 @@ game_state_t game_handle_input_dialog(void) {
 
 game_state_t game_handle_input_tetris(void) {
     uint8_t curr_state = preprocess_input_state();
-    last_input_state = input_get_state();
 
     // update buttons hold time
     // use hold time to determine which buttons were recently clicked.

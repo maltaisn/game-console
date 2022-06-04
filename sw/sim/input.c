@@ -36,6 +36,8 @@
 #define INACTIVITY_COUNTDOWN_DIM (SYS_POWER_INACTIVE_COUNTDOWN_DIM - SYS_POWER_SLEEP_COUNTDOWN)
 
 static uint8_t state;
+static uint8_t curr_state;
+static uint8_t last_state;
 static uint8_t inactive_countdown;
 
 static void reset_inactive_countdown(void) {
@@ -139,8 +141,17 @@ void sim_input_init(void) {
 #endif //SIMULATION_HEADLESS
 }
 
+void sys_input_latch(void) {
+    last_state = curr_state;
+    curr_state = state;
+}
+
 uint8_t sys_input_get_state(void) {
-    return state;
+    return curr_state;
+}
+
+uint8_t sys_input_get_last_state(void) {
+    return last_state;
 }
 
 void sys_input_update_state(void) {
@@ -148,7 +159,8 @@ void sys_input_update_state(void) {
 }
 
 void sys_input_update_state_immediate(void) {
-    // no-op, there's no debouncing in simulator anyway.
+    sys_input_latch();
+    // no debouncing so nothing to do about that here.
 }
 
 void sys_input_dim_if_inactive(void) {

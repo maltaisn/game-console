@@ -22,6 +22,7 @@
 
 #include <boot/display.h>
 #include <boot/power.h>
+#include <boot/defs.h>
 
 #include <sys/time.h>
 #include <sys/power.h>
@@ -31,18 +32,22 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-// input state update frequency in Hz.
-#define UPDATE_FREQUENCY 64
-#define UPDATE_PERIOD (SYSTICK_FREQUENCY / UPDATE_FREQUENCY)
-
 #define INACTIVITY_COUNTDOWN_START (SYS_POWER_INACTIVE_COUNTDOWN_SLEEP - SYS_POWER_SLEEP_COUNTDOWN)
 #define INACTIVITY_COUNTDOWN_DIM (SYS_POWER_INACTIVE_COUNTDOWN_DIM - SYS_POWER_SLEEP_COUNTDOWN)
 
-volatile uint8_t sys_input_state;
+// the input state, updated on every system tick.
+uint8_t sys_input_state;
 
+// the currently latched input state.
+uint8_t sys_input_curr_state;
+// the previously latched input state.
+uint8_t sys_input_last_state;
+
+// used interally for debouncing.
 static uint8_t _state0;
 static uint8_t _state1;
-static uint8_t _update_register;
+
+// not volatile since read modify write never occurs outside interrupt
 static uint8_t _inactive_countdown;
 
 ISR(PORTD_PORT_vect) {
@@ -56,22 +61,19 @@ ISR(PORTD_PORT_vect) {
 void sys_input_update_state(void) {
     // 2 levels debouncing: new value is most common value among last two and new.
     // this is probably overkill since the buttons don't even bounce...
-    if (_update_register == 0) {
-        const uint8_t port = VPORTD.IN & BUTTONS_ALL;
-        sys_input_state = (_state0 & port) |
-                          (_state1 & port) |
-                          (_state0 & _state1);
-        _state1 = _state0;
-        _state0 = port;
-        _update_register = UPDATE_PERIOD - 1;
-    } else {
-        --_update_register;
-    }
+    const uint8_t port = VPORTD.IN & BUTTONS_ALL;
+    sys_input_state = (_state0 & port) |
+                      (_state1 & port) |
+                      (_state0 & _state1);
+    _state1 = _state0;
+    _state0 = port;
 }
 
 void sys_input_update_state_immediate(void) {
     const uint8_t port = VPORTD.IN & BUTTONS_ALL;
     sys_input_state = port;
+    sys_input_curr_state = port;
+    sys_input_last_state = port;
     _state0 = port;
     _state1 = port;
 }
@@ -92,9 +94,18 @@ void sys_input_update_inactivity(void) {
     }
 }
 
+BOOTLOADER_NOINLINE
+void sys_input_latch(void) {
+    sys_input_last_state = sys_input_curr_state;
+    sys_input_curr_state = sys_input_state;
+}
+
 #endif //BOOTLOADER
 
-ALWAYS_INLINE
 uint8_t sys_input_get_state(void) {
-    return sys_input_state;
+    return sys_input_curr_state;
+}
+
+uint8_t sys_input_get_last_state(void) {
+    return sys_input_last_state;
 }
