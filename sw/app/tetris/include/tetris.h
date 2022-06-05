@@ -20,8 +20,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <sys/defs.h>
-#include <sys/time.h>
+#include <core/defs.h>
 
 #define GRID_WIDTH 10
 #define GRID_HEIGHT 22

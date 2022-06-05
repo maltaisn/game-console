@@ -58,6 +58,7 @@ typedef struct {
     uint16_t code_size;
     uint16_t eeprom_size;
     uint16_t build_date;
+    uint8_t index;
 } app_flash_t;
 
 typedef struct {

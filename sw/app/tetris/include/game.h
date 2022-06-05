@@ -17,9 +17,6 @@
 #ifndef TETRIS_GAME_H
 #define TETRIS_GAME_H
 
-#include <sys/input.h>
-#include <sys/sound.h>
-
 #include <core/sound.h>
 
 #include <stdbool.h>

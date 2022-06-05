@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional
 
@@ -58,6 +58,8 @@ class App:
     build_date: date
     name: str
     author: str
+
+    index: int = field(default=-1)
 
     GC_SIGNATURE = b"gc"
 
@@ -171,9 +173,11 @@ class AppManager:
         self.eeprom_index = []
         flash_pos = 0
         eeprom_pos = 0
-        for _ in range(APP_INDEX_SIZE):
-            self.flash_index.append(App.decode(
-                flash_index[flash_pos:flash_pos + FLASH_ENTRY_SIZE]))
+        for i in range(APP_INDEX_SIZE):
+            app = App.decode(
+                flash_index[flash_pos:flash_pos + FLASH_ENTRY_SIZE])
+            app.index = i
+            self.flash_index.append(app)
             self.eeprom_index.append(AppData.decode(
                 eeprom_index[eeprom_pos:eeprom_pos + EEPROM_ENTRY_SIZE]))
             flash_pos += FLASH_ENTRY_SIZE
@@ -185,7 +189,7 @@ class AppManager:
         return next((i for i, a in enumerate(index) if a.app_id == app_id), -1)
 
     @staticmethod
-    def _print_app(app: App) -> None:
+    def _print_app(app: App, show_details: bool = False) -> None:
         print(f"[{app.app_id}] {app.name.title()} v{app.app_version}")
         print(f"  Author: {app.author.title()}")
         print(f"  Build date: {app.build_date.isoformat()}")
@@ -194,6 +198,14 @@ class AppManager:
               f"{readable_size(app.flash_location.size - app.code_size)} data)")
         print(f"  EEPROM size: {readable_size(app.eeprom_location.size)}")
         print(f"  Target bootloader: v{app.boot_version}")
+        if show_details:
+            print(f"  Index position: {app.index}")
+            print(f"  Flash address: 0x{app.flash_location.address:06x}")
+            if app.eeprom_location.size > 0:
+                print(f"  EEPROM address: 0x{app.eeprom_location.address:04x}")
+            print(f"  App CRC: 0x{app.crc_app:04x}")
+            print(f"  Code CRC: 0x{app.crc_code:04x}")
+            print(f"  Display page height: {app.page_height} px")
 
     @staticmethod
     def _warn(message: str) -> None:
@@ -395,6 +407,7 @@ class AppManager:
             flash_index_pos = self._find_app(self.flash_index, APP_ID_NONE)
             if flash_index_pos == -1:
                 raise ProgError(f"flash index is full (max {APP_INDEX_SIZE} apps)")
+        new.index = flash_index_pos
         self.flash_index[flash_index_pos] = new
 
         # write to eeprom (if needed)
@@ -588,7 +601,7 @@ class AppManager:
         else:
             print("App not found on device, nothing to do.")
 
-    def list_all(self) -> None:
+    def list_all(self, show_details: bool = False) -> None:
         """List and describe all the installed app on the device."""
         self._read_index()
 
@@ -597,7 +610,7 @@ class AppManager:
         for app in self.flash_index:
             if app.app_id != APP_ID_NONE:
                 print()
-                AppManager._print_app(app)
+                AppManager._print_app(app, show_details)
                 installed += 1
         if installed == 0:
             print("There are no apps installed on device.")

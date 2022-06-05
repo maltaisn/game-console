@@ -83,8 +83,9 @@ class EepromDriver(MemoryDriver):
             progress(written, len(data))
 
     def erase(self, progress: ProgressCallback) -> None:
-        data = bytearray()
-        data[:] = ERASE_BYTE
+        data = bytearray(EEPROM_SIZE)
+        for i in range(EEPROM_SIZE):
+            data[i] = ERASE_BYTE
         self.write(0, data, progress)
 
     def _wait_ready(self) -> None:

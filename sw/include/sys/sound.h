@@ -31,9 +31,6 @@
 // Note value indicating nothing is being played
 #define SYS_SOUND_NO_NOTE 0x54
 
-// Maximum supported subdivision of a beat (1/16th of a beat)
-#define SYS_SOUND_RESOLUTION 16
-
 // The size of each track buffer, to avoid reading from flash one byte at a time.
 // A buffer size of 16 should give about 2-4 seconds of equivalent playback time.
 #define SOUND_TRACK_BUFFER_SIZE 20

@@ -140,7 +140,7 @@ static void draw_apps_overlay(void) {
     const app_flash_t* app = &state.flash_index[state.position];
 
     // name
-    system_get_app_name(state.position, buf);
+    system_get_app_name(app->index, buf);
     uint8_t name_len = strlen(buf);
     graphics_set_color(DISPLAY_COLOR_WHITE);
     graphics_text(6, 23, buf);
@@ -163,7 +163,7 @@ static void draw_apps_overlay(void) {
     // author
     graphics_set_color(15);
     graphics_text(6, 35, "BY");
-    system_get_app_author(state.position, buf);
+    system_get_app_author(app->index, buf);
     graphics_text(18, 35, buf);
     // app ID
     graphics_set_color(12);

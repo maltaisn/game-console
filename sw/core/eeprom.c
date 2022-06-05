@@ -45,7 +45,9 @@ void eeprom_write(eeprom_t address, uint8_t length, const void* src) {
 
 #endif //BOOTLOADER
 
-static SHARED_DISP_BUF uint8_t eeprom_buf[255];
+// this buffer is located alongside the display buffer, but may not be at the same location
+// in the bootloader and in the app, so prefix it with '_' to not include it in the boot symbols.
+static SHARED_DISP_BUF uint8_t _eeprom_buf[255];
 
 #ifdef BOOTLOADER
 
@@ -115,8 +117,8 @@ void sys_eeprom_check_write(void) {
         // data was no fully copied; restore the old data from the buffer.
         eeprom_t addr_abs;
         sys_eeprom_read_absolute(SYS_EEPROM_WRITE_ADDR_ADDR, 2, &addr_abs);
-        sys_eeprom_read_absolute(SYS_EEPROM_WRITE_BUF_ADDR, write_size, eeprom_buf);
-        sys_eeprom_write_absolute(addr_abs, write_size, eeprom_buf);
+        sys_eeprom_read_absolute(SYS_EEPROM_WRITE_BUF_ADDR, write_size, _eeprom_buf);
+        sys_eeprom_write_absolute(addr_abs, write_size, _eeprom_buf);
         uint8_t zero = 0;
         sys_eeprom_write_absolute(SYS_EEPROM_WRITE_SIZE_ADDR, 1, &zero);
     }
@@ -140,15 +142,16 @@ void sys_eeprom_write_relative(eeprom_t address, uint8_t length, const void* src
             // fully past allocated space, no write.
             return;
         }
-    } else if (length == 0) {
+    }
+    if (length == 0) {
         return;
     }
 
     eeprom_t addr_abs = address + sys_eeprom_offset;
 #if !defined(SIMULATION) || defined(SIM_MEMORY_ABSOLUTE)
     // copy old data to buffer
-    sys_eeprom_read_absolute(addr_abs, length, eeprom_buf);
-    sys_eeprom_write_absolute(SYS_EEPROM_WRITE_BUF_ADDR, length, eeprom_buf);
+    sys_eeprom_read_absolute(addr_abs, length, _eeprom_buf);
+    sys_eeprom_write_absolute(SYS_EEPROM_WRITE_BUF_ADDR, length, _eeprom_buf);
 
     // copy new data
     sys_eeprom_write_absolute(SYS_EEPROM_WRITE_ADDR_ADDR, 2, &addr_abs);

@@ -38,6 +38,9 @@ static void set_default_options(void) {
             .preview_pieces = 5,
     };
     game.leaderboard.size = 0;
+
+    // no need to save to EEPROM now, it will be done when options are changed or leaderboard is
+    // updated. If app is launched again without EEPROM having been written, defaults are set again.
 }
 
 #define EEPROM_SAVE_SIZE (1 + sizeof game.options + sizeof tetris.options + sizeof game.leaderboard)
@@ -46,11 +49,10 @@ static void set_default_options(void) {
 static SHARED_DISP_BUF uint8_t save_buf[EEPROM_SAVE_SIZE];
 
 void load_from_eeprom(void) {
-    // use display buffer as temporary memory to write data
     eeprom_read(0, EEPROM_SAVE_SIZE, save_buf);
     uint8_t* buf = save_buf;
 
-    // if first launch, guard byte won't be set: set defaults
+    // if first launch, guard byte isn't be set: set defaults, eeprom was never saved.
     if (*buf++ != EEPROM_GUARD_BYTE) {
         set_default_options();
         return;
@@ -66,7 +68,6 @@ void load_from_eeprom(void) {
 }
 
 void save_to_eeprom(void) {
-    // use display buffer as temporary memory to write data
     uint8_t* buf = save_buf;
     *buf++ = EEPROM_GUARD_BYTE;
 

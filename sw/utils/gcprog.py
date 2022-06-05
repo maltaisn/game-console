@@ -151,12 +151,25 @@ list_parser = subparsers.add_parser(
     description="List and describe installed apps: title, version, author, build date, size, "
                 "EEPROM reserved size, targeted bootloader version. "
                 "Total flash and EEPROM usage are also reported.")
+list_parser.add_argument(
+    "--details", action="store_true", default=False, dest="details",
+    help="Show more information about the apps.")
 
 # eeprom command
 memory.create_parser(subparsers, eeprom.EEPROM_SIZE, "EEPROM")
 
 # flash command
 memory.create_parser(subparsers, flash.FLASH_SIZE, "flash")
+
+# battery command
+list_parser = subparsers.add_parser(
+    "battery", help="Battery info and calibration",
+    description="Show info on battery status and perform calibration")
+list_parser.add_argument(
+    "-c", "--calibration", action="store_true", default=False, dest="calibration",
+    help="Starting with a fully charged battery, slowly discharge it and measure voltage through "
+         "time for different battery loads. A file to be written to the internal EEPROM is output."
+         "Note that calibration takes several hours since it fully discharges the battery.")
 
 
 class Prog(CommInterface):
@@ -342,7 +355,7 @@ class Prog(CommInterface):
             manager.erase_eeprom(app_id)
 
     def command_list(self) -> None:
-        self.create_app_manager().list_all()
+        self.create_app_manager().list_all(self.args.details)
 
 
 def main() -> None:

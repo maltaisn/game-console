@@ -163,6 +163,7 @@ void system_load_flash_index(void) {
             index->code_size = entry.code_size;
             index->eeprom_size = entry.eeprom_size;
             index->build_date = entry.build_date;
+            index->index = i;
             ++index;
 
             state.flash_usage.total += entry.app_size;
@@ -256,8 +257,9 @@ void system_get_app_author(uint8_t pos, char name[static 16]) {
 
 void system_get_app_name_by_id(uint8_t id, char name[static 16]) {
     for (uint8_t i = 0; i < APP_INDEX_SIZE; ++i) {
-        if (state.flash_index[i].id == id) {
-            system_get_app_name(i, name);
+        const app_flash_t *app = &state.flash_index[i];
+        if (app->id == id) {
+            system_get_app_name(app->index, name);
             return;
         }
     }

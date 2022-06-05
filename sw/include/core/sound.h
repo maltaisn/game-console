@@ -107,8 +107,11 @@
 #define TRACKS_STARTED_ALL (TRACK0_STARTED | TRACK1_STARTED | TRACK2_STARTED)
 #define TRACKS_PLAYING_ALL (TRACK0_PLAYING | TRACK1_PLAYING | TRACK2_PLAYING)
 
+// Maximum supported subdivision of a beat (1/16th of a beat)
+#define SOUND_RESOLUTION 16
+
 #define encode_bpm_tempo(bpm) ((uint8_t) \
-    ((60.0 * SYSTICK_FREQUENCY) / ((bpm) * SYS_SOUND_RESOLUTION) - 0.5))
+    ((60.0 * SYSTICK_FREQUENCY) / ((bpm) * SOUND_RESOLUTION) - 0.5))
 
 typedef enum {
     SOUND_VOLUME_0,

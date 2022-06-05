@@ -39,7 +39,8 @@
  * [167..188]: --reserved--
  * [189]: if write in progress, length of write in bytes. Otherwise 0.
  * [190..191]: if write in progress, address of write.
- * [192..447]: buffer used to copy old data for atomic access.
+ * [192..446]: buffer used to copy old data for atomic access.
+ * [447]: --reserved--
  * [448..]: allocated app data
  *
  * Each index entry has the following format:

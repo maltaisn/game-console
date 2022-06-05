@@ -21,7 +21,6 @@
 #include <assets.h>
 #include <input.h>
 
-#include <core/power.h>
 #include <core/graphics.h>
 #include <core/sysui.h>
 #include <core/dialog.h>
@@ -153,7 +152,7 @@ static void write_last_clear_info(char buf[static 16]) {
  * The string will be padded with the given character.
  */
 static void format_points(char buf[9], uint32_t pts, char pad) {
-    char *ptr = buf;
+    char* ptr = buf;
     ptr[8] = '\0';
     ptr += 8;
     if (pts >= 100000000) {
