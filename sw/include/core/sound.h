@@ -114,10 +114,10 @@
     ((60.0 * SYSTICK_FREQUENCY) / ((bpm) * SOUND_RESOLUTION) - 0.5))
 
 typedef enum {
-    SOUND_VOLUME_0,
-    SOUND_VOLUME_1,
-    SOUND_VOLUME_2,
-    SOUND_VOLUME_3,
+    SOUND_VOLUME_0 = 0x00,
+    SOUND_VOLUME_1 = 0x01,
+    SOUND_VOLUME_2 = 0x02,
+    SOUND_VOLUME_3 = 0x03,
     SOUND_VOLUME_OFF = 0xff,
 } sound_volume_t;
 

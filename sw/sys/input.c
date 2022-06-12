@@ -51,8 +51,10 @@ static uint8_t _state1;
 static uint8_t _inactive_countdown;
 
 ISR(PORTD_PORT_vect) {
+    // this interrupt is triggered whenever the user presses a button.
     VPORTD.INTFLAGS = BUTTONS_ALL;
     if (_inactive_countdown == 0) {
+        // sleep is currently scheduled, cancel it.
         sys_power_schedule_sleep_cancel();
     }
     _inactive_countdown = INACTIVITY_COUNTDOWN_START;
@@ -79,7 +81,9 @@ void sys_input_update_state_immediate(void) {
 }
 
 void sys_input_dim_if_inactive(void) {
-    sys_display_set_dimmed(_inactive_countdown <= INACTIVITY_COUNTDOWN_DIM);
+    if (sys_power_is_sleep_enabled()) {
+        sys_display_set_dimmed(_inactive_countdown <= INACTIVITY_COUNTDOWN_DIM);
+    }
 }
 
 void sys_input_reset_inactivity(void) {
@@ -88,7 +92,8 @@ void sys_input_reset_inactivity(void) {
 
 void sys_input_update_inactivity(void) {
     if (_inactive_countdown == 0) {
-        sys_power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
+        sys_power_schedule_sleep(SLEEP_CAUSE_INACTIVE | SYS_SLEEP_SCHEDULE_ALLOW_WAKEUP |
+                                 SYS_SLEEP_SCHEDULE_COUNTDOWN);
     } else {
         --_inactive_countdown;
     }

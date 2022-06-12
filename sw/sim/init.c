@@ -23,6 +23,7 @@
 
 #include <sys/led.h>
 #include <sys/spi.h>
+#include <sys/display.h>
 
 #include <sim/time.h>
 #include <sim/sound.h>
@@ -48,22 +49,29 @@ void sys_init_sleep(void) {
     sys_display_sleep();
     sys_sound_set_output_enabled(false);
     sim_sound_close_stream();
+    sys_power_end_sampling();
     sys_flash_sleep();
     sys_led_clear();
 }
 
 void sys_init_wakeup(void) {
-    // check battery level on startup
-    sys_power_start_sampling();
-    sys_power_wait_for_sample();
-    sys_power_schedule_sleep_if_low_battery(false);
-    sim_time_start();
-
     // initialize display
     sys_display_init();
+    sys_display_clear(DISPLAY_COLOR_BLACK);
+
+    // check battery level
+    sys_power_start_sampling();
+    sys_power_wait_for_sample();
+    // note: at this point display color is 0, so load should be about 0 too.
+    // the first measurement isn't terribly precise, it's mostly an undervoltage protection.
+    sys_power_update_battery_level(0);
+    sim_time_start();
+
+    // turn display on
     sys_power_set_15v_reg_enabled(true);
     sys_display_set_enabled(true);
 
+    // update input immediately so that the wakeup button press is not registered.
     sys_input_update_state_immediate();
     sys_input_reset_inactivity();
 
@@ -72,8 +80,6 @@ void sys_init_wakeup(void) {
     sim_sound_open_stream();
 
     sys_flash_wakeup();
-
-    sys_spi_deselect_all();
 }
 
 void sim_deinit(void) {

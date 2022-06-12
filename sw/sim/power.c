@@ -43,8 +43,10 @@
 
 static battery_status_t battery_status = BATTERY_DISCHARGING;
 static uint8_t battery_percent = 100;
-static bool reg_15v_enabled;
+static bool reg_15v_enabled = false;
+static bool sleep_enabled = true;
 static bool sleep_scheduled = false;
+
 static bool sleep_allow_wakeup;
 static sleep_cause_t sleep_cause;
 static uint8_t sleep_countdown;
@@ -63,11 +65,27 @@ void sys_power_wait_for_sample(void) {
     // no-op
 }
 
+void sys_power_update_battery_level(uint8_t flags) {
+    // no-op
+}
+
+bool sys_power_should_compute_display_color(void) {
+    return false;
+}
+
+void sys_power_on_display_color_computed(void) {
+    // no-op, not used.
+}
+
 battery_status_t sys_power_get_battery_status(void) {
     return battery_status;
 }
 
 uint16_t sys_power_get_battery_level_average(void) {
+    return sys_power_get_battery_last_reading();
+}
+
+uint16_t sys_power_get_battery_last_reading(void) {
     return VBAT_MIN_ADC + (VBAT_MAX_ADC - VBAT_MIN_ADC) * battery_percent / 100;
 }
 
@@ -84,10 +102,6 @@ uint16_t sys_power_get_battery_voltage(void) {
     return VBAT_MIN + (VBAT_MAX - VBAT_MIN) * battery_percent / 100;
 }
 
-bool sys_power_is_15v_reg_enabled(void) {
-    return reg_15v_enabled;
-}
-
 void sys_power_set_15v_reg_enabled(bool enabled) {
     if (!sleeping) {
         sys_display_set_gpio(enabled ? SYS_DISPLAY_GPIO_OUTPUT_HI : SYS_DISPLAY_GPIO_OUTPUT_LO);
@@ -95,27 +109,38 @@ void sys_power_set_15v_reg_enabled(bool enabled) {
     }
 }
 
-void sys_power_schedule_sleep(sleep_cause_t cause, bool allow_wakeup, bool countdown) {
-    if (countdown) {
+void sys_power_set_sleep_enabled(bool enabled) {
+    sleep_enabled = enabled;
+}
+
+bool sys_power_is_sleep_enabled(void) {
+    return sleep_enabled;
+}
+
+void sys_power_schedule_sleep(uint8_t flags) {
+    if (!sleep_enabled) {
+        return;
+    }
+    if (flags & SYS_SLEEP_SCHEDULE_COUNTDOWN) {
         if (sleep_scheduled) {
             // already scheduled
             return;
         }
-        trace("sleep scheduled, cause = %d, allow_wakeup = %d, countdown = %d",
-              cause, allow_wakeup, countdown);
         sleep_scheduled = true;
-        sleep_cause = cause;
-        sleep_allow_wakeup = allow_wakeup;
-        sleep_countdown = SYS_POWER_SLEEP_COUNTDOWN;
+        sleep_cause = flags & 0x3;
+        sleep_allow_wakeup = (flags & SYS_SLEEP_SCHEDULE_ALLOW_WAKEUP) != 0;
+        sleep_countdown = (flags & SYS_SLEEP_SCHEDULE_COUNTDOWN) != 0;
+        trace("sleep scheduled, cause = %d, allow_wakeup = %d, countdown = %d",
+              sleep_cause, sleep_allow_wakeup, sleep_countdown);
         __callback_sleep_scheduled();
         return;
     }
     sys_power_enable_sleep();
 }
 
-void sys_power_schedule_sleep_if_low_battery(bool countdown) {
+static void sys_power_schedule_sleep_if_low_battery(uint8_t flags) {
     if (battery_status == BATTERY_DISCHARGING && power_get_battery_percent() == 0) {
-        sys_power_schedule_sleep(SLEEP_CAUSE_LOW_POWER, false, countdown);
+        sys_power_schedule_sleep(SLEEP_CAUSE_LOW_POWER | flags);
         // prevent the screen from being dimmed in the meantime.
         sys_input_reset_inactivity();
         // disable sound output since display has been replaced with low battery warning anyway.
@@ -169,8 +194,7 @@ void sim_power_monitor_update(void) {
         trace("sleep countdown = %d", sleep_countdown);
     }
 
-    sys_power_start_sampling();
-    sys_power_schedule_sleep_if_low_battery(true);
+    sys_power_schedule_sleep_if_low_battery(SYS_SLEEP_SCHEDULE_COUNTDOWN);
 }
 
 void sim_power_set_battery_status(battery_status_t status) {

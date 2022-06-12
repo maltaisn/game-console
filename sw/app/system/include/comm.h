@@ -40,38 +40,79 @@
  *
  * For every packet sent, the transmitter should wait until the response packet is fully received.
  * The reason for this is that the RX buffer size is limited to the size of one packet.
- *
- * VERSION: get version info
- * - RX payload: empty
- * - TX payload:
- * [0..1]: system app version
- * [2..3]: bootloader version
- * [4..5]: gcprog first compatible version
- *
- * SPI: transfer data on the SPI bus
- * RX & TX packets have an identical format.
- * [0]: bits [0:1] indicate the selected peripheral
- *      - 0x0: flash memory
- *      - 0x1: EEPROM memory
- *      - 0x2: OLED display
- *      - 0x3: reserved
- *      bit [7] is 1 if this is the last transfer, which means the CS line will be
- *      released at the end of transfer. This bit must absolutely be set for the last transfer,
- *      otherwise there might be two CS lines asserted on the next transfer!
- * [1..n]: SPI data
- *
- * LOCK: When locked, the system app will be paused and process incoming packets continuously
- * until unlocked. The same packet is used to lock and unlock. This is notably used to do
- * long memory operations split into multiple SPI packets.
- * - RX payload:
- * [0]: 0xff to lock, others to unlock.
- * - TX payload: empty
  */
 
 typedef enum {
+    /**
+     * Get version info
+     * - RX payload: empty
+     * - TX payload:
+     * [0..1]: system app version
+     * [2..3]: bootloader version
+     * [4..5]: gcprog first compatible version
+     */
     PACKET_VERSION = 0x00,
+
+    /**
+     * Transfer data on the SPI bus
+     * RX & TX packets have an identical format.
+     * [0]: bits [0:1] indicate the selected peripheral
+     *      - 0x0: flash memory
+     *      - 0x1: EEPROM memory
+     *      - 0x2: OLED display
+     *      - 0x3: reserved
+     *      bit [7] is 1 if this is the last transfer, which means the CS line will be
+     *      released at the end of transfer. This bit must absolutely be set for the last transfer,
+     *      otherwise there might be two CS lines asserted on the next transfer!
+     * [1..n]: SPI data
+     */
     PACKET_SPI = 0x01,
+
+    /**
+     * LOCK: When locked, the system app will be paused and process incoming packets continuously
+     * until unlocked. The same packet is used to lock and unlock. This is notably used to do
+     * long memory operations split into multiple SPI packets.
+     * - RX payload:
+     * [0]: 0xff to lock, 0x00 to unlock, others ignored.
+     * - TX payload: empty
+     */
     PACKET_LOCK = 0x02,
+
+    /**
+     * Enable or disable sleep (caused by low power or inactivity).
+     * - RX payload:
+     * [0]: 0xff to enable sleep, 0x00 to disable, others ignored.
+     * - TX payload: empty
+     */
+    PACKET_SLEEP = 0x03,
+
+    /**
+     * Get info on the battery.
+     * - RX payload: empty
+     * - TX payload:
+     * [0]: status (see battery_status_t)
+     * [1]: percent (0-100)
+     * [2..3]: voltage (in mV)
+     * [4..5]: last ADC reading
+     */
+    PACKET_BATTERY_INFO = 0x10,
+
+    /**
+     * Start or stop battery calibration.
+     * - RX payload:
+     * [0]: 0xff to start, 0x00 to stop, others ignored
+     * - TX payload: empty
+     */
+    PACKET_BATTERY_CALIB = 0x11,
+
+    /**
+     * BATTERY_LOAD: if battery calibration is started, set the current "load".
+     * - RX payload:
+     * [0]: display contrast (0x00-0xff)
+     * [1]: display uniform color (disp_color_t)
+     * - TX payload: empty
+     */
+    PACKET_BATTERY_LOAD = 0x12,
 } packet_type_t;
 
 /**
@@ -81,11 +122,5 @@ typedef enum {
  * Must not be called with interrupts enabled.
  */
 void comm_receive(void);
-
-/**
- * Transmit packet of `type` with a payload of `length` bytes to TX.
- * The payload is contained in the `comm_payload_buf` buffer.
- */
-void comm_transmit(uint8_t type, uint8_t payload_length);
 
 #endif //SYSTEM_COMM_H

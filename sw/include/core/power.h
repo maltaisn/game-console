@@ -37,11 +37,11 @@ typedef enum {
 
 typedef enum {
     /** No upcoming sleep. */
-    SLEEP_CAUSE_NONE,
+    SLEEP_CAUSE_NONE = 0x0,
     /** Upcoming sleep due to inactivity. */
-    SLEEP_CAUSE_INACTIVE,
+    SLEEP_CAUSE_INACTIVE = 0x1,
     /** Upcoming sleep due to low battery level. */
-    SLEEP_CAUSE_LOW_POWER,
+    SLEEP_CAUSE_LOW_POWER = 0x2,
 } sleep_cause_t;
 
 /**

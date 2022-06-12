@@ -29,7 +29,7 @@
 
 #endif
 
-#define SYSTICK_MAX 0xffffff
+#define SYSTICK_MAX 0xffff
 #define SYSTICK_RATE (1.0 / SYSTICK_FREQUENCY)
 #define POWER_MONITOR_RATE 1.0
 

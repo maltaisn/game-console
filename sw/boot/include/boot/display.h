@@ -57,26 +57,6 @@ void sys_display_set_dimmed(bool dimmed);
 void sys_display_set_gpio(sys_display_gpio_t mode);
 
 /**
- * Set D/C pin for display.
- */
-void sys_display_set_dc(void);
-
-/**
- * Clear D/C pin for display.
- */
-void sys_display_clear_dc(void);
-
-/**
- * Set reset pin for display.
- */
-void sys_display_set_reset(void);
-
-/**
- * Clear reset pin for display.
- */
-void sys_display_clear_reset(void);
-
-/**
  * Start updating display with the first page.
  * The display buffer is NOT cleared beforehand.
  */
@@ -88,5 +68,12 @@ void sys_display_first_page(void);
  * If on the last page, this returns false, otherwise it returns true.
  */
 bool sys_display_next_page(void);
+
+/**
+ * Returns the computed average display color.
+ * This value is only computed on the next refresh after
+ * `sys_power_should_compute_color()` returns true.
+ */
+uint8_t sys_display_get_average_color(void);
 
 #endif //BOOT_DISPLAY_H

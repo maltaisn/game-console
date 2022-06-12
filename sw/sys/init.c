@@ -23,7 +23,6 @@
 #include <boot/power.h>
 #include <boot/sound.h>
 
-#include <sys/input.h>
 #include <sys/sound.h>
 #include <sys/spi.h>
 #include <sys/display.h>
@@ -35,13 +34,16 @@
 #include <avr/sleep.h>
 #include <util/delay.h>
 
-#define RTC_ENABLE() (RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm)
-#define RTC_DISABLE() (RTC.CTRLA = 0)
-
-#define PIT_ENABLE() (RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm)
-#define PIT_DISABLE() (RTC.PITCTRLA = 0)
-
-#define ADC_ENABLE() (ADC0.CTRLA = ADC_RESSEL_10BIT_gc | ADC_ENABLE_bm)
+FUSES = {
+        .WDTCFG = FUSE_WDTCFG_DEFAULT,
+        .BODCFG = BOD_LVL_BODLEVEL0_gc | BOD_SAMPFREQ_1KHZ_gc |
+                  BOD_ACTIVE_SAMPLED_gc | BOD_SLEEP_DIS_gc,
+        .OSCCFG = FUSE_OSCCFG_DEFAULT,
+        .SYSCFG0 = FUSE_SYSCFG0_DEFAULT,
+        .SYSCFG1 = FUSE_SYSCFG1_DEFAULT,
+        .APPEND = 0x00,
+        .BOOTEND = 8448 / 256,
+};
 
 static void sys_init_registers(void) {
     // ====== CLOCK ======
@@ -84,12 +86,9 @@ static void sys_init_registers(void) {
     // PWM is output on PA3 for buzzer. Only high timer is used, low timer is unused.
     TCA0.SPLIT.CTRLD = TCA_SPLIT_SPLITM_bm;
     TCA0.SPLIT.CTRLB = TCA_SPLIT_HCMP0EN_bm;
-    TCA0.SPLIT.HPER = SYS_SOUND_PWM_MAX;
+    TCA0.SPLIT.HPER = SYS_SOUND_PWM_MAX - 1;
     TCA0.SPLIT.HCMP0 = 0;
     TCA0.SPLIT.CTRLA = TCA_SPLIT_CLKSEL_DIV2_gc;
-    // The event system channel 0 is set to PA3, with event user EVOUTA pin (PA2),
-    // to invert PA2 when H-bridge setup is used (event user set when enabled).
-    EVSYS.CHANNEL0 = EVSYS_GENERATOR_PORT0_PIN3_gc;
 
     // ====== TCB ======
     // Used for each sound channel. Prescaler = 2, periodic interrupt mode.
@@ -108,7 +107,7 @@ static void sys_init_registers(void) {
     RTC.PER = 0;
     RTC.INTCTRL = RTC_OVF_bm;
     RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
-    //RTC.CTRLA is set is init_wakeup()
+    //RTC.CTRLA is set in sys_init_wakeup()
 
     // === ADC & VREF ===
     // 10-bit resolution, 64 samples accumulation, 78 kHz ADC clock,
@@ -130,7 +129,7 @@ static void sys_init_power_monitor(void) {
     // PIT: interrupt every 1 s for battery sampling and sleep countdown.
     while (RTC.PITSTATUS != 0);
     RTC.PITINTCTRL = RTC_PI_bm;
-    PIT_ENABLE();
+    RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
 }
 
 void sys_init(void) {
@@ -148,8 +147,8 @@ void sys_init(void) {
 }
 
 void sys_init_sleep(void) {
-    RTC_DISABLE();
-    PIT_DISABLE();
+    RTC.CTRLA = 0;
+    RTC.PITCTRLA = 0;
 
     // disable all peripherals to reduce current consumption
     sys_power_set_15v_reg_enabled(false);
@@ -162,29 +161,35 @@ void sys_init_sleep(void) {
 }
 
 void sys_init_wakeup(void) {
-    // check battery level on startup
-    ADC_ENABLE();
-    sys_power_start_sampling();
-    sys_power_wait_for_sample();
-    sys_power_schedule_sleep_if_low_battery(false);
-    sys_init_power_monitor();
-
     // initialize display
     sys_display_init();
     sys_display_clear(DISPLAY_COLOR_BLACK);
+
+    // check battery level
+    ADC0.CTRLA = ADC_RESSEL_10BIT_gc | ADC_ENABLE_bm;
+    sys_power_start_sampling();
+    sys_power_wait_for_sample();
+    // note: at this point display color is 0, so load should be about 0 too.
+    // the first measurement isn't terribly precise, it's mostly an undervoltage protection.
+    sys_power_update_battery_level(0);
+    sys_init_power_monitor();
+
+    // turn display on
     sys_power_set_15v_reg_enabled(true);
     sys_display_set_enabled(true);
 
-    // update input immediately so that the wakeup button pressed is not registered.
+    // update input immediately so that the wakeup button press is not registered.
     sys_input_update_state_immediate();
     sys_input_reset_inactivity();
 
+    // initialize sound output
     sys_sound_update_output_state();
+    sys_sound_set_channel_volume(2, SOUND_CHANNEL2_VOLUME0);
 
     sys_flash_wakeup();
 
     while (RTC.STATUS & RTC_CTRLABUSY_bm);
-    RTC_ENABLE();
+    RTC.CTRLA = RTC_PRESCALER_DIV128_gc | RTC_RTCEN_bm;
 }
 
 #endif //BOOTLOADER

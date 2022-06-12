@@ -37,7 +37,7 @@ from pathlib import Path
 
 from hex_utils import read_hex_file, write_hex_file
 
-BOOTLOADER_SIZE = 8192
+BOOTLOADER_SIZE = 8448
 
 
 class PreloadError(Exception):

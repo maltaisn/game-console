@@ -1,7 +1,18 @@
-mido ~= 1.2.10
-pillow ~= 8.1.2
 argparse ~= 1.4.0
+
+# for font_gen
+mido ~= 1.2.10
+
+# for image_gen
+pillow ~= 8.1.2
+
+# for gcprog & app packer
 crcmod ~= 1.7
 pyserial~=3.5
 bitarray~=2.5.1
 colorama~=0.4.4
+
+# for battery calibration analysis
+numpy~=1.20.1
+matplotlib~=3.3.4
+scipy~=1.7.3

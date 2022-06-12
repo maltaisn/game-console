@@ -41,6 +41,7 @@ import prog.app as app
 import prog.eeprom as eeprom
 import prog.flash as flash
 import prog.memory as memory
+from prog.battery import BatteryManager
 from prog.comm import Comm, ProgError, Packet, PacketType, CommInterface
 from prog.spi import SpiInterface
 from utils import DataReader
@@ -166,10 +167,10 @@ list_parser = subparsers.add_parser(
     "battery", help="Battery info and calibration",
     description="Show info on battery status and perform calibration")
 list_parser.add_argument(
-    "-c", "--calibration", action="store_true", default=False, dest="calibration",
+    "-c", "--calibrate", default=None, const="calibration.csv", nargs="?", dest="calibration",
     help="Starting with a fully charged battery, slowly discharge it and measure voltage through "
-         "time for different battery loads. A file to be written to the internal EEPROM is output."
-         "Note that calibration takes several hours since it fully discharges the battery.")
+         "time for different battery loads. A CSV file to be analyzed by another script is output."
+         "Note that meaurements takes several hours since it fully discharges the battery.")
 
 
 class Prog(CommInterface):
@@ -225,28 +226,32 @@ class Prog(CommInterface):
             return
         self.check_version()
 
-        self.lock()
         cmd = self.args.command
-        if cmd == "eeprom":
-            self.command_eeprom()
-        elif cmd == "flash":
-            self.command_flash()
-        elif cmd == "init":
-            self.command_init()
-        elif cmd == "install":
-            self.command_install()
-        elif cmd == "uninstall":
-            self.command_uninstall()
-        elif cmd == "data":
-            self.command_data()
-        elif cmd == "list":
-            self.command_list()
+        if cmd == "battery":
+            self.command_battery()
+        else:
+            self.lock()
+            if cmd == "eeprom":
+                self.command_eeprom()
+            elif cmd == "flash":
+                self.command_flash()
+            elif cmd == "init":
+                self.command_init()
+            elif cmd == "install":
+                self.command_install()
+            elif cmd == "uninstall":
+                self.command_uninstall()
+            elif cmd == "data":
+                self.command_data()
+            elif cmd == "list":
+                self.command_list()
 
-        if self.local_run:
-            self.eeprom.save()
-            self.flash.save()
+            if self.local_run:
+                self.eeprom.save()
+                self.flash.save()
 
-        self.unlock()
+            self.unlock()
+
         self.comm.disconnect()
 
     def get_version(self) -> None:
@@ -256,7 +261,7 @@ class Prog(CommInterface):
             self.system_version_comp = VERSION
         elif self.comm.is_connected():
             self.write(Packet(PacketType.VERSION))
-            version = self.read(PacketType.VERSION).payload
+            version = self.read().payload
             reader = DataReader(version)
             self.system_version = reader.read(2)
             self.boot_version = reader.read(2)
@@ -290,10 +295,10 @@ class Prog(CommInterface):
             self.interrupt_exit()
         self.operation_in_progress = False
 
-    def read(self, expected_type: Optional[PacketType] = None) -> Packet:
+    def read(self) -> Packet:
         """Packet read wrapper around Comm.read to ensure that read operation is not interrupted."""
         self.operation_in_progress = True
-        packet = self.comm.read(expected_type)
+        packet = self.comm.read()
         if self.interrupted:
             self.interrupt_exit()
         self.operation_in_progress = False
@@ -307,13 +312,13 @@ class Prog(CommInterface):
 
     def lock(self) -> None:
         if not self.local_run:
-            self.comm.write(Packet(PacketType.LOCK, [0xff]))
-            self.comm.read(PacketType.LOCK)
+            self.write(Packet(PacketType.LOCK, [0xff]))
+            self.read()
 
     def unlock(self) -> None:
         if not self.local_run:
-            self.comm.write(Packet(PacketType.LOCK, [0x00]))
-            self.comm.read(PacketType.LOCK)
+            self.write(Packet(PacketType.LOCK, [0x00]))
+            self.read()
 
     def create_app_manager(self) -> app.AppManager:
         manager = app.AppManager(self.eeprom, self.flash)
@@ -356,6 +361,13 @@ class Prog(CommInterface):
 
     def command_list(self) -> None:
         self.create_app_manager().list_all(self.args.details)
+
+    def command_battery(self) -> None:
+        manager = BatteryManager(self)
+        if self.args.calibration:
+            manager.perform_calibration(self.args.calibration)
+        else:
+            manager.print_info()
 
 
 def main() -> None:

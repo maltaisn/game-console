@@ -29,7 +29,6 @@
 #include <core/callback.h>
 #include <core/data.h>
 #include <core/dialog.h>
-#include <core/flash.h>
 #include <core/time.h>
 
 #include <string.h>

@@ -164,11 +164,13 @@ void sys_input_update_state_immediate(void) {
 }
 
 void sys_input_dim_if_inactive(void) {
-    bool dimmed = inactive_countdown <= INACTIVITY_COUNTDOWN_DIM;
-    if (dimmed && !sys_display_is_dimmed()) {
-        trace("input inactive, display dimmed");
+    if (sys_power_is_sleep_enabled()) {
+        bool dimmed = inactive_countdown <= INACTIVITY_COUNTDOWN_DIM;
+        if (dimmed && !sys_display_is_dimmed()) {
+            trace("input inactive, display dimmed");
+        }
+        sys_display_set_dimmed(dimmed);
     }
-    sys_display_set_dimmed(dimmed);
 }
 
 void sys_input_reset_inactivity(void) {
@@ -177,7 +179,8 @@ void sys_input_reset_inactivity(void) {
 
 void sys_input_update_inactivity(void) {
     if (inactive_countdown == 0) {
-        sys_power_schedule_sleep(SLEEP_CAUSE_INACTIVE, true, true);
+        sys_power_schedule_sleep(SLEEP_CAUSE_INACTIVE | SYS_SLEEP_SCHEDULE_ALLOW_WAKEUP |
+                                 SYS_SLEEP_SCHEDULE_COUNTDOWN);
     } else {
         --inactive_countdown;
     }

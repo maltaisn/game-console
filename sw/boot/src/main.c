@@ -40,6 +40,7 @@
 #include <stdbool.h>
 
 #ifdef SIMULATION
+
 #include <sim/glut.h>
 #include <sim/uart.h>
 
@@ -53,25 +54,15 @@
 #include <unistd.h>
 
 #define SYSTICK_RATE (1.0 / SYSTICK_FREQUENCY)
-#define POWER_MONITOR_RATE 1.0
 
 #define SIM_FLASH_FILE "dev/flash.dat"
 #define SIM_EEPROM_FILE "dev/eeprom.dat"
 
 #endif //SIMULATION
 
-#ifndef SIMULATION
-FUSES = {
-        .WDTCFG = FUSE_WDTCFG_DEFAULT,
-        .BODCFG = BOD_LVL_BODLEVEL0_gc | BOD_SAMPFREQ_1KHZ_gc |
-                  BOD_ACTIVE_SAMPLED_gc | BOD_SLEEP_DIS_gc,
-        .OSCCFG = FUSE_OSCCFG_DEFAULT,
-        .SYSCFG0 = FUSE_SYSCFG0_DEFAULT,
-        .SYSCFG1 = FUSE_SYSCFG1_DEFAULT,
-        .APPEND = 0x00,
-        .BOOTEND = 0x20,  // 0x20 * 256 = 8192 B
-};
-#endif //SIMULATION
+#if APP_ID == APP_ID_NONE
+#define IS_BOOTLOADER
+#endif
 
 #define DISPLAY_MAX_FPS 8
 
@@ -90,82 +81,96 @@ static BOOTLOADER_ONLY uint8_t _first_shown;
 static BOOTLOADER_ONLY uint8_t _selected_index;
 static BOOTLOADER_ONLY systime_t _last_draw_time;
 
-static void loop(void);
-static void draw(void);
-static void handle_input(void);
-static void init_selection(void);
-
-#ifdef SIMULATION
-static void* loop_thread(void* arg) {
-    while (true) {
-        loop();
-
-#ifdef SYS_UART_ENABLE
-        sim_uart_listen();
-#endif
-
-        // 1 ms sleep (fixes responsiveness issues with keyboard input)
-        sim_time_sleep(1000);
-    }
-    return 0;
-}
-#endif //SIMULATION
-
-/**
- * This function is the entry point for both the bootloader and the simulator.
- * The main loop takes care of calling `loop` and `draw` callbacks among other things.
- */
-int main(void) {
-    sys_init();
-    sys_display_init_page(DISPLAY_PAGE_HEIGHT);
-
-    // update last input state to prevent pushed button registered as clicked
-    // immediately on launch, like when an app has an exit button.
+static void handle_input(void) {
     input_latch();
 
-#ifdef SIM_MEMORY_ABSOLUTE
-#ifdef SIMULATION
-    // for bootloader, load flash and eeprom from local files written by gcprog --local.
-#if APP_ID == APP_ID_NONE
-    sim_flash_load("../" SIM_FLASH_FILE);
-    sim_eeprom_load("../" SIM_EEPROM_FILE);
-#else
-    sim_flash_load("../../" SIM_FLASH_FILE);
-    sim_eeprom_load("../../" SIM_EEPROM_FILE);
-#endif
-#endif //SIMULATION
-    sys_eeprom_check_write();
-    load_read_index();
-    init_selection();
-#endif //SIM_MEMORY_ABSOLUTE
-
-#ifdef SIMULATION
-    int argc = 0;
-    glutInit(&argc, 0);
-    glut_init();
-    sim_input_init();
-
-    // normally called when loading an app, but we never load apps in simulation.
-    __callback_setup();
-
-    // run the app in a separate thread. The reason this is done instead of calling loop() from
-    // a GLUT timer is that when sleep is enabled, execution is expected to stop at that point
-    // until wakeup.
-    pthread_t thread;
-    pthread_create(&thread, NULL, loop_thread, NULL);
-
-    while (true) {
-        glutMainLoopEvent();
-        sim_time_update();
+    uint8_t clicked = input_get_clicked();
+    if (clicked & BUTTON2) {
+        // move selection up
+        if (_selected_index != 0) {
+            --_selected_index;
+            if (_first_shown > _selected_index) {
+                --_first_shown;
+            }
+        }
+    } else if (clicked & BUTTON3) {
+        // move selection down
+        if (_selected_index < load_get_app_count() - 1) {
+            ++_selected_index;
+            if (_first_shown + APPS_PER_SCREEN <= _selected_index) {
+                ++_first_shown;
+            }
+        }
+        display_set_contrast(display_get_contrast() + 16);
+    } else if (clicked & BUTTON4) {
+        // load selected app
+        _load_app(_selected_index);
     }
-#else
-    while (true) {
-        loop();
+}
+
+static void draw_low_battery_overlay(void) {
+    graphics_clear(DISPLAY_COLOR_BLACK);
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    graphics_set_font(ASSET_FONT_3X5_BUILTIN);
+    graphics_text(30, 42, "LOW BATTERY LEVEL");
+    graphics_text(33, 81, "SHUTTING DOWN...");
+    graphics_set_color(11);
+    graphics_rect(40, 52, 43, 24);
+    graphics_rect(41, 53, 41, 22);
+    graphics_fill_rect(84, 57, 4, 14);
+    graphics_fill_rect(44, 56, 7, 16);
+    graphics_set_color(DISPLAY_COLOR_BLACK);
+    graphics_fill_rect(84, 59, 2, 10);
+}
+
+static void draw_bootloader(void) {
+    graphics_clear(DISPLAY_COLOR_BLACK);
+
+    // draw the app list
+    disp_y_t y = 5;
+    uint8_t index = _first_shown;
+    for (uint8_t i = 0; i < APPS_PER_SCREEN; ++i) {
+        if (index == load_get_app_count()) {
+            break;
+        }
+
+        graphics_image_t image = load_get_app_image(index);
+        graphics_set_color(ACTIVE_COLOR(index == _selected_index));
+        graphics_rect(0, y, DISPLAY_WIDTH, APP_ITEM_HEIGHT);
+        graphics_image_4bit_mixed(image, 2, y + 2);
+        y += APP_ITEM_HEIGHT + 2;
+
+        ++index;
     }
-#endif //SIMULATION
+
+    // draw movement arrows
+    graphics_set_color(ACTIVE_COLOR(_first_shown > 0));
+    graphics_image_1bit_mixed(data_mcu(_ARROW_UP), 62, 0);
+    graphics_set_color(ACTIVE_COLOR((int8_t) _first_shown <
+                                    (int8_t) load_get_app_count() - 2));
+    graphics_image_1bit_mixed(data_mcu(_ARROW_DOWN), 62, 125);
+
+    sysui_battery_overlay();
+}
+
+static void draw(void) {
+    if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
+        // show low battery screen before sleeping.
+        draw_low_battery_overlay();
+        return;
+    }
+
+    if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
+        // draw the app
+        __callback_draw();
+    } else {
+        // draw the bootloader
+        draw_bootloader();
+    }
 }
 
 static void loop(void) {
+    sys_power_update_battery_level(SYS_SLEEP_SCHEDULE_COUNTDOWN);
     sys_sound_fill_track_buffers();
     sys_input_dim_if_inactive();
 
@@ -206,89 +211,8 @@ static void loop(void) {
     }
 }
 
-static void draw_low_battery_overlay(void) {
-    graphics_clear(DISPLAY_COLOR_BLACK);
-    graphics_set_color(DISPLAY_COLOR_WHITE);
-    graphics_set_font(ASSET_FONT_3X5_BUILTIN);
-    graphics_text(30, 42, "LOW BATTERY LEVEL");
-    graphics_text(33, 81, "SHUTTING DOWN...");
-    graphics_set_color(11);
-    graphics_rect(40, 52, 43, 24);
-    graphics_rect(41, 53, 41, 22);
-    graphics_fill_rect(84, 57, 4, 14);
-    graphics_fill_rect(44, 56, 7, 16);
-    graphics_set_color(DISPLAY_COLOR_BLACK);
-    graphics_fill_rect(84, 59, 2, 10);
-}
 
-static void draw(void) {
-    if (power_get_scheduled_sleep_cause() == SLEEP_CAUSE_LOW_POWER) {
-        // show low battery screen before sleeping.
-        draw_low_battery_overlay();
-        return;
-    }
-
-    if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
-        // draw the app
-        __callback_draw();
-    } else {
-        // draw the bootloader
-        graphics_clear(DISPLAY_COLOR_BLACK);
-
-        // draw the app list
-        disp_y_t y = 5;
-        uint8_t index =  _first_shown;
-        for (uint8_t i = 0; i < APPS_PER_SCREEN; ++i) {
-            if (index == load_get_app_count()) {
-                break;
-            }
-
-            graphics_image_t image = load_get_app_image(index);
-            graphics_set_color(ACTIVE_COLOR(index == _selected_index));
-            graphics_rect(0, y, DISPLAY_WIDTH, APP_ITEM_HEIGHT);
-            graphics_image_4bit_mixed(image, 2, y + 2);
-            y += APP_ITEM_HEIGHT + 2;
-
-            ++index;
-        }
-
-        // draw movement arrows
-        graphics_set_color(ACTIVE_COLOR(_first_shown > 0));
-        graphics_image_1bit_mixed(data_mcu(_ARROW_UP), 62, 0);
-        graphics_set_color(ACTIVE_COLOR((int8_t) _first_shown <
-                                        (int8_t) load_get_app_count() - 2));
-        graphics_image_1bit_mixed(data_mcu(_ARROW_DOWN), 62, 125);
-
-        sysui_battery_overlay();
-    }
-}
-
-static void handle_input(void) {
-    input_latch();
-
-    uint8_t clicked = input_get_clicked();
-    if (clicked & BUTTON2) {
-        // move selection up
-        if (_selected_index != 0) {
-            --_selected_index;
-            if (_first_shown > _selected_index) {
-                --_first_shown;
-            }
-        }
-    } else if (clicked & BUTTON3) {
-        // move selection down
-        if (_selected_index < load_get_app_count() - 1) {
-            ++_selected_index;
-            if (_first_shown + APPS_PER_SCREEN <= _selected_index) {
-                ++_first_shown;
-            }
-        }
-    } else if (clicked & BUTTON4) {
-        // load selected app
-        _load_app(_selected_index);
-    }
-}
-
+#ifdef IS_BOOTLOADER
 static void init_selection(void) {
     // if bootloader is still active by now, select the last loaded app by default.
     if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
@@ -306,6 +230,82 @@ static void init_selection(void) {
     if (_first_shown > max_first_shown) {
         _first_shown = max_first_shown;
     }
+}
+#endif
+
+
+#ifdef SIMULATION
+
+static void* loop_thread(void* arg) {
+    while (true) {
+        loop();
+
+#ifdef SYS_UART_ENABLE
+        sim_uart_listen();
+#endif
+
+        // 1 ms sleep (fixes responsiveness issues with keyboard input)
+        sim_time_sleep(1000);
+    }
+    return 0;
+}
+
+#endif //SIMULATION
+
+/**
+ * This function is the entry point for both the bootloader and the simulator.
+ * The main loop takes care of calling `loop` and `draw` callbacks among other things.
+ */
+int main(void) {
+    sys_init();
+    sys_display_init_page(DISPLAY_PAGE_HEIGHT);
+
+    // update last input state to prevent pushed button registered as clicked
+    // immediately on launch, like when an app has an exit button.
+    input_latch();
+
+#ifdef SIM_MEMORY_ABSOLUTE
+#ifdef SIMULATION
+    // for bootloader, load flash and eeprom from local files written by gcprog --local.
+#ifdef IS_BOOTLOADER
+    sim_flash_load("../" SIM_FLASH_FILE);
+    sim_eeprom_load("../" SIM_EEPROM_FILE);
+#else
+    sim_flash_load("../../" SIM_FLASH_FILE);
+    sim_eeprom_load("../../" SIM_EEPROM_FILE);
+#endif
+#endif //SIMULATION
+#ifdef IS_BOOTLOADER
+    sys_eeprom_check_write();
+    load_read_index();
+    init_selection();
+#endif //IS_BOOTLOADER
+#endif //SIM_MEMORY_ABSOLUTE
+
+#ifdef SIMULATION
+    int argc = 0;
+    glutInit(&argc, 0);
+    glut_init();
+    sim_input_init();
+
+    // normally called when loading an app, but we never load apps in simulation.
+    __callback_setup();
+
+    // run the app in a separate thread. The reason this is done instead of calling loop() from
+    // a GLUT timer is that when sleep is enabled, execution is expected to stop at that point
+    // until wakeup.
+    pthread_t thread;
+    pthread_create(&thread, NULL, loop_thread, NULL);
+
+    while (true) {
+        glutMainLoopEvent();
+        sim_time_update();
+    }
+#else
+    while (true) {
+        loop();
+    }
+#endif //SIMULATION
 }
 
 #endif //SIMULATION_HEADLESS

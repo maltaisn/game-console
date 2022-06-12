@@ -19,6 +19,7 @@
 #define SYS_DISPLAY_H
 
 #include <core/display.h>
+#include <core/defs.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -29,9 +30,6 @@
 #define DISPLAY_NUM_ROWS 128
 // Display RAM size
 #define DISPLAY_SIZE ((uint16_t) (DISPLAY_NUM_COLS * DISPLAY_NUM_ROWS))
-
-#define DISPLAY_COLOR_BLACK ((disp_color_t) 0)
-#define DISPLAY_COLOR_WHITE ((disp_color_t) 15)
 
 #define DISPLAY_DEFAULT_CONTRAST 0x7f
 
@@ -85,6 +83,7 @@ bool sys_display_is_dimmed(void);
 
 /**
  * Clear the whole display, not paged.
+ * This also resets the computed average color.
  */
 void sys_display_clear(disp_color_t c);
 

@@ -31,6 +31,10 @@ class PacketType(Enum):
     VERSION = 0x00
     SPI = 0x01
     LOCK = 0x02
+    SLEEP = 0x03
+    BATTERY_INFO = 0x10
+    BATTERY_CALIB = 0x11
+    BATTERY_LOAD = 0x12
 
 
 @dataclass
@@ -101,7 +105,7 @@ class CommInterface(abc.ABC):
         """Write a packet to the communication interface."""
         raise NotImplementedError
 
-    def read(self, expected_type: Optional[PacketType] = None) -> Packet:
+    def read(self) -> Packet:
         """Read a packet from the communication interface (optionally a specific packet type)."""
         raise NotImplementedError
 
@@ -115,7 +119,7 @@ class Comm(CommInterface):
 
     # Used to enforce the "read after write" and "write before read" recommandations
     # of the system UART communication interface to avoid losing packets.
-    _written: bool
+    _written: Optional[int]
 
     DEFAULT_FILENAME = "/dev/ttyACM1"
     DEFAULT_BAUD_RATE = 250_000
@@ -127,7 +131,7 @@ class Comm(CommInterface):
         self.baud_rate = baud_rate
         self.serial = None
         self.simulator = simulator
-        self._written = False
+        self._written = None
 
     def connect(self) -> None:
         try:
@@ -157,15 +161,14 @@ class Comm(CommInterface):
         return self.serial is not None
 
     def write(self, packet: Packet) -> None:
-        if self._written:
+        if self._written is not None:
             raise RuntimeError("no read after write")
         self.serial.write(packet.encode())
-        self._written = True
+        self._written = packet.packet_type
 
-    def read(self, expected_type: Optional[PacketType] = None) -> Packet:
-        if not self._written:
+    def read(self) -> Packet:
+        if self._written is None:
             raise RuntimeError("read without write")
-        self._written = False
 
         while True:
             # find signature byte
@@ -184,5 +187,9 @@ class Comm(CommInterface):
             if len(payload) != payload_length:
                 raise ProgError("incomplete packet")
             packet = Packet.decode(signature + header + payload)
-            if not expected_type or packet.packet_type == expected_type.value:
-                return packet
+            break
+
+        if packet.packet_type != self._written:
+            raise ProgError("unexpected packet type")
+        self._written = None
+        return packet

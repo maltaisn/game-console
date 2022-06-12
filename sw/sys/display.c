@@ -19,13 +19,15 @@
 #include <sys/defs.h>
 
 enum {
-    SYS_DISPLAY_STATE_DIMMED = 1 << 0,
+    STATE_DIMMED = 1 << 0,
+    STATE_AVERAGING_COLOR = 1 << 1,
 };
 
 #ifdef BOOTLOADER
 
 #include <boot/defs.h>
 #include <boot/display.h>
+#include <boot/power.h>
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -77,6 +79,16 @@ disp_y_t sys_display_curr_page_height;
 uint8_t sys_display_state;
 uint8_t sys_display_contrast;
 
+// used for averaging display color once in a while.
+// 24 bits of which 22 are used, lower 4 bits are always 0 and average is located at [21:18].
+union {
+    uint24_t value;
+    uint8_t bytes[3];
+} _color_accumulator;
+
+#define color_accumulator_upper (_color_accumulator.bytes[2])
+#define color_accumulator_full (_color_accumulator.value)
+
 // Initialization sequence, see datasheet and examples
 // OLED display model number is ER-OLED015-3, with a SSD1327 controller.
 // Commented out lines correspond to values set at reset and thus not required to be set.
@@ -105,6 +117,16 @@ static const uint8_t _RESET_CURSOR_SEQUENCE[] = {
         DISPLAY_SET_COLUMN_ADDR, 0x00, DISPLAY_NUM_COLS - 1,
         DISPLAY_SET_ROW_ADDR, 0x00, DISPLAY_NUM_ROWS - 1,
 };
+
+ALWAYS_INLINE
+static void sys_display_clear_dc(void) {
+    VPORTC.OUT &= ~PIN3_bm;
+}
+
+ALWAYS_INLINE
+static void sys_display_set_dc(void) {
+    VPORTC.OUT |= PIN3_bm;
+}
 
 static void sys_display_reset(void) {
     VPORTC.OUT |= PIN2_bm;
@@ -168,39 +190,19 @@ void sys_display_set_dimmed(bool dimmed) {
             return;
         }
         contrast /= 2;
-        sys_display_state |= SYS_DISPLAY_STATE_DIMMED;
+        sys_display_state |= STATE_DIMMED;
     } else {
         if (!sys_display_is_dimmed()) {
             // already not dimmed.
             return;
         }
-        sys_display_state &= ~SYS_DISPLAY_STATE_DIMMED;
+        sys_display_state &= ~STATE_DIMMED;
     }
     sys_display_set_contrast_internal(contrast);
 }
 
 void sys_display_set_gpio(sys_display_gpio_t mode) {
     sys_display_write_command2(DISPLAY_SET_GPIO, mode);
-}
-
-ALWAYS_INLINE
-void sys_display_set_dc(void) {
-    VPORTC.OUT |= PIN3_bm;
-}
-
-ALWAYS_INLINE
-void sys_display_clear_dc(void) {
-    VPORTC.OUT &= ~PIN3_bm;
-}
-
-ALWAYS_INLINE
-void sys_display_set_reset(void) {
-    VPORTC.OUT |= PIN2_bm;
-}
-
-ALWAYS_INLINE
-void sys_display_clear_reset(void) {
-    VPORTC.OUT &= ~PIN2_bm;
 }
 
 static void sys_display_reset_cursor(void) {
@@ -223,25 +225,58 @@ void sys_display_clear(disp_color_t color) {
     for (i = 0; i < DISPLAY_SIZE / 256; ++i) {
         sys_display_write_data(256, sys_display_buffer);
     }
+
+    color_accumulator_upper = 0;
 }
 
 void sys_display_first_page(void) {
     sys_display_reset_cursor();
+
     sys_display_page_ystart = 0;
     sys_display_page_yend = sys_display_page_height - 1;
     sys_display_curr_page_height = sys_display_page_height;
+
+    if (sys_power_should_compute_display_color()) {
+        sys_display_state |= STATE_AVERAGING_COLOR;
+        color_accumulator_full = 0;
+    }
 }
 
+BOOTLOADER_NOINLINE
 bool sys_display_next_page(void) {
+    uint16_t data_length = sys_display_curr_page_height * DISPLAY_NUM_COLS;
     sys_display_set_dc();
-    sys_display_write_data(sys_display_curr_page_height * DISPLAY_NUM_COLS, sys_display_buffer);
+    sys_display_write_data(data_length, sys_display_buffer);
+
     sys_display_page_ystart += sys_display_page_height;
     sys_display_page_yend += sys_display_page_height;
+
+    if (sys_display_state & STATE_AVERAGING_COLOR) {
+        // sum all pixel colors in this page
+        const uint8_t* buf_ptr = sys_display_buffer;
+        while (data_length--) {
+            uint8_t block = *buf_ptr++;
+            uint8_t block_swap = block >> 4 | block << 4;
+            uint16_t block_sum_x16 = (block & 0xf0) + (block_swap & 0xf0);
+            color_accumulator_full += block_sum_x16;
+        }
+        if (sys_display_page_ystart >= DISPLAY_HEIGHT) {
+            // last page transmitted, exit averaging mode and notify power module.
+            sys_display_state &= ~STATE_AVERAGING_COLOR;
+            sys_power_on_display_color_computed();
+        }
+    }
+
     if (sys_display_page_yend >= DISPLAY_HEIGHT) {
         sys_display_page_yend = DISPLAY_HEIGHT - 1;
     }
     sys_display_curr_page_height = sys_display_page_yend - sys_display_page_ystart + 1;
+
     return sys_display_page_ystart < DISPLAY_HEIGHT;
+}
+
+uint8_t sys_display_get_average_color(void) {
+    return (uint8_t) (color_accumulator_upper + 2) >> 2;
 }
 
 #else
@@ -253,7 +288,7 @@ void sys_display_set_contrast(uint8_t contrast) {
         return;
     }
     sys_display_contrast = contrast;
-    if (sys_display_state & SYS_DISPLAY_STATE_DIMMED) {
+    if (sys_display_state & STATE_DIMMED) {
         contrast /= 2;
     }
     sys_display_set_contrast_internal(contrast);
@@ -266,7 +301,7 @@ uint8_t sys_display_get_contrast(void) {
 
 ALWAYS_INLINE
 bool sys_display_is_dimmed(void) {
-    return (sys_display_state & SYS_DISPLAY_STATE_DIMMED) != 0;
+    return (sys_display_state & STATE_DIMMED) != 0;
 }
 
 ALWAYS_INLINE

@@ -5,6 +5,8 @@ include avr.mk
 
 DEFINES += BOOTLOADER
 
+CFLAGS += -mcall-prologues
+
 # Link with the callback vector table symbols
 LDFLAGS += -Wl,--just-symbols,boot/callbacks.sym
 

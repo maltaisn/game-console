@@ -11,9 +11,14 @@ __DATA_REGION_LENGTH__ = DEFINED(__DATA_REGION_LENGTH__) ? __DATA_REGION_LENGTH_
 /* The start address of the flash in the memory map, for the .rodata VMA. */
 __FLASH_OFFSET__ = DEFINED(__RODATA_PM_OFFSET__) ? __RODATA_PM_OFFSET__ : 0x4000;
 
-/* The allocated program memory space for the bootloader.
-   The BOOTEND fuse should be modified if this is changed. */
-BOOTLOADER_TEXT_SIZE = 8192;
+/*
+ * The allocated program memory space for the bootloader.
+ * If this is changed, the following places should also be updated:
+ * - The BOOTEND fuse (boot/src/main.c)
+ * - The boot_preload.py script (utils/)
+ * - Callback addresses (boot/callbacks.sym)
+ */
+BOOTLOADER_TEXT_SIZE = 8448;
 
 /* The allocated data size for the bootloader (excluding the display buffer). */
 SHARED_DATA_SIZE = 160;

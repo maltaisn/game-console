@@ -23,6 +23,7 @@
 #include <core/defs.h>
 #include <core/flash.h>
 #include <core/eeprom.h>
+#include <core/graphics.h>
 
 // display frames per second
 #ifdef SIMULATION
@@ -48,6 +49,7 @@ enum {
     SYSTEM_FLAG_DIALOG_SHOWN = 1 << 0,
     SYSTEM_FLAG_FLASH_DIRTY = 1 << 1,
     SYSTEM_FLAG_EEPROM_DIRTY = 1 << 2,
+    SYSTEM_FLAG_BATTERY_CALIBRATION = 1 << 3,
 };
 
 typedef struct {
@@ -87,6 +89,8 @@ typedef struct {
     // used by sub dialogs to keep track of current position.
     uint8_t position;
     uint8_t max_position;
+    // battery calibration
+    disp_color_t battery_calib_color;
 } system_t;
 
 extern system_t state;

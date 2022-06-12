@@ -14,17 +14,10 @@
  * limitations under the License.
  */
 
-#ifdef BOOTLOADER
-
 #include <core/data.h>
 
 #include <sys/data.h>
 
-#include <boot/defs.h>
-
-BOOTLOADER_NOINLINE
 void data_read(data_ptr_t address, uint16_t length, uint8_t dest[]) {
     sys_data_read(address, length, dest);
 }
-
-#endif  //BOOTLOADER

@@ -284,7 +284,12 @@ static void draw_battery_overlay(void) {
 }
 
 void draw(void) {
-    graphics_clear(DISPLAY_COLOR_BLACK);
+    bool calibration = state.flags & SYSTEM_FLAG_BATTERY_CALIBRATION;
+    graphics_clear(calibration ? state.battery_calib_color : DISPLAY_COLOR_BLACK);
+
+    if (calibration) {
+        return;
+    }
 
     dialog_draw();
 

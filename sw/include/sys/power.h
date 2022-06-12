@@ -27,12 +27,10 @@
 #define SYS_POWER_INACTIVE_COUNTDOWN_SLEEP 90
 #define SYS_POWER_INACTIVE_COUNTDOWN_DIM 60
 
+extern volatile uint8_t sys_power_state;
 extern volatile battery_status_t sys_power_battery_status;
-extern volatile uint8_t sys_power_battery_percent;
 extern volatile sleep_cause_t sys_power_sleep_cause;
-
-/** Get average battery level ADC reading, for internal use. */
-uint16_t sys_power_get_battery_level_average(void);
+extern volatile uint16_t sys_power_last_sample;
 
 // see core/power.h for documentation
 battery_status_t sys_power_get_battery_status(void);
@@ -43,12 +41,29 @@ uint8_t sys_power_get_battery_percent(void);
 /**
  * Returns the approximate battery voltage in mV, for debug purposes.
  * Battery must be discharging and battery level must have been sampled previously.
- * Must not be called within interrupt.
+ * Must not be called within an interrupt.
  */
 uint16_t sys_power_get_battery_voltage(void);
 
+/**
+ * Get the last ADC reading for battery level.
+ * Must not be called within an interrupt.
+ */
+uint16_t sys_power_get_battery_last_reading(void);
+
 // see core/power.h for documentation
 sleep_cause_t sys_power_get_scheduled_sleep_cause(void);
+
+/**
+ * Enable or disable sleep. Sleep is enabled by default.
+ * Must not be called within an interrupt.
+ */
+void sys_power_set_sleep_enabled(bool enabled);
+
+/**
+ * Returns true if sleep is currently enabled.
+ */
+bool sys_power_is_sleep_enabled(void);
 
 /**
  * Returns true if sleep countdown has expired and device is due to go to sleep.

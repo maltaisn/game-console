@@ -78,7 +78,7 @@ class SpiInterface:
             payload_tx.append(self.peripheral.value | (0x80 if last_part else 0x00))
             payload_tx += bytes(data[pos:pos + length])
             self.comm.write(Packet(PacketType.SPI, payload_tx))
-            payload_rx = self.comm.read(PacketType.SPI).payload
+            payload_rx = self.comm.read().payload
             read += payload_rx[1:]
             if len(payload_rx) != len(payload_tx):
                 raise ProgError("short SPI packet")
