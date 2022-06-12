@@ -26,6 +26,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #define ERASE_BYTE 0xff
 
@@ -50,6 +51,7 @@ enum {
 };
 
 sim_mem_t* eeprom;
+pthread_mutex_t eeprom_mutex;
 
 static struct {
     uint8_t status;
@@ -67,19 +69,26 @@ void sim_eeprom_init(void) {
 }
 
 void sim_eeprom_free(void) {
+    pthread_mutex_lock(&eeprom_mutex);
     sim_mem_free(eeprom);
     eeprom = 0;
+    pthread_mutex_unlock(&eeprom_mutex);
 }
 
 void sim_eeprom_load(const char* filename) {
+    pthread_mutex_lock(&eeprom_mutex);
     sim_mem_load(eeprom, filename);
+    pthread_mutex_unlock(&eeprom_mutex);
 }
 
 void sim_eeprom_save(void) {
+    pthread_mutex_lock(&eeprom_mutex);
     sim_mem_save(eeprom);
+    pthread_mutex_unlock(&eeprom_mutex);
 }
 
 void sim_eeprom_spi_transceive(size_t length, uint8_t data[static length]) {
+    pthread_mutex_lock(&eeprom_mutex);
     if (!eeprom) {
         return;
     }
@@ -152,6 +161,8 @@ void sim_eeprom_spi_transceive(size_t length, uint8_t data[static length]) {
 
         ++spi_eeprom.pos;
     }
+
+    pthread_mutex_unlock(&eeprom_mutex);
 }
 
 void sim_eeprom_spi_reset(void) {

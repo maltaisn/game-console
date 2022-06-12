@@ -24,6 +24,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <memory.h>
+#include <pthread.h>
 
 #define READ_BUFFER_SIZE 8192
 #define ERASE_BYTE 0xff
@@ -54,6 +55,7 @@ enum {
 static const uint8_t MANUFACTURER_ID[] = {0x1f, 0x85, 0x01};
 
 sim_mem_t* flash;
+pthread_mutex_t flash_mutex;
 
 static struct {
     uint8_t status;
@@ -70,21 +72,28 @@ void sim_flash_init(void) {
 }
 
 void sim_flash_free(void) {
+    pthread_mutex_lock(&flash_mutex);
     sim_mem_free(flash);
     flash = 0;
+    pthread_mutex_unlock(&flash_mutex);
 }
 
 void sim_flash_load(const char* filename) {
+    pthread_mutex_lock(&flash_mutex);
     sim_mem_load(flash, filename);
+    pthread_mutex_unlock(&flash_mutex);
     // in simulation, flash always starts at address 0
     sys_flash_set_offset(0);
 }
 
 void sim_flash_save(void) {
+    pthread_mutex_lock(&flash_mutex);
     sim_mem_save(flash);
+    pthread_mutex_unlock(&flash_mutex);
 }
 
 void sim_flash_spi_transceive(size_t length, uint8_t data[static length]) {
+    pthread_mutex_lock(&flash_mutex);
     if (!flash) {
         return;
     }
@@ -134,7 +143,7 @@ void sim_flash_spi_transceive(size_t length, uint8_t data[static length]) {
                     // data AND with existing data like the real flash device.
                     flash->data[spi_flash.address] &= b;
                     spi_flash.address = (spi_flash.address & ~PAGE_MASK) |
-                                         ((spi_flash.address + 1) & PAGE_MASK);
+                                        ((spi_flash.address + 1) & PAGE_MASK);
                 }
                 break;
             }
@@ -233,6 +242,8 @@ void sim_flash_spi_transceive(size_t length, uint8_t data[static length]) {
 
         ++spi_flash.pos;
     }
+
+    pthread_mutex_unlock(&flash_mutex);
 }
 
 void sim_flash_spi_reset(void) {
