@@ -3,7 +3,6 @@ PLATFORM := sim
 
 include common.mk
 
-CSOURCES += app/callbacks.c
 SRC_DIRS += sim
 INCLUDE_DIRS += boot/include
 

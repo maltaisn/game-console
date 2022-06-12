@@ -25,6 +25,8 @@
 
 // see core/callbacks.h for callback documentation.
 
+void __callback_setup(void);
+
 bool __callback_loop(void);
 
 void __callback_draw(void);
@@ -35,10 +37,8 @@ void __callback_wakeup(void);
 
 void __callback_sleep_scheduled(void);
 
-void __vector_uart_dre(void);
+void __callback_uart_dre(void);
 
-void __vector_uart_rxc(void);
-
-void __callback_setup(void);
+void __callback_uart_rxc(void);
 
 #endif //SYS_CALLBACK_H

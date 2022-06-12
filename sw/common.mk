@@ -37,7 +37,7 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(BUILD_DIR)/$*.d
 
 CSOURCES += $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*/*.c))
 OBJECTS = $(addprefix $(BUILD_DIR)/, $(CSOURCES:.c=.o))
-DEPS = $(addprefix $(BUILD_DIR)/, $(CSOURCES:.c=.d)) \
+DEPS = $(addprefix $(BUILD_DIR)/, $(CSOURCES:.c=.d))
 
 -include $(DEPS)
 

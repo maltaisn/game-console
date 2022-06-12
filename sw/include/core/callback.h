@@ -22,6 +22,7 @@
 
 /**
  * Function called at the start of the app.
+ * Note that this is the only callback that MUST be implemented.
  */
 void callback_setup(void);
 
@@ -57,13 +58,15 @@ void callback_sleep_scheduled(void);
 /**
  * Called from the UART data register empty interrupt, if UART is enabled.
  * This should be treated the same as an interrupt body.
+ * The "__vector" naming is required to avoid a compiler warning.
  */
-void vector_uart_dre(void);
+void __vector_uart_dre(void);
 
 /**
  * Called from the UART receive complete interrupt, if UART is enabled.
  * This should be treated the same as an interrupt body.
+ * The "__vector" naming is required to avoid a compiler warning.
  */
-void vector_uart_rxc(void);
+void __vector_uart_rxc(void);
 
 #endif //CORE_CALLBACK_H

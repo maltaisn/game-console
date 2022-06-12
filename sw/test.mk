@@ -6,7 +6,6 @@ PLATFORM := test
 
 include common.mk
 
-CSOURCES += app/callbacks.c
 SRC_DIRS += sim
 INCLUDE_DIRS += boot/include
 LIBS += m z pthread png

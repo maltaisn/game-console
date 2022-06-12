@@ -24,14 +24,24 @@ BOOT_SYMBOLS_FILE := boot/build/boot.sym
 
 DEFINES += F_CPU=$(F_CPU)
 
-CFLAGS += -mmcu=$(MCU) -Os \
+CFLAGS += -mmcu=$(MCU) -Os -mcall-prologues \
           -ffunction-sections -fdata-sections -fshort-enums -fpack-struct -flto \
           -B$(ATMEGA_DFP_DIR)gcc/dev/$(MCU) -Wl,-T,$(LINKER_SCRIPT)      \
           -Wl,-Map=$(MAP_FILE) -Wl,--defsym=DISPLAY_PAGE_HEIGHT=$(display_page_height)
 
+OBJECTS += $(addprefix $(BUILD_DIR)/, $(ASOURCES:.S=.o))
+DEPS += $(addprefix $(BUILD_DIR)/, $(CSOURCES:.S=.d))
+
 compile: $(MAIN_TARGET).hex $(BOOT_SYMBOLS_FILE) size
 
 disasm: $(MAIN_TARGET).S
+
+$(BUILD_DIR)/%.o: %.S $(TARGET_CONFIG_FILE)
+	@mkdir -p $(@D)
+ifneq ($(E),)
+	@echo gcc $<
+endif
+	$(E)$(CC) -c -o $@ $< $(CFLAGS) $(CC_FLAGS) $(DEPFLAGS)
 
 %.elf: $(OBJECTS)
 ifneq ($(E),)
@@ -63,6 +73,5 @@ ifeq ($(TARGET),boot)
 ifneq ($(E),)
 	@echo Exporting boot symbols
 endif
-	$(E)$(NM) $< | sed -n 's/^\([0-9a-f]\+\) [bBdDrRtT] \([^_\.][^\.]*\).*$$/\2 = 0x\1;/p' \
-        | sort | uniq > $(BOOT_SYMBOLS_FILE)
+	$(E)$(NM) $< | python3 utils/boot_sym_filter.py > $(BOOT_SYMBOLS_FILE)
 endif

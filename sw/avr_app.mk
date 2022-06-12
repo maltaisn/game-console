@@ -2,7 +2,7 @@
 LINKER_SCRIPT := app.ld
 
 # This files implements the callback vector table.
-CSOURCES += app/callbacks.c
+ASOURCES += app/callbacks.S
 
 include avr.mk
 

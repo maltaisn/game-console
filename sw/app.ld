@@ -36,27 +36,14 @@ SECTIONS {
     .app_text : {
         __text_start = .;
 
-        /* Callback vectors. */
-        KEEP(*(.app.callback_loop));
-        . = __text_start + 0x04;
-        KEEP(*(.app.callback_draw));
-        . = __text_start + 0x08;
-        KEEP(*(.app.callback_sleep));
-        . = __text_start + 0x0c;
-        KEEP(*(.app.callback_wakeup));
-        . = __text_start + 0x10;
-        KEEP(*(.app.callback_sleep_scheduled));
-        . = __text_start + 0x14;
-        KEEP(*(.app.vector_uart_dre));
-        . = __text_start + 0x18;
-        KEEP(*(.app.vector_uart_rxc));
-        . = __text_start + 0x1c;
+        /* Callback vectors (except setup). */
+        KEEP(*(.callback_vectors));
 
         /* Setup callback. */
         KEEP(*(.init4));  /* Initialize data and BSS. Note that init4 is usually called in a
          startup context, but here we use it as a function body. This is fine because
          init4 only uses call-cloberred register (r0, r27, r28, r30, r31). */
-        KEEP(*(.app.callback_setup));  /* Call the app setup. */
+        KEEP(*(.text.callback_setup));  /* Call the app setup. */
 
         /* Main code. */
         *(.text)

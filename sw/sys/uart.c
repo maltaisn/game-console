@@ -36,11 +36,11 @@
 // during compilation, since it annoyingly can't disabled in the linker, only in the compiler.
 
 ISR(USART0_DRE_vect, ISR_NAKED) {
-    asm volatile("jmp __vector_uart_dre");
+    asm volatile("jmp __callback_uart_dre");
 }
 
 ISR(USART0_RXC_vect, ISR_NAKED) {
-    asm volatile("jmp __vector_uart_rxc");
+    asm volatile("jmp __callback_uart_rxc");
 }
 
 #elif defined(SYS_UART_ENABLE)
@@ -63,7 +63,8 @@ static struct {
     uint8_t tail;
 } rx_buf;
 
-void vector_uart_dre(void) {
+__attribute__((signal))
+void __vector_uart_dre(void) {
     uint8_t tail = tx_buf.tail;
     USART0.TXDATAL = tx_buf.data[tail];
     tail = (tail + 1) % SYS_UART_TX_BUFFER_SIZE;
@@ -73,7 +74,8 @@ void vector_uart_dre(void) {
     }
 }
 
-void vector_uart_rxc(void) {
+__attribute__((signal))
+void __vector_uart_rxc(void) {
     uint8_t head = rx_buf.head;
     uint8_t new_head = (head + 1) % SYS_UART_RX_BUFFER_SIZE;
     if (new_head == rx_buf.tail) {
