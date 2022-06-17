@@ -18,6 +18,7 @@
 #include <input.h>
 #include <assets.h>
 #include <save.h>
+#include <render.h>
 
 #include <core/app.h>
 #include <core/dialog.h>
@@ -56,12 +57,17 @@ static dialog_result_t handle_level_navigation_input(void) {
     } else if (clicked & BUTTON_RIGHT) {
         if (game.pos_selection_x < game.pos_max_x) {
             ++game.pos_selection_x;
+            if (game.pos_selection_y == game.pos_max_y && game.pos_selection_x > game.pos_last_x) {
+                // the last grid row may be incomplete, restrict the maximum X position.
+                game.pos_selection_x = game.pos_last_x;
+            }
         }
 
     } else if (clicked & BUTTON_UP) {
         if (game.pos_selection_y > 0) {
             --game.pos_selection_y;
             if (game.pos_first_y > game.pos_selection_y) {
+                // scroll up
                 --game.pos_first_y;
             }
         }
@@ -70,7 +76,12 @@ static dialog_result_t handle_level_navigation_input(void) {
         if (game.pos_selection_y < game.pos_max_y) {
             ++game.pos_selection_y;
             if ((uint8_t) (game.pos_selection_y - game.pos_first_y) >= game.pos_shown_y) {
+                // scroll down
                 ++game.pos_first_y;
+            }
+            if (game.pos_selection_y == game.pos_max_y && game.pos_selection_x > game.pos_last_x) {
+                // the last grid row may be incomplete, restrict the maximum X position.
+                game.pos_selection_x = game.pos_last_x;
             }
         }
 
@@ -79,14 +90,67 @@ static dialog_result_t handle_level_navigation_input(void) {
         if (game.state == GAME_STATE_LEVEL_PACKS) {
             if (game.pos_selection_y == LEVEL_PACK_COUNT) {
                 return RESULT_OPEN_PASSWORD;
-            } else {
+            } else if (game.options.unlocked_packs & (1 << game.pos_selection_y)) {
+                // pack is unlocked, select it and go to level selection.
+                game.current_pack = game.pos_selection_y;
                 return RESULT_OPEN_LEVELS;
             }
         } else {
-            return RESULT_START_LEVEL;
+            // only start level if unlocked or previously completed.
+            const level_pack_info_t *info = &tworld_packs[game.current_pack];
+            level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
+            if (level <= info->last_unlocked ||
+                info->completed_array[level / 8] & (1 << (level % 8))) {
+                game.current_level = level;
+                return RESULT_START_LEVEL;
+            }
         }
     }
     return DIALOG_RESULT_NONE;
+}
+
+static void setup_level_packs_selection(void) {
+    game.pos_selection_x = 0;
+    game.pos_selection_y = 0;
+    game.pos_first_y = 0;
+    game.pos_max_x = 0;
+    game.pos_max_y = LEVEL_PACK_COUNT;
+    game.pos_shown_y = LEVEL_PACKS_PER_SCREEN;
+}
+
+static void setup_level_selection(void) {
+    level_pack_info_t* info = &tworld_packs[game.current_pack];
+
+    // Find the last level in the consecutive streak of completed levels starting from the first.
+    // The level after that is unlocked and will be selected by default.
+    // Other levels may be completed with a password but that doesn't unlock the level after
+    uint8_t byte = 0;
+    uint8_t bits = 0;
+    const uint8_t* completed = info->completed_array;
+    level_idx_t i = 0;
+    for (; i < info->total_levels; ++i) {
+        if (bits == 0) {
+            byte = *completed++;
+        }
+        if (!(byte & 1)) {
+            break;
+        }
+        byte >>= 1;
+        bits = (bits + 1) % 8;
+    }
+
+    game.pos_selection_x = i % LEVELS_PER_SCREEN_H;
+    game.pos_selection_y = i / LEVELS_PER_SCREEN_H;
+    game.pos_max_x = LEVELS_PER_SCREEN_H - 1;
+    game.pos_max_y = (info->total_levels - 1) / LEVELS_PER_SCREEN_H;
+    game.pos_last_x = (info->total_levels - 1) % LEVELS_PER_SCREEN_H;
+    game.pos_shown_y = LEVELS_PER_SCREEN_V;
+
+    game.pos_first_y = game.pos_selection_y;
+    uint8_t max_first_y = game.pos_max_y - LEVELS_PER_SCREEN_V + 1;
+    if (game.pos_selection_y > max_first_y) {
+        game.pos_selection_y = max_first_y;
+    }
 }
 
 game_state_t game_handle_input_dialog(void) {
@@ -105,11 +169,7 @@ game_state_t game_handle_input_dialog(void) {
     game.flags &= ~FLAG_DIALOG_SHOWN;
 
     if (res == RESULT_START_LEVEL) {
-        // TODO
-        return GAME_STATE_PLAY;
-
-    } else if (res == RESULT_RESTART_LEVEL) {
-        // TODO
+        level_read_level();
         return GAME_STATE_PLAY;
 
     } else if (res == RESULT_NEXT_LEVEL) {
@@ -134,17 +194,11 @@ game_state_t game_handle_input_dialog(void) {
         return GAME_STATE_LEVEL_PACKS;
 
     } else if (res == RESULT_OPEN_LEVEL_PACKS) {
-        // TODO select last played pack
-        game.pos_selection_x = 0;
-        game.pos_selection_y = 0;
-        game.pos_first_y = 0;
-        game.pos_max_x = 0;
-        game.pos_max_y = LEVEL_PACK_COUNT;
-        game.pos_shown_y = LEVEL_PACK_COUNT;
+        setup_level_packs_selection();
         return GAME_STATE_LEVEL_PACKS;
 
     } else if (res == RESULT_OPEN_LEVELS) {
-        // TODO select last unlocked level
+        setup_level_selection();
         return GAME_STATE_LEVELS;
 
     } else if (res == RESULT_OPEN_PASSWORD) {

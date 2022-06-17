@@ -77,7 +77,7 @@ void open_pause_dialog(void) {
     dialog.selection = 0;
 
     dialog_add_item_button("RESUME", RESULT_RESUME);
-    dialog_add_item_button("RESTART", RESULT_RESTART_LEVEL);
+    dialog_add_item_button("RESTART", RESULT_START_LEVEL);
     dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_CONTROLS_PLAY);
     dialog_add_item_button("OPTIONS", RESULT_OPEN_OPTIONS_PLAY);
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
@@ -115,7 +115,7 @@ void open_level_fail_dialog(void) {
     dialog.title = "FAILED";
     dialog.selection = 0;
 
-    dialog_add_item_button("TRY AGAIN", RESULT_RESTART_LEVEL);
+    dialog_add_item_button("TRY AGAIN", RESULT_START_LEVEL);
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
 }
 
@@ -124,6 +124,9 @@ void open_level_complete_dialog(void) {
     dialog.title = "COMPLETED";
     dialog.selection = 0;
 
+    // TODO show time stats (current, best)
+
+    // TODO next level not available if not unlocked or last level.
     dialog_add_item_button("NEXT LEVEL", RESULT_NEXT_LEVEL);
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
 }

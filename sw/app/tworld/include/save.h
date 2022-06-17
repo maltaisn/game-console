@@ -43,9 +43,10 @@ void update_music_enabled(void);
 uint16_t get_best_level_time(uint16_t pos);
 
 /**
- * For `size` levels starting at `pos`, set a bit
- * in the `arr` bitset to 1 when the level is completed.
+ * For `size` levels starting at `pos`, set a bit in the completed levels bitset to 1
+ * when the level is completed. Sets the number of levels completed and the last unlocked
+ * level in the info struct.
  */
-uint8_t fill_completed_levels_array(uint16_t pos, uint8_t size, uint8_t* arr);
+void fill_completed_levels_array(uint16_t pos, uint8_t size, level_pack_info_t *info);
 
 #endif //TWORLD_SAVE_H

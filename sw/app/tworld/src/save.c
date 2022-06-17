@@ -157,16 +157,18 @@ uint16_t get_best_level_time(uint16_t pos) {
     return times[pos % 4];
 }
 
-uint8_t fill_completed_levels_array(uint16_t pos, uint8_t size, uint8_t* arr) {
+void fill_completed_levels_array(uint16_t pos, uint8_t size, level_pack_info_t *info) {
+    info->last_unlocked = 0;
+    uint8_t *arr = info->completed_array - 1;
     eeprom_t addr = SAVE_TIME_POS + pos / 4 * 5;
     uint16_t times[4];
     uint8_t bit = 0;
     uint8_t mask = 1;
     uint8_t block_pos = pos % 4;
     uint8_t completed = 0;
-    --arr;
+    level_idx_t i = 0;
     goto start;
-    while (--size) {
+    for (; i < size; ++i) {
         if (block_pos == 0) {
 start:
             read_level_time_block(addr, times);
@@ -179,10 +181,13 @@ start:
         if (times[block_pos] != SAVE_TIME_NONE) {
             *arr |= mask;
             ++completed;
+        } else if (i == completed) {
+            // first level not completed since start, this level is unlocked.
+            info->last_unlocked = i;
         }
         block_pos = (block_pos + 1) % 4;
         bit = (bit + 1) % 8;
         mask <<= 1;
     }
-    return completed;
+    info->completed_levels = completed;
 }

@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef LEVELPACK_H
-#define LEVELPACK_H
+#ifndef TWORLD_LEVEL_H
+#define TWORLD_LEVEL_H
 
 #include "assets.h"
 
@@ -30,17 +30,16 @@ typedef uint8_t level_pack_idx_t;
 typedef uint8_t level_idx_t;
 
 typedef struct {
-    uint8_t pos;
     uint8_t total_levels;
     uint8_t completed_levels;
+    level_idx_t last_unlocked;
     uint8_t completed_array[(LEVEL_PACK_MAX_LEVELS + 7) / 8];
     char name[LEVEL_PACK_NAME_MAX_LENGTH];
 } level_pack_info_t;
 
 typedef struct {
-    uint8_t pack;
-    uint8_t level;
     // TODO
+    uint8_t temp;
 } level_t;
 
 typedef union {
@@ -60,9 +59,9 @@ extern level_data_t tworld_data;
 void level_read_packs(void);
 
 /**
- * Load a level in a pack.
+ * Load the currently selected level.
  * The result is stored in `tworld_data.level`.
  */
-void level_read_level(level_pack_idx_t pack, level_idx_t level);
+void level_read_level(void);
 
-#endif //LEVELPACK_H
+#endif //TWORLD_LEVEL_H

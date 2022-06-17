@@ -15,9 +15,14 @@
  * limitations under the License.
  */
 
-#ifndef TETRIS_RENDER_H
-#define TETRIS_RENDER_H
+#ifndef TWORLD_RENDER_H
+#define TWORLD_RENDER_H
+
+#define LEVEL_PACKS_PER_SCREEN 4
+
+#define LEVELS_PER_SCREEN_H 4
+#define LEVELS_PER_SCREEN_V 3
 
 void draw(void);
 
-#endif //TETRIS_RENDER_H
+#endif //TWORLD_RENDER_H

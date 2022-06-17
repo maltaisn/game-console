@@ -19,6 +19,7 @@
 #include "save.h"
 
 #include <core/flash.h>
+#include <core/trace.h>
 
 level_data_t tworld_data;
 
@@ -45,14 +46,12 @@ void level_read_packs(void) {
 
         flash_read(addr, LEVEL_PACK_NAME_MAX_LENGTH, &info->name);
 
-        info->completed_levels = fill_completed_levels_array(pos, count, info->completed_array);
+        fill_completed_levels_array(pos, count, info);
         pos += count;
         ++info;
     }
 }
 
-void level_read_level(uint8_t pack, uint8_t level) {
-    tworld.pack = pack;
-    tworld.level = level;
-    // TODO
+void level_read_level(void) {
+    trace("TODO: read level %d in pack %d", game.current_level, game.current_pack);
 }

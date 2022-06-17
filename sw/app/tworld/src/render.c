@@ -25,6 +25,7 @@
 #include <core/sysui.h>
 #include <core/dialog.h>
 #include <core/utils.h>
+#include <string.h>
 
 #define ACTIVE_COLOR(cond) ((cond) ? 12 : 6)
 
@@ -63,25 +64,28 @@ static void draw_main_menu(void) {
     // TODO
 }
 
-#define LEVEL_PACKS_PER_SCREEN 4
+static void draw_vertical_navigation_arrows(uint8_t top_y) {
+    graphics_set_color(ACTIVE_COLOR(game.pos_first_y > 0));
+    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_UP, 62, top_y);
+    graphics_set_color(ACTIVE_COLOR(game.pos_first_y <=
+                                    (uint8_t) (game.pos_max_y - game.pos_shown_y)));
+    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_DOWN, 62, 122);
+}
 
 /**
  * Draw the content for the level pack selection dialog.
  */
 static void draw_level_packs_overlay(void) {
-    graphics_set_color(ACTIVE_COLOR(game.pos_first_y > 0));
-    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_UP, 62, 16);
-    graphics_set_color(ACTIVE_COLOR((int8_t) game.pos_first_y <=
-                                    LEVEL_PACK_COUNT - LEVEL_PACKS_PER_SCREEN));
-    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_DOWN, 62, 122);
+    draw_vertical_navigation_arrows(16);
 
     uint8_t index = game.pos_first_y;
     disp_y_t y = 21;
     for (uint8_t i = 0; i < LEVEL_PACKS_PER_SCREEN; ++i) {
-        graphics_set_color(ACTIVE_COLOR(index == game.pos_selection_y));
+        bool selected = index == game.pos_selection_y;
+        graphics_set_color(ACTIVE_COLOR(selected));
         graphics_rect(4, y, 120, 23);
 
-        graphics_set_color(12);
+        graphics_set_color(selected ? 12 : 9);
         graphics_set_font(ASSET_FONT_5X7);
 
         graphics_image_t image;
@@ -95,8 +99,8 @@ static void draw_level_packs_overlay(void) {
 
             // level pack progress: <completed>/<total>
             char buf[8];
-            char *ptr0 = uint8_to_str(buf + 4, info->total_levels);
-            char *ptr1 = uint8_to_str(ptr0 - 4, info->completed_levels);
+            char* ptr0 = uint8_to_str(buf + 4, info->total_levels);
+            char* ptr1 = uint8_to_str(ptr0 - 4, info->completed_levels);
             ptr0[-1] = '/';
             graphics_text(30, (int8_t) (y + 13), ptr1);
 
@@ -126,7 +130,76 @@ static void draw_level_packs_overlay(void) {
  * Draw the content for the level selection dialog.
  */
 static void draw_levels_overlay(void) {
+    draw_vertical_navigation_arrows(25);
+    graphics_set_font(ASSET_FONT_7X7);
 
+    const level_pack_info_t* info = &tworld_packs[game.current_pack];
+    level_idx_t number = game.pos_first_y * LEVELS_PER_SCREEN_H;
+
+    // draw level pack title
+    uint8_t name_len = strlen(info->name);
+    graphics_set_color(12);
+    graphics_text((int8_t) (64 - name_len * 4), 16, info->name);
+
+    // advance in completed levels bitset until position of first shown level.
+    uint8_t byte = 0;
+    uint8_t bits = 0;
+    const uint8_t* completed = info->completed_array;
+    uint8_t curr_level = 0;
+    for (; curr_level < number; ++curr_level) {
+        if (bits == 0) {
+            byte = *completed++;
+        }
+        byte >>= 1;
+        bits = (bits + 1) % 8;
+    }
+
+    // draw the level grid
+    disp_y_t y = 31;
+    uint8_t last_y = game.pos_first_y + LEVELS_PER_SCREEN_V;
+    for (uint8_t i = game.pos_first_y; i < last_y; ++i) {
+        disp_x_t x = 5;
+        for (uint8_t j = 0; j < LEVELS_PER_SCREEN_H; ++j) {
+            // determine the level box color
+            if (bits == 0) {
+                byte = *completed++;
+            }
+            uint8_t color;
+            if (byte & 1) {
+                // level completed
+                color = 11;
+            } else if (curr_level == info->last_unlocked) {
+                // level unlocked
+                color = 15;
+            } else {
+                // level locked
+                color = 6;
+            }
+            graphics_set_color(color);
+
+            // draw the level box
+            graphics_rect(x, y, 28, 28);
+            if (j == game.pos_selection_x && i == game.pos_selection_y) {
+                graphics_rect(x - 1, y - 1, 30, 30);
+            }
+
+            // draw the level text
+            ++curr_level;
+            char buf[4];
+            char* ptr = uint8_to_str(buf, curr_level);
+            int8_t px = (int8_t) (x + (ptr - buf) * 4 + 3);
+            graphics_text(px, (int8_t) (y + 10), ptr);
+
+            if (curr_level == info->total_levels) {
+                return;
+            }
+
+            x += 30;
+            byte >>= 1;
+            bits = (bits + 1) % 8;
+        }
+        y += 30;
+    }
 }
 
 /**

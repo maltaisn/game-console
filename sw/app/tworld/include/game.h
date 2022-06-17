@@ -17,9 +17,11 @@
 #ifndef TWORLD_GAME_H
 #define TWORLD_GAME_H
 
-#include <assets.h>
+#include "assets.h"
+#include "level.h"
+
 #include <stdbool.h>
-#include "core/sound.h"
+#include <core/sound.h>
 
 // display frames per second
 #define DISPLAY_MAX_FPS 8
@@ -52,7 +54,6 @@ typedef enum {
 // all dialog result codes
 enum {
     RESULT_START_LEVEL,
-    RESULT_RESTART_LEVEL,
     RESULT_NEXT_LEVEL,
     RESULT_PAUSE,
     RESULT_RESUME,
@@ -90,13 +91,15 @@ typedef struct {
 } game_options_t;
 
 typedef struct {
+    // options
     game_options_t options;
+    uint8_t old_features;
 
+    // general state handling
     uint8_t flags;
     game_state_t state;
     game_state_t last_state;
     uint8_t state_delay;
-    uint8_t old_features;
 
     // used for level pack and level selection dialogs.
     uint8_t pos_selection_x;
@@ -105,6 +108,11 @@ typedef struct {
     uint8_t pos_max_x;
     uint8_t pos_max_y;
     uint8_t pos_shown_y;
+    uint8_t pos_last_x;
+
+    // game-related
+    level_pack_idx_t current_pack;
+    level_idx_t current_level;
 } game_t;
 
 extern game_t game;

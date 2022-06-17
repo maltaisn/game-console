@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef TETRIS_UI_H
-#define TETRIS_UI_H
+#ifndef TWORLD_UI_H
+#define TWORLD_UI_H
 
 #include "game.h"
 
@@ -38,4 +38,4 @@ void open_level_fail_dialog(void);
 
 void open_level_complete_dialog(void);
 
-#endif //TETRIS_UI_H
+#endif //TWORLD_UI_H
