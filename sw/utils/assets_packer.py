@@ -224,7 +224,7 @@ class Packer:
             self._error("arrays cannot contain groups or other arrays")
 
         name = name.lower()
-        if not re.match(r"^[a-z\d]+$", name):
+        if not re.match(r"^[a-z\d_]+$", name):
             self._error(f"group name '{name}' is invalid.")
 
         self._curr_group.append(name)
@@ -375,8 +375,10 @@ class Packer:
                 if array_start != -1:
                     yield self._objects[array_start:i]
                     array_start = -1
-                elif curr_array in self._array_types:
+                if curr_array in self._array_types:
                     array_start = i
+        if array_start != -1:
+            yield self._objects[array_start:]
 
     def _pack_assets(self) -> None:
         """Pack all objects and show progress."""

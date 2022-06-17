@@ -24,6 +24,6 @@
  * Format 0-255 number to char buffer.
  * Returns a pointer within the buffer to start of the formatted string.
  */
-const char* uint8_to_str(char buf[4], uint8_t n);
+char* uint8_to_str(char buf[4], uint8_t n);
 
 #endif //CORE_UTILS_H

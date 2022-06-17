@@ -16,7 +16,7 @@
 
 #include <core/utils.h>
 
-const char* uint8_to_str(char buf[static 4], uint8_t n) {
+char* uint8_to_str(char buf[static 4], uint8_t n) {
     char* ptr = &buf[3];
     *ptr = '\0';
     do {

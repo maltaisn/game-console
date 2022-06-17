@@ -15,15 +15,16 @@
  * limitations under the License.
  */
 
-#include <ui.h>
-#include <game.h>
-#include <assets.h>
+#include "ui.h"
+#include "game.h"
+#include "assets.h"
+#include "level.h"
 
 #include <core/dialog.h>
 
 static const char* const CHOICES_ON_OFF[] = {"OFF", "ON"};
 
-static char password[4];
+static char password[5];
 
 void open_main_menu_dialog(void) {
     dialog_init_hcentered(54, 96, 56);
@@ -44,6 +45,8 @@ void open_level_packs_dialog(void) {
     dialog.title = "LEVEL PACKS";
     dialog.dismiss_result = RESULT_OPEN_MAIN_MENU;
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
+
+    level_read_packs();
 }
 
 void open_levels_dialog(void) {
@@ -54,16 +57,16 @@ void open_levels_dialog(void) {
 }
 
 void open_password_dialog(void) {
-    dialog_init_centered(96, 60);
-    dialog.title = "PASSWORD";
+    dialog_init_centered(100, 52);
+    dialog.title = "GO TO LEVEL";
     dialog.pos_btn = "OK";
     dialog.neg_btn = "Cancel";
-    dialog.pos_result = RESULT_PASSWORD;
-    dialog.neg_result = RESULT_OPEN_LEVELS;
+    dialog.pos_result = RESULT_ENTER_PASSWORD;
+    dialog.neg_result = RESULT_OPEN_LEVEL_PACKS;
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = 0;
 
-    dialog_add_item_text("Enter password:", 4, password);
+    dialog_add_item_text("LEVEL PASSWORD:", 4, password);
 }
 
 void open_pause_dialog(void) {

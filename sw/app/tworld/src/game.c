@@ -104,7 +104,7 @@ static game_state_t game_state_update(uint8_t dt) {
 
     if (s == GAME_STATE_PLAY) {
         return update_tworld_state(dt);
-    } else if (!game.dialog_shown) {
+    } else if (!(game.flags & FLAG_DIALOG_SHOWN)) {
         // all other states show a dialog, and it wasn't initialized yet.
         if (s == GAME_STATE_MAIN_MENU) {
             open_main_menu_dialog();
@@ -129,7 +129,7 @@ static game_state_t game_state_update(uint8_t dt) {
         } else if (s == GAME_STATE_CONTROLS_PLAY) {
             open_controls_dialog(RESULT_PAUSE);
         }
-        game.dialog_shown = true;
+        game.flags |= FLAG_DIALOG_SHOWN;
     }
 
     game.last_state = s;

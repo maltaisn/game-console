@@ -143,7 +143,7 @@ void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
 #endif //DIALOG_NO_NUMBER
 
 #ifndef DIALOG_NO_TEXT
-void dialog_add_item_text(const char* name, uint8_t max_length, char text[static max_length]) {
+void dialog_add_item_text(const char* name, uint8_t max_length, char text[static max_length + 1]) {
 #ifdef RUNTIME_CHECKS
     if (!dialog_add_item_check()) {
         return;

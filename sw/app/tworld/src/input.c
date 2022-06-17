@@ -34,26 +34,75 @@ static uint8_t preprocess_input_state() {
     return state;
 }
 
+static void apply_options_dialog_changes(void) {
+    // this will have to be undone if options dialog is cancelled.
+    update_sound_volume(dialog.items[0].number.value);
+    update_display_contrast(dialog.items[2].number.value);
+    if (dialog.items[1].choice.selection == 0) {
+        game.options.features &= ~GAME_FEATURE_MUSIC;
+    } else {
+        game.options.features |= GAME_FEATURE_MUSIC;
+    }
+    update_music_enabled();
+}
+
+static dialog_result_t handle_level_navigation_input(void) {
+    uint8_t clicked = input_get_clicked();
+    if (clicked & BUTTON_LEFT) {
+        if (game.pos_selection_x > 0) {
+            --game.pos_selection_x;
+        }
+
+    } else if (clicked & BUTTON_RIGHT) {
+        if (game.pos_selection_x < game.pos_max_x) {
+            ++game.pos_selection_x;
+        }
+
+    } else if (clicked & BUTTON_UP) {
+        if (game.pos_selection_y > 0) {
+            --game.pos_selection_y;
+            if (game.pos_first_y > game.pos_selection_y) {
+                --game.pos_first_y;
+            }
+        }
+
+    } else if (clicked & BUTTON_DOWN) {
+        if (game.pos_selection_y < game.pos_max_y) {
+            ++game.pos_selection_y;
+            if ((uint8_t) (game.pos_selection_y - game.pos_first_y) >= game.pos_shown_y) {
+                ++game.pos_first_y;
+            }
+        }
+
+    } else if (clicked & DIALOG_BUTTON_ENTER) {
+        // select level or level pack.
+        if (game.state == GAME_STATE_LEVEL_PACKS) {
+            if (game.pos_selection_y == LEVEL_PACK_COUNT) {
+                return RESULT_OPEN_PASSWORD;
+            } else {
+                return RESULT_OPEN_LEVELS;
+            }
+        } else {
+            return RESULT_START_LEVEL;
+        }
+    }
+    return DIALOG_RESULT_NONE;
+}
+
 game_state_t game_handle_input_dialog(void) {
     dialog_result_t res = dialog_handle_input();
 
     if (game.state == GAME_STATE_OPTIONS || game.state == GAME_STATE_OPTIONS_PLAY) {
-        // apply options as they are changed
-        // this will have to be undone if options dialog is cancelled.
-        update_sound_volume(dialog.items[0].number.value);
-        update_display_contrast(dialog.items[2].number.value);
-        if (dialog.items[1].choice.selection == 0) {
-            game.options.features &= ~GAME_FEATURE_MUSIC;
-        } else {
-            game.options.features |= GAME_FEATURE_MUSIC;
-        }
-        update_music_enabled();
+        apply_options_dialog_changes();
+    } else if (res == DIALOG_RESULT_NONE &&
+               (game.state == GAME_STATE_LEVELS || game.state == GAME_STATE_LEVEL_PACKS)) {
+        res = handle_level_navigation_input();
     }
 
     if (res == DIALOG_RESULT_NONE) {
         return game.state;
     }
-    game.dialog_shown = false;
+    game.flags &= ~FLAG_DIALOG_SHOWN;
 
     if (res == RESULT_START_LEVEL) {
         // TODO
@@ -80,15 +129,26 @@ game_state_t game_handle_input_dialog(void) {
     } else if (res == RESULT_LEVEL_COMPLETE) {
         return GAME_STATE_LEVEL_COMPLETE;
 
-    } else if (res == RESULT_PASSWORD) {
+    } else if (res == RESULT_ENTER_PASSWORD) {
         // TODO
-        return GAME_STATE_LEVELS;
+        return GAME_STATE_LEVEL_PACKS;
 
     } else if (res == RESULT_OPEN_LEVEL_PACKS) {
+        // TODO select last played pack
+        game.pos_selection_x = 0;
+        game.pos_selection_y = 0;
+        game.pos_first_y = 0;
+        game.pos_max_x = 0;
+        game.pos_max_y = LEVEL_PACK_COUNT;
+        game.pos_shown_y = LEVEL_PACK_COUNT;
         return GAME_STATE_LEVEL_PACKS;
 
     } else if (res == RESULT_OPEN_LEVELS) {
+        // TODO select last unlocked level
         return GAME_STATE_LEVELS;
+
+    } else if (res == RESULT_OPEN_PASSWORD) {
+        return GAME_STATE_PASSWORD;
 
     } else if (res == RESULT_OPEN_OPTIONS) {
         game.old_features = game.options.features;

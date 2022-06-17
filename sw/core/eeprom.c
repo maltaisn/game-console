@@ -18,6 +18,7 @@
 #include <sys/eeprom.h>
 
 #include <core/defs.h>
+#include <core/trace.h>
 
 void eeprom_read(eeprom_t address, uint8_t length, void* dest) {
     sys_eeprom_read_relative(address, length, dest);
@@ -138,6 +139,9 @@ void sys_eeprom_read_relative(eeprom_t address, uint8_t length, void* dest) {
 void sys_eeprom_write_relative(eeprom_t address, uint8_t length, const void* src) {
     if (address + length > sys_eeprom_size) {
         // write exceeds allocated space, truncate it.
+#ifdef RUNTIME_CHECKS
+        trace("Writing past the end of EEPROM reserved space.");
+#endif
         if (__builtin_sub_overflow(sys_eeprom_size, address, &length)) {
             // fully past allocated space, no write.
             return;

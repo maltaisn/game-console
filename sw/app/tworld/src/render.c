@@ -17,16 +17,16 @@
 
 #include <render.h>
 #include <game.h>
-#include <tworld.h>
 #include <assets.h>
 #include <input.h>
+#include <level.h>
 
 #include <core/graphics.h>
 #include <core/sysui.h>
 #include <core/dialog.h>
+#include <core/utils.h>
 
-#include <stdio.h>
-#include <inttypes.h>
+#define ACTIVE_COLOR(cond) ((cond) ? 12 : 6)
 
 #define CONTROLS_COUNT 7
 
@@ -61,6 +61,65 @@ static void draw_game(void) {
  */
 static void draw_main_menu(void) {
     // TODO
+}
+
+#define LEVEL_PACKS_PER_SCREEN 4
+
+/**
+ * Draw the content for the level pack selection dialog.
+ */
+static void draw_level_packs_overlay(void) {
+    graphics_set_color(ACTIVE_COLOR(game.pos_first_y > 0));
+    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_UP, 62, 16);
+    graphics_set_color(ACTIVE_COLOR((int8_t) game.pos_first_y <=
+                                    LEVEL_PACK_COUNT - LEVEL_PACKS_PER_SCREEN));
+    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_DOWN, 62, 122);
+
+    uint8_t index = game.pos_first_y;
+    disp_y_t y = 21;
+    for (uint8_t i = 0; i < LEVEL_PACKS_PER_SCREEN; ++i) {
+        graphics_set_color(ACTIVE_COLOR(index == game.pos_selection_y));
+        graphics_rect(4, y, 120, 23);
+
+        graphics_set_color(12);
+        graphics_set_font(ASSET_FONT_5X7);
+
+        graphics_image_t image;
+        if (index == LEVEL_PACK_COUNT) {
+            // Not a level pack, a button to enter a level password.
+            graphics_text(30, (int8_t) (y + 7), "Enter password");
+            image = ASSET_IMAGE_PACK_PASSWORD;
+
+        } else {
+            const level_pack_info_t* info = &tworld_packs[index];
+
+            // level pack progress: <completed>/<total>
+            char buf[8];
+            char *ptr0 = uint8_to_str(buf + 4, info->total_levels);
+            char *ptr1 = uint8_to_str(ptr0 - 4, info->completed_levels);
+            ptr0[-1] = '/';
+            graphics_text(30, (int8_t) (y + 13), ptr1);
+
+            // level pack name
+            graphics_set_font(ASSET_FONT_7X7);
+            graphics_text(30, (int8_t) (y + 3), info->name);
+
+            if (game.options.unlocked_packs & (1 << index)) {
+                image = asset_image_pack_progress(
+                        (uint16_t) info->completed_levels * 8 / info->total_levels);
+            } else {
+                image = ASSET_IMAGE_PACK_LOCKED;
+            }
+        }
+
+        graphics_image_4bit_mixed(image, 8, y + 3);
+        y += 25;
+
+        if (index > LEVEL_PACK_COUNT) {
+            break;
+        }
+        ++index;
+    }
 }
 
 /**
@@ -109,9 +168,11 @@ void draw(void) {
         draw_game();
     }
 
-    if (game.dialog_shown) {
+    if (game.flags & FLAG_DIALOG_SHOWN) {
         dialog_draw();
-        if (s == GAME_STATE_LEVELS) {
+        if (s == GAME_STATE_LEVEL_PACKS) {
+            draw_level_packs_overlay();
+        } else if (s == GAME_STATE_LEVELS) {
             draw_levels_overlay();
         } else if (s == GAME_STATE_CONTROLS || s == GAME_STATE_CONTROLS_PLAY) {
             draw_controls_overlay();

@@ -17,15 +17,12 @@
 #ifndef TWORLD_GAME_H
 #define TWORLD_GAME_H
 
+#include <assets.h>
 #include <stdbool.h>
 #include "core/sound.h"
 
 // display frames per second
-#ifdef SIMULATION
-#define DISPLAY_MAX_FPS 24  // faster for debugging
-#else
 #define DISPLAY_MAX_FPS 8
-#endif
 
 // game tick in number of system ticks, on which a state update is made and input is read.
 // this equals to 16 ticks per second, or 62.5 ms per tick.
@@ -61,9 +58,10 @@ enum {
     RESULT_RESUME,
     RESULT_LEVEL_FAIL,
     RESULT_LEVEL_COMPLETE,
-    RESULT_PASSWORD,
+    RESULT_ENTER_PASSWORD,
     RESULT_OPEN_LEVEL_PACKS,
     RESULT_OPEN_LEVELS,
+    RESULT_OPEN_PASSWORD,
     RESULT_OPEN_OPTIONS,
     RESULT_OPEN_OPTIONS_PLAY,
     RESULT_OPEN_CONTROLS,
@@ -80,20 +78,33 @@ enum {
     GAME_FEATURE_MUSIC = 1 << 0,
 };
 
+enum {
+    FLAG_DIALOG_SHOWN = 1 << 0,
+};
+
 typedef struct {
     uint8_t features;
     sound_volume_t volume; // 0-4
     uint8_t contrast;  // 0-10
+    uint8_t unlocked_packs;
 } game_options_t;
 
 typedef struct {
     game_options_t options;
 
+    uint8_t flags;
     game_state_t state;
     game_state_t last_state;
     uint8_t state_delay;
     uint8_t old_features;
-    bool dialog_shown;
+
+    // used for level pack and level selection dialogs.
+    uint8_t pos_selection_x;
+    uint8_t pos_selection_y;
+    uint8_t pos_first_y;
+    uint8_t pos_max_x;
+    uint8_t pos_max_y;
+    uint8_t pos_shown_y;
 } game_t;
 
 extern game_t game;
