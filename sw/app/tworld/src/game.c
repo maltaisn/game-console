@@ -88,7 +88,9 @@ static game_state_t update_tworld_state(uint8_t dt) {
         return new_state;
     }
 
-    tworld_update(dt);
+    for (uint8_t i = 0; i < dt; ++i) {
+        tworld_update();
+    }
 
     return GAME_STATE_PLAY;
 }

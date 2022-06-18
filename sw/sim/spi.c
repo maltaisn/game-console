@@ -35,6 +35,7 @@ spi_device_t selected_device;
 
 void sys_spi_transceive(uint16_t length, uint8_t data[static length]) {
     if (length == 0) {
+        trace("SPI transfer with zero length");
         return;
     }
     switch (selected_device) {

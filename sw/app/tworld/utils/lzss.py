@@ -8,7 +8,7 @@ from collections import deque
 #   a back reference. The first token of the stream is always a token type byte.
 #   When 8 tokens have been read, a new type token is placed.
 # - Two back reference encodings (number in parentheses indicate value subtracted from real value,
-#     all fields separated by commas are concataned to form 1 or 2 bytes):
+#     all fields separated by commas are concatenaned to form 1 or 2 bytes):
 #    - 2 bytes: 8-bit distance (-1), 7-bit length (-3), 1-bit flag = 0x1
 #    - 1 byte:  5-bit distance (-1), 2-bit length (-2), 1-bit flag = 0x0
 # - 256 bytes window size

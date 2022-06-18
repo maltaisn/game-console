@@ -17,9 +17,14 @@
 #include "level.h"
 #include "assets.h"
 #include "save.h"
+#include "lzss.h"
 
 #include <core/flash.h>
-#include <core/trace.h>
+
+#define INDEX_POS_TITLE 10
+#define INDEX_POS_HINT 12
+#define INDEX_POS_TRAP_LINKAGE 14
+#define INDEX_POS_CLONER_LINKAGE 16
 
 level_data_t tworld_data;
 
@@ -29,12 +34,12 @@ static flash_t get_level_pack_addr(level_pack_idx_t pack) {
 
 void level_read_packs(void) {
     uint16_t pos = 0;
-    level_pack_info_t *info = tworld_packs;
+    level_pack_info_t* info = tworld_packs;
     for (level_pack_idx_t i = 0; i < LEVEL_PACK_COUNT; ++i) {
         flash_t addr = get_level_pack_addr(i);
         uint8_t header[3];
         flash_read(addr, sizeof header, header);
-        if (*((uint16_t*) header) != 0x5754) {
+        if (header[0] != 0x54 || header[1] != 0x57) {
             // invalid signature
             info->total_levels = 0;
             info->completed_levels = 0;
@@ -53,5 +58,69 @@ void level_read_packs(void) {
 }
 
 void level_read_level(void) {
-    trace("TODO: read level %d in pack %d", game.current_level, game.current_pack);
+    // Read level pack index to get the start address of the current level.
+    flash_t addr = get_level_pack_addr(game.current_pack);
+    flash_t index_addr = addr + 3;  // skip signature & level count field
+    for (level_idx_t i = 0; i <= game.current_level; ++i) {
+        uint16_t offset;
+        flash_read(index_addr, 2, &offset);
+        addr += offset;
+        index_addr += 2;
+    }
+    tworld.addr = addr;
+
+    // Read data from flash
+    uint8_t buf[6];
+    flash_read(addr, sizeof buf, buf);
+    tworld.time_limit = buf[0] | buf[1] << 8;
+    tworld.chips_left = buf[2] | buf[3] << 8;
+
+    // Layer data is encoded in the same format as used at runtime, 6 bits per tile,
+    // bottom layer before top layer, row-major order and little-endian.
+    // We only need to decompress it.
+    uint8_t layer_data_size = buf[4] | buf[5] << 8;
+    lzss_decode(addr + 18, layer_data_size, tworld.bottom_layer);
+
+    tworld_init();
+}
+
+static flash_t get_metadata_address(uint8_t index_pos) {
+    uint16_t offset;
+    flash_read(tworld.addr + index_pos, 2, &offset);
+    return tworld.addr + offset;
+}
+
+void level_get_password(char password[LEVEL_PASSWORD_LENGTH]) {
+    flash_read(tworld.addr + 4, LEVEL_PASSWORD_LENGTH, password);
+}
+
+void level_get_title(char title[LEVEL_TITLE_MAX_LENGTH]) {
+    flash_t addr = get_metadata_address(INDEX_POS_TITLE);
+    flash_read(addr, LEVEL_TITLE_MAX_LENGTH, title);
+}
+
+flash_t level_get_hint(void) {
+    return get_metadata_address(INDEX_POS_HINT);
+}
+
+static void get_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE], uint8_t index_pos) {
+    flash_t addr = get_metadata_address(index_pos);
+    uint8_t size;
+    flash_read(addr, 1, &size);
+    if (size > 0) {
+        flash_read(addr + 1, size * sizeof(link_t), linkage);
+    }
+}
+
+void level_get_trap_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE]) {
+    get_linkage(linkage, INDEX_POS_TRAP_LINKAGE);
+}
+
+void level_get_cloner_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE]) {
+    get_linkage(linkage, INDEX_POS_CLONER_LINKAGE);
+}
+
+bool level_use_password(const char password[5]) {
+    // TODO
+    return true;
 }

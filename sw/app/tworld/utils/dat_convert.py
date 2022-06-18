@@ -304,9 +304,6 @@ class DatFileWriter:
     warnings_count: int
     _last_level_start: int
 
-    # number of bits encoded per tile, must be at least 6.
-    BITS_PER_TILE = 8
-
     def __init__(self, name: str, level_count: int):
         self.data = bytearray()
         # signature
@@ -325,7 +322,7 @@ class DatFileWriter:
 
         # title
         name = name.upper()
-        if not (0 < len(name) <= 12) or not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-=#():; ]+", name):
+        if not (0 < len(name) < 12) or not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-=#():; ]+", name):
             raise EncodeError("invalid level pack name")
         self.data += name.encode("ascii")
         self.data.append(0)  # nul terminator
@@ -609,21 +606,21 @@ class DatFileWriter:
         else:
             print(f"  {actor_count} active actors")
 
-    def _write_layers(self, bottom_layer: List[Tile], top_layer: List[Actor]) -> None:
+    def _write_layers(self, bottom_layer: List[Tile], top_layer: List[Actor]) -> int:
         # create top and bottom layer arrays
         top_data = bytearray()
         bottom_data = bytearray()
 
-        block_size = numpy.lcm(8, DatFileWriter.BITS_PER_TILE)
+        block_size = numpy.lcm(8, Level.ENCODED_BITS_PER_TILE)
         bytes_per_block = block_size // 8
-        tiles_per_block = block_size // DatFileWriter.BITS_PER_TILE
+        tiles_per_block = block_size // Level.ENCODED_BITS_PER_TILE
 
         for i in range(0, Level.GRID_SIZE, tiles_per_block):
             top_block = 0
             bot_block = 0
             for j in range(tiles_per_block):
-                top_block |= top_layer[i].value << (DatFileWriter.BITS_PER_TILE * j)
-                bot_block |= bottom_layer[i].value << (DatFileWriter.BITS_PER_TILE * j)
+                top_block |= top_layer[i + j].value << (Level.ENCODED_BITS_PER_TILE * j)
+                bot_block |= bottom_layer[i + j].value << (Level.ENCODED_BITS_PER_TILE * j)
             top_data += top_block.to_bytes(bytes_per_block, "little")
             bottom_data += bot_block.to_bytes(bytes_per_block, "little")
 
@@ -638,10 +635,12 @@ class DatFileWriter:
         print(f"  layer compression: {len(data)}B -> {len(compressed)}B "
               f"({(len(compressed) - len(data)) / len(data):+.0%})")
 
+        return len(compressed)
+
     def _write_linkage(self, linkage: List[Link]) -> None:
-        if not (1 <= len(linkage) <= 256):
-            raise EncodeError(f"there must be less than 256 links (got {len(linkage)})")
-        self._write(len(linkage) - 1, 1)
+        if len(linkage) > 32:
+            raise EncodeError(f"there must be less than 32 links (got {len(linkage)})")
+        self._write(len(linkage), 1)
         for link in linkage:
             self._write(link.btn_x, 1)
             self._write(link.btn_y, 1)
@@ -656,6 +655,7 @@ class DatFileWriter:
 
         self._write(level.time_limit, 2)
         self._write(level.required_chips, 2)
+        self._write(0, 2)  # reserve space for layer data size
 
         if not re.fullmatch(r"[A-Z]{4}", level.password):
             raise EncodeError("password must be 4 letters")
@@ -665,31 +665,29 @@ class DatFileWriter:
 
         bottom_layer, top_layer = self._convert_layers(level)
         self._preprocess_layers(level, bottom_layer, top_layer)
-        self._write_layers(bottom_layer, top_layer)
+        layer_data_size = self._write_layers(bottom_layer, top_layer)
+        self._write(layer_data_size, 2, at=start_pos + 4)
 
         title = level.title.upper()
-        if not (0 < len(title) <= 64) or not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-=#():;* ]+", title):
+        if not (0 < len(title) < 40) or not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-_=#():;* ]+", title):
             raise EncodeError("invalid characters in title or title too long")
-        self._write(len(self.data) - start_pos, 2, at=start_pos + 8)
+        self._write(len(self.data) - start_pos, 2, at=start_pos + 10)
         self.data += level.title.encode("ascii")
         self.data.append(0)  # nul terminator
 
         if level.hint:
-            hint = level.hint.upper()
-            if not (0 < len(title) <= 128) or \
-                    not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-=#():;* \n]+", title):
+            if not (0 < len(level.hint) < 128) or \
+                    not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-_=#():;* \n]+", level.hint):
                 raise EncodeError("invalid characters in hint or hint too long")
-            self._write(len(self.data) - start_pos, 2, at=start_pos + 10)
+            self._write(len(self.data) - start_pos, 2, at=start_pos + 12)
             self.data += level.hint.encode("ascii")
             self.data.append(0)  # nul terminator
 
-        if level.trap_linkage:
-            self._write(len(self.data) - start_pos, 2, at=start_pos + 12)
-            self._write_linkage(level.trap_linkage)
+        self._write(len(self.data) - start_pos, 2, at=start_pos + 14)
+        self._write_linkage(level.trap_linkage)
 
-        if level.cloner_linkage:
-            self._write(len(self.data) - start_pos, 2, at=start_pos + 14)
-            self._write_linkage(level.cloner_linkage)
+        self._write(len(self.data) - start_pos, 2, at=start_pos + 16)
+        self._write_linkage(level.cloner_linkage)
 
         self.levels_written += 1
 
@@ -719,7 +717,7 @@ def create_config(args: argparse.Namespace) -> Config:
     elif output_file.is_dir():
         output_file = Path(output_file, "output.dat")
 
-    return Config(input_file, output_file, input_file[0].stem)
+    return Config(input_file, output_file, input_file.stem)
 
 
 def make_tileset_image() -> None:
@@ -807,7 +805,7 @@ def main() -> None:
 parser = argparse.ArgumentParser(description="Utility for converting Chip's Challenge DAT file "
                                              "to tworld format")
 parser.add_argument(
-    "input_file", action="store", type=str, nargs="+",
+    "input_file", action="store", type=str,
     help="Input DAT file.")
 parser.add_argument(
     "-o", "--output", action="store", type=str, default="", dest="output_file",
