@@ -19,6 +19,7 @@
 #define TWORLD_TWORLD_TILE_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum {
     TILE_FLOOR = 0x00,
@@ -88,5 +89,56 @@ typedef enum {
     TILE_FIRE = 0x3e,
     TILE_BOMB = 0x3f,
 } tile_t;
+
+/** Returns the tile variant 0-3 (key, lock, boot, button, force floor, ice corner).  */
+uint8_t tile_get_variant(tile_t tile);
+
+/** Returns true if tile is a key. */
+bool tile_is_key(tile_t tile);
+
+/** Returns true if tile is a lock. */
+bool tile_is_lock(tile_t tile);
+
+/** Returns true if tile is boots. */
+bool tile_is_boots(tile_t tile);
+
+/** Returns true if tile is a button. */
+bool tile_is_button(tile_t tile);
+
+/** Returns true if tile is a thin wall. */
+bool tile_is_thin_wall(tile_t tile);
+
+/** Returns true if tile is ice, including ice corners. */
+bool tile_is_ice(tile_t tile);
+
+/** Returns true if tile is an ice corner. */
+bool tile_is_ice_wall(tile_t tile);
+
+/** Returns true if tile is a slide floor (force floor). */
+bool tile_is_slide(tile_t tile);
+
+/** Returns true if tile is a wall for monsters. */
+bool tile_is_monster_acting_wall(tile_t tile);
+
+/** Returns true if tile is a wall for blocks. */
+bool tile_is_block_acting_wall(tile_t tile);
+
+/** Returns true if tile is a wall for chip. */
+bool tile_is_chip_acting_wall(tile_t tile);
+
+/** Returns true if tile is a hidden wall or a real blue wall. */
+bool tile_is_revealable_wall(tile_t tile);
+
+/** Returns true if tile is static (meaning an actor on top of it will be considered static). */
+bool tile_is_static(tile_t tile);
+
+/** Returns true if tile is a toggle wall in either state. */
+bool tile_is_toggle_tile(tile_t tile);
+
+/** Returns a toggle tile in another state. */
+tile_t tile_with_toggle_state(tile_t tile, uint8_t state);
+
+/** Returns a toggle tile in the opposite state. */
+tile_t tile_toggle_state(tile_t tile);
 
 #endif //TWORLD_TWORLD_TILE_H

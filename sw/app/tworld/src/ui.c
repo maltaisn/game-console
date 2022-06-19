@@ -18,7 +18,7 @@
 #include "ui.h"
 #include "game.h"
 #include "assets.h"
-#include "level.h"
+#include "tworld_level.h"
 
 #include <core/dialog.h>
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "level.h"
+#include "tworld_level.h"
 #include "assets.h"
 #include "save.h"
 #include "lzss.h"
@@ -23,8 +23,8 @@
 
 #define INDEX_POS_TITLE 10
 #define INDEX_POS_HINT 12
-#define INDEX_POS_TRAP_LINKAGE 14
-#define INDEX_POS_CLONER_LINKAGE 16
+#define INDEX_POS_TRAP_LINKS 14
+#define INDEX_POS_CLONER_LINKS 16
 
 level_data_t tworld_data;
 
@@ -103,21 +103,19 @@ flash_t level_get_hint(void) {
     return get_metadata_address(INDEX_POS_HINT);
 }
 
-static void get_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE], uint8_t index_pos) {
+static void get_links(links_t *links, uint8_t index_pos) {
     flash_t addr = get_metadata_address(index_pos);
     uint8_t size;
     flash_read(addr, 1, &size);
+    links->size = size;
     if (size > 0) {
-        flash_read(addr + 1, size * sizeof(link_t), linkage);
+        flash_read(addr + 1, size * sizeof(link_t), links->links);
     }
 }
 
-void level_get_trap_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE]) {
-    get_linkage(linkage, INDEX_POS_TRAP_LINKAGE);
-}
-
-void level_get_cloner_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE]) {
-    get_linkage(linkage, INDEX_POS_CLONER_LINKAGE);
+void level_get_links(void) {
+    get_links(&trap_links, INDEX_POS_TRAP_LINKS);
+    get_links(&cloner_links, INDEX_POS_CLONER_LINKS);
 }
 
 bool level_use_password(const char password[5]) {

@@ -15,8 +15,17 @@
  * limitations under the License.
  */
 
-#ifndef TWORLD_LEVEL_H
-#define TWORLD_LEVEL_H
+#ifndef TWORLD_TWORLD_LEVEL_H
+#define TWORLD_TWORLD_LEVEL_H
+
+#define LEVEL_PACK_COUNT ASSET_LEVEL_PACKS_SIZE
+#define LEVEL_PACK_NAME_MAX_LENGTH 12
+#define LEVEL_PACK_MAX_LEVELS 160
+
+// these maximum string lengths include the nul terminator
+#define LEVEL_TITLE_MAX_LENGTH 40
+#define LEVEL_HINT_MAX_LENGTH 128
+#define LEVEL_PASSWORD_LENGTH 5
 
 #include "assets.h"
 #include "tworld.h"
@@ -27,10 +36,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-#define LEVEL_PACK_COUNT ASSET_LEVEL_PACKS_SIZE
-#define LEVEL_PACK_NAME_MAX_LENGTH 12
-#define LEVEL_PACK_MAX_LEVELS 160
 
 typedef uint8_t level_pack_idx_t;
 typedef uint8_t level_idx_t;
@@ -96,16 +101,10 @@ void level_get_title(char title[LEVEL_TITLE_MAX_LENGTH]);
 flash_t level_get_hint(void);
 
 /**
- * Copy trap linkage data from flash to array.
+ * Copy trap and cloner links data from flash to global array.
  * A level must be loaded before using this.
  */
-void level_get_trap_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE]);
-
-/**
- * Copy cloner linkage data from flash to array.
- * A level must be loaded before using this.
- */
-void level_get_cloner_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE]);
+void level_get_links(void);
 
 /**
  * Set the current pack and current level for a password.
@@ -114,4 +113,4 @@ void level_get_cloner_linkage(link_t linkage[static LEVEL_LINKAGE_MAX_SIZE]);
  */
 bool level_use_password(const char password[LEVEL_PASSWORD_LENGTH]);
 
-#endif //TWORLD_LEVEL_H
+#endif //TWORLD_TWORLD_LEVEL_H

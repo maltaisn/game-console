@@ -78,6 +78,9 @@ bool callback_loop(void) {
 }
 
 void callback_draw(void) {
+    // links are cached in display buffer memory, drawing will destroy them.
+    game.flags &= ~FLAG_LINKS_CACHED;
+
     last_draw_time = time_get();
     draw();
 }
@@ -88,6 +91,13 @@ static game_state_t update_tworld_state(uint8_t dt) {
         return new_state;
     }
 
+    // cache trap and cloner links if needed
+    if (!(game.flags & FLAG_LINKS_CACHED)) {
+        level_get_links();
+        game.flags |= FLAG_LINKS_CACHED;
+    }
+
+    // do game steps for all ticks
     for (uint8_t i = 0; i < dt; ++i) {
         tworld_update();
     }

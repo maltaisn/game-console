@@ -16,4 +16,48 @@
 
 #include "tworld_actor.h"
 
-// TODO
+#define DIRECTION_MASK 0x3
+
+actor_t actor_create(entity_t entity, direction_t direction) {
+    return entity | direction;
+}
+
+entity_t actor_get_entity(actor_t actor) {
+    return actor & ~DIRECTION_MASK;
+}
+
+direction_t actor_get_direction(actor_t actor) {
+    return actor & DIRECTION_MASK;
+}
+
+actor_t actor_with_direction(actor_t actor, direction_t direction) {
+    return (actor & ~DIRECTION_MASK) | direction;
+}
+
+actor_t actor_with_entity(actor_t actor, entity_t entity) {
+    return entity | (actor & DIRECTION_MASK);
+}
+
+actor_t actor_reverse_tank(actor_t actor) {
+    return actor ^ 0x04;
+}
+
+bool actor_is_tank(actor_t actor) {
+    return (actor & 0x38) == 0x30;
+}
+
+bool actor_is_block(actor_t actor) {
+    return (actor & 0x38) == 0x10;
+}
+
+bool actor_is_monster(actor_t actor) {
+    return actor >= ENTITY_BUG;
+}
+
+bool actor_is_monster_or_block(actor_t actor) {
+    return actor >= ENTITY_BLOCK_GHOST;
+}
+
+bool actor_is_on_actor_list(actor_t actor) {
+    return actor >= ENTITY_BLOCK;
+}

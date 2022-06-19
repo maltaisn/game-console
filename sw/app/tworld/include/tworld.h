@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2022 Nicolas Maltais
  *
@@ -18,22 +17,27 @@
 #ifndef TWORLD_TWORLD_H
 #define TWORLD_TWORLD_H
 
+#include "tworld_dir.h"
 #include "tworld_actor.h"
 #include "tworld_tile.h"
 
 #include <core/flash.h>
 
 #include <stdint.h>
+#include <stdbool.h>
+
+// How many game ticks per in-game "second", that is, the unit of time left.
+// There are 16 ticks per actual second, making each in-game second actually 1.25 s.
+#define TICKS_PER_SECOND 20
 
 #define LEVEL_LAYER_SIZE (6 * 32 * 32 / 8)
 #define LEVEL_KEY_COUNT 4
 
-// these maximum string lengths include the nul terminator
-#define LEVEL_TITLE_MAX_LENGTH 40
-#define LEVEL_HINT_MAX_LENGTH 128
-#define LEVEL_PASSWORD_LENGTH 5
+#define LEVEL_LINKS_MAX_SIZE 32
 
-#define LEVEL_LINKAGE_MAX_SIZE 32
+#define GRID_WIDTH 32
+#define GRID_HEIGHT 32
+#define GRID_SIZE (GRID_WIDTH * GRID_HEIGHT)
 
 typedef enum {
     END_CAUSE_NONE,
@@ -47,6 +51,12 @@ typedef enum {
 
 /** Position on the grid (X or Y), between 0 and 31. */
 typedef uint8_t grid_pos_t;
+
+/** A position on the game grid. */
+typedef struct {
+    grid_pos_t x;
+    grid_pos_t y;
+} position_t;
 
 /**
  * Data structure for the current level state.
@@ -70,7 +80,7 @@ typedef struct {
     uint8_t zero_init_start[0];
 
     // Actor list, bounded size.
-    uint16_t actors[MAX_ACTORS_COUNT];
+    active_actor_t actors[MAX_ACTORS_COUNT];
     // size of the actor buffer (some actors may be hidden).
     uint8_t actors_size;
 
@@ -83,8 +93,7 @@ typedef struct {
     // Boots held (bitfield on bits 0 to 3).
     uint8_t boots;
     // Position after chip moved (cached).
-    grid_pos_t chip_new_pos_x;
-    grid_pos_t chip_new_pos_y;
+    position_t chip_new_pos;
     // Index of actor that collided with chip, or INDEX_NONE if none.
     actor_idx_t collided_with;
     // Actor that collision occured with.
@@ -99,7 +108,6 @@ typedef struct {
     actor_t teleported_chip;
     // Index of actor currently springing a trap, or INDEX_NONE if none.
     actor_idx_t actor_springing_trap;
-
 } level_t;
 
 /**
@@ -112,6 +120,14 @@ typedef struct {
     grid_pos_t link_y;
 } link_t;
 
+typedef struct {
+    uint8_t size;
+    link_t links[LEVEL_LINKS_MAX_SIZE];
+} links_t;
+
+extern links_t trap_links;
+extern links_t cloner_links;
+
 /**
  * Initialize game state after some fields have been loaded from flash
  * (address, layer data, time limit, chips needed).
@@ -119,8 +135,20 @@ typedef struct {
 void tworld_init(void);
 
 /**
- * TODO
+ * Advance the game state by a single tick (or step).
+ * The level state must have been initialized first, and link data must be cached.
+ * Input state is a bitfield with currently active directions.
  */
-void tworld_update(void);
+void tworld_update(uint8_t input_state);
+
+/**
+ * Returns true if game is over (failed or completed).
+ */
+bool tworld_is_game_over(void);
+
+/**
+ * Returns the current position of Chip.
+ */
+position_t tworld_get_current_position(void);
 
 #endif //TWORLD_TWORLD_H

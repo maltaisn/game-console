@@ -19,7 +19,7 @@
 #define TWORLD_SAVE_H
 
 #include "game.h"
-#include "level.h"
+#include "tworld_level.h"
 
 #define SAVE_TIME_NONE 0x3ff
 

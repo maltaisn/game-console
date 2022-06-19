@@ -18,7 +18,7 @@
 #define TWORLD_GAME_H
 
 #include "assets.h"
-#include "level.h"
+#include "tworld_level.h"
 
 #include <stdbool.h>
 #include <core/sound.h>
@@ -81,6 +81,7 @@ enum {
 
 enum {
     FLAG_DIALOG_SHOWN = 1 << 0,
+    FLAG_LINKS_CACHED = 1 << 1,
 };
 
 typedef struct {
