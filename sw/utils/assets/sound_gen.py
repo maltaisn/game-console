@@ -396,10 +396,10 @@ def register_builder(packer) -> None:
               octave_adjust: int = 0,
               merge_midi_tracks: bool = False,
               time_range: Optional[slice] = None,
-              channels: Optional[Set[int]] = None) -> DataObject:
-        return SoundObject(filename, tempo, octave_adjust, merge_midi_tracks, time_range,
-                           channels if channels is not None else
-                           set(range(SoundData.CHANNELS_COUNT)))
+              channels: Optional[Set[int]] = None):
+        yield SoundObject(filename, tempo, octave_adjust, merge_midi_tracks, time_range,
+                          channels if channels is not None else
+                          set(range(SoundData.CHANNELS_COUNT)))
 
 
 def create_config(args: argparse.Namespace) -> Config:

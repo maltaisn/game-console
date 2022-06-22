@@ -624,9 +624,9 @@ def register_builder(packer,
               binary: Optional[bool] = None,
               opaque: bool = False,
               indexed: bool = default_indexed,
-              index_granularity: str = default_index_gran) -> ImageObject:
-        return ImageObject(filename, None if region is None else Rect(*region),
-                           indexed, index_granularity, ImageEncoding(binary, raw), opaque)
+              index_granularity: str = default_index_gran):
+        yield ImageObject(filename, None if region is None else Rect(*region),
+                          indexed, index_granularity, ImageEncoding(binary, raw), opaque)
 
 
 def register_helper(packer) -> None:

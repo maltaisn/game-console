@@ -190,9 +190,9 @@ class FontObject(DataObject):
 def register_builder(packer) -> None:
     @packer.file_builder
     def font(filename: Path, *, glyph_width: int, glyph_height: int,
-             extra_line_spacing: int = 1) -> FontObject:
-        return FontObject(filename, glyph_width, glyph_height,
-                          glyph_height + extra_line_spacing)
+             extra_line_spacing: int = 1):
+        yield FontObject(filename, glyph_width, glyph_height,
+                         glyph_height + extra_line_spacing)
 
 
 def create_config(args: argparse.Namespace) -> Config:

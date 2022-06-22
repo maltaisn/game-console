@@ -3,6 +3,7 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Tuple, Iterable
 
@@ -12,8 +13,8 @@ from PIL import Image as Img
 import lzss
 from tworld import TileWorld, Tile, Level, Actor, Entity, Direction
 
-TILESET_PATH = "../assets/tileset.png"
-TILE_SIZE = 14
+sys.path.append(str(Path(__file__).absolute().parent / "../../../utils"))  # for standalone run
+from assets.types import PackResult, DataObject, PackError
 
 # All tiles are re-encoded in tworld from MS DAT IDs.
 # Not all tiles can appear on bottom and top layers.
@@ -720,54 +721,6 @@ def create_config(args: argparse.Namespace) -> Config:
     return Config(input_file, output_file, input_file.stem)
 
 
-def make_tileset_image() -> None:
-    tiles_dir = Path("../dev/tiles/")
-    tileset_img = Img.new("LA", (8 * TILE_SIZE, 16 * TILE_SIZE))
-
-    all_mappings = {
-        # mappings with no equivalent in MS version
-        Tile.STATIC_TRAP: 0x2b,
-        Tile.STATIC_CLONER: 0x31,
-        Actor(Entity.TANK_REVERSED, Direction.NORTH): 0x4c,
-        Actor(Entity.TANK_REVERSED, Direction.WEST): 0x4d,
-        Actor(Entity.TANK_REVERSED, Direction.SOUTH): 0x4e,
-        Actor(Entity.TANK_REVERSED, Direction.EAST): 0x4f,
-        Actor(Entity.BLOCK, Direction.NORTH): 0x0a,
-        Actor(Entity.BLOCK, Direction.WEST): 0x0a,
-        Actor(Entity.BLOCK, Direction.SOUTH): 0x0a,
-        Actor(Entity.BLOCK, Direction.EAST): 0x0a,
-        Actor(Entity.BLOCK_GHOST, Direction.NORTH): 0x0a,
-        Actor(Entity.BLOCK_GHOST, Direction.WEST): 0x0a,
-        Actor(Entity.BLOCK_GHOST, Direction.SOUTH): 0x0a,
-        Actor(Entity.BLOCK_GHOST, Direction.EAST): 0x0a,
-        Actor.STATIC_BLOCK: 0x0a,
-        Actor.STATIC_FIREBALL: 0x44,
-        Actor.STATIC_BALL: 0x48,
-        Actor.STATIC_BLOB: 0x5c,
-    }
-    for value, tile in TILE_REMAP_BOTTOM.items():
-        if tile not in all_mappings:
-            all_mappings[tile] = value
-    for value, actor in TILE_REMAP_TOP.items():
-        if actor not in all_mappings:
-            all_mappings[actor] = value
-
-    for tile, value in all_mappings.items():
-        tile_file = Path(tiles_dir, f"{value:02x}.png")
-        if not tile_file.exists():
-            raise RuntimeError(f"missing tile file {tile_file}")
-
-        pos = tile.value
-        if isinstance(tile, Actor):
-            pos += 0x40  # actors start on column 4
-        x = pos // 16
-        y = pos % 16
-
-        img = Img.open(tile_file)
-        img.convert("LA")
-        tileset_img.paste(img, (x * TILE_SIZE, y * TILE_SIZE))
-
-    tileset_img.save("tileset.png")
 
 
 def readable_size(size: int) -> str:
@@ -795,6 +748,42 @@ def create_level_data(config: Config) -> bytes:
     print(f"Level data written to {config.output_file} ({readable_size(len(writer.data))})")
     return writer.data
 
+@dataclass(frozen=True)
+class LevelPackObject(DataObject):
+    file: Path
+    name: str
+
+    def pack(self) -> PackResult:
+        try:
+            with open(self.file, "rb") as file:
+                sha = sha256(file.read()).hexdigest()
+        except IOError as e:
+            raise PackError(f"encoding error: could not read file: {e}")
+
+        # level conversion takes some time, used cached result whenever possible.
+        cache_dir = Path("assets/cache")
+        cache_dir.mkdir(exist_ok=True)
+        cached_file = cache_dir / f"{sha[:10]}.dat"
+        if cached_file.exists():
+            with open(cached_file, "rb") as file:
+                return PackResult(file.read())
+
+        config = Config(self.file, cached_file, self.name)
+        try:
+            data = create_level_data(config)
+            return PackResult(data)
+        except EncodeError as e:
+            raise PackError(f"encoding error: {e}")
+
+    def get_type_name(self) -> str:
+        return "level pack"
+
+
+def register_builder(packer) -> None:
+    @packer.file_builder
+    def level_pack(filename: Path, name: str):
+        yield LevelPackObject(filename, name)
+
 
 def main() -> None:
     args = parser.parse_args()
@@ -812,9 +801,8 @@ parser.add_argument(
     help=f"Output DAT file (output.dat by default)")
 
 if __name__ == '__main__':
-    # make_tileset_image()
     try:
         main()
-    except EncodeError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    except EncodeError as ex:
+        print(f"ERROR: {ex}", file=sys.stderr)
         exit(1)

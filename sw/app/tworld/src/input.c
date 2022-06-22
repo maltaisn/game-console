@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-#include <input.h>
-#include <assets.h>
-#include <save.h>
-#include <render.h>
+#include "input.h"
+#include "assets.h"
+#include "save.h"
+#include "render.h"
+#include "ui.h"
 
 #include <core/app.h>
 #include <core/dialog.h>
@@ -245,6 +246,37 @@ game_state_t game_handle_input_tworld(void) {
 //    uint8_t curr_state = preprocess_input_state();
 
     // TODO handle hint, inventory and pause input
+
+    // TEMP map navigation
+    uint8_t clicked = input_get_clicked();
+    position_t pos = tworld_get_current_position();
+    if (clicked & BUTTON_LEFT) {
+        if (pos.x > 0) {
+            tworld_set_current_position((position_t){.x = pos.x - 1, .y = pos.y},
+                                        actor_create(ENTITY_CHIP, DIR_WEST));
+        }
+    } else if (clicked & BUTTON_RIGHT) {
+        if (pos.x < GRID_WIDTH - 1) {
+            tworld_set_current_position((position_t){.x = pos.x + 1, .y = pos.y},
+                                        actor_create(ENTITY_CHIP, DIR_EAST));
+        }
+
+    } else if (clicked & BUTTON_UP) {
+        if (pos.y > 0) {
+            tworld_set_current_position((position_t){.x = pos.x, .y = pos.y - 1},
+                                        actor_create(ENTITY_CHIP, DIR_NORTH));
+        }
+
+    } else if (clicked & BUTTON_DOWN) {
+        if (pos.y < GRID_HEIGHT - 1) {
+            tworld_set_current_position((position_t){.x = pos.x, .y = pos.y + 1},
+                                        actor_create(ENTITY_CHIP, DIR_SOUTH));
+        }
+
+    } else if (clicked & BUTTON0) {
+        setup_level_packs_selection();
+        return GAME_STATE_LEVEL_PACKS;
+    }
 
     return GAME_STATE_PLAY;
 }

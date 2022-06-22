@@ -15,16 +15,19 @@
  * limitations under the License.
  */
 
-#include <render.h>
-#include <game.h>
-#include <assets.h>
-#include <input.h>
-#include <tworld_level.h>
+#include "render.h"
+#include "render_utils.h"
+#include "game.h"
+#include "assets.h"
+#include "input.h"
+#include "tworld_level.h"
 
 #include <core/graphics.h>
 #include <core/sysui.h>
 #include <core/dialog.h>
 #include <core/utils.h>
+#include <sys/display.h>
+
 #include <string.h>
 
 #define ACTIVE_COLOR(cond) ((cond) ? 12 : 6)
@@ -54,7 +57,43 @@ static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
  * Draw the game tile map.
  */
 static void draw_game(void) {
-    // TODO
+    // get grid position of first tile shown on the top left.
+    position_t pos = tworld_get_current_position();
+    grid_pos_t xstart = get_camera_pos(pos.x);
+    grid_pos_t ystart = get_camera_pos(pos.y);
+
+    disp_y_t y = 1;
+    const uint8_t xend = xstart + GAME_MAP_SIZE;
+    const uint8_t yend = ystart + GAME_MAP_SIZE;
+    for (grid_pos_t py = ystart; py < yend; ++py) {
+        y += GAME_TILE_SIZE;  // at this point Y is the start coordinate of *next* tile.
+        if (y < sys_display_page_ystart) {
+            // before start of page.
+            continue;
+        }
+
+        y -= GAME_TILE_SIZE;  // at this point Y is the start coordinate of *current* tile.
+        if (y > sys_display_page_yend) {
+            // after end of page.
+            return;
+        }
+
+        disp_x_t x = 0;
+        for (grid_pos_t px = xstart; px < xend; ++px) {
+            tile_t tile = tworld_get_bottom_tile(px, py);
+            actor_t actor = tworld_get_top_tile(px, py);
+            if (!actor_is_block(actor)) {
+                // don't draw a bottom tile if actor is a block (fully opaque image).
+                draw_bottom_tile(x, y, tile);
+            }
+            if (actor_get_entity(actor) != ENTITY_NONE) {
+                draw_top_tile(x, y, actor);
+            }
+            x += GAME_TILE_SIZE;
+        }
+
+        y += GAME_TILE_SIZE;
+    }
 }
 
 /**
@@ -232,13 +271,22 @@ static void draw_controls_overlay(void) {
 }
 
 void draw(void) {
-    graphics_clear(DISPLAY_COLOR_BLACK);
-
     game_state_t s = game.state;
-    if (s <= GAME_STATE_CONTROLS) {
-        draw_main_menu();
-    } else if (s >= GAME_STATE_PLAY) {
+    if (s >= GAME_STATE_PLAY) {
+        // there's no point in clearing the full display, most of it will be redrawn for the grid.
+        // only clear the outer border on which tiles aren't drawn.
+        graphics_set_color(DISPLAY_COLOR_BLACK);
+        graphics_rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+        // also clear extra line at x=1, draw_bottom_tile does a bitwise or on the first column...
+        graphics_vline(0, DISPLAY_HEIGHT - 1, 1);
+
         draw_game();
+
+    } else {
+        graphics_clear(DISPLAY_COLOR_BLACK);
+        if (s <= GAME_STATE_CONTROLS) {
+            draw_main_menu();
+        }
     }
 
     if (game.flags & FLAG_DIALOG_SHOWN) {

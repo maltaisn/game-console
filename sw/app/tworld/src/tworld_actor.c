@@ -47,7 +47,7 @@ bool actor_is_tank(actor_t actor) {
 }
 
 bool actor_is_block(actor_t actor) {
-    return (actor & 0x38) == 0x10;
+    return actor >= 0x0f && actor <= 0x17;
 }
 
 bool actor_is_monster(actor_t actor) {

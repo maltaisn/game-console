@@ -68,7 +68,7 @@ clean:
 
 ifneq ($(TARGET),boot)
 $(ASSETS_FILE): $(TARGET)/pack.py $(wildcard $(TARGET)/assets/*) $(wildcard $(TARGET)/assets/*/*)
-	$(E)export PYTHONPATH="$(PWD)/utils"; cd $(TARGET); python3 pack.py
+	$(E)export PYTHONPATH="$(PWD)/utils":"$(PWD)/$(TARGET)/utils"; cd $(TARGET); python3 pack.py
 
 assets: $(ASSETS_FILE)
 endif

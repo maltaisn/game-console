@@ -23,6 +23,9 @@
 #define LEVELS_PER_SCREEN_H 4
 #define LEVELS_PER_SCREEN_V 3
 
+#define GAME_MAP_SIZE 9
+#define GAME_TILE_SIZE 14
+
 void draw(void);
 
 #endif //TWORLD_RENDER_H

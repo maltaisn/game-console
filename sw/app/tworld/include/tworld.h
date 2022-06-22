@@ -151,4 +151,17 @@ bool tworld_is_game_over(void);
  */
 position_t tworld_get_current_position(void);
 
+/**
+ * Returns the tile at a position in the game grid.
+ */
+tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y);
+
+/**
+ * Returns the actor at a position in the game grid (or ACTOR_NONE if none).
+ */
+actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y);
+
+// TEMP
+void tworld_set_current_position(position_t pos, actor_t actor);
+
 #endif //TWORLD_TWORLD_H

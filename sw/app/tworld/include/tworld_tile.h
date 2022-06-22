@@ -84,6 +84,7 @@ typedef enum {
     TILE_STATIC_CLONER = 0x39,
     TILE_STATIC_TRAP = 0x3a,
     // special
+    TILE_BLOCK = 0x3b,  // only used for drawing
     TILE_TELEPORTER = 0x3c,
     TILE_WATER = 0x3d,
     TILE_FIRE = 0x3e,

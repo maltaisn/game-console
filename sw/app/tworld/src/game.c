@@ -99,7 +99,7 @@ static game_state_t update_tworld_state(uint8_t dt) {
 
     // do game steps for all ticks
     for (uint8_t i = 0; i < dt; ++i) {
-        tworld_update();
+        tworld_update(0);  // TODO input state
     }
 
     return GAME_STATE_PLAY;

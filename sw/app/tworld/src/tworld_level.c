@@ -15,6 +15,7 @@
  */
 
 #include "tworld_level.h"
+#include "tworld.h"
 #include "assets.h"
 #include "save.h"
 #include "lzss.h"
@@ -72,13 +73,13 @@ void level_read_level(void) {
     // Read data from flash
     uint8_t buf[6];
     flash_read(addr, sizeof buf, buf);
-    tworld.time_limit = buf[0] | buf[1] << 8;
+    tworld.time_limit = (buf[0] | buf[1] << 8) * TICKS_PER_SECOND;
     tworld.chips_left = buf[2] | buf[3] << 8;
 
     // Layer data is encoded in the same format as used at runtime, 6 bits per tile,
     // bottom layer before top layer, row-major order and little-endian.
     // We only need to decompress it.
-    uint8_t layer_data_size = buf[4] | buf[5] << 8;
+    uint16_t layer_data_size = buf[4] | buf[5] << 8;
     lzss_decode(addr + 18, layer_data_size, tworld.bottom_layer);
 
     tworld_init();

@@ -112,7 +112,7 @@ SHARED_DISP_BUF links_t cloner_links;
 
 #define nibble_swap(x) ((uint8_t) ((x) >> 4 | (x) << 4))
 
-static AVR_OPTIMIZE actor_t get_tile_in_tile_block(grid_pos_t x, grid_pos_t y,
+static AVR_OPTIMIZE uint8_t get_tile_in_tile_block(grid_pos_t x, grid_pos_t y,
                                                    const uint8_t* layer) {
     // note: this function was hand optimized to produce the best assembly output,
     // since it may be called a several thousand times per second.
@@ -136,7 +136,7 @@ static AVR_OPTIMIZE actor_t get_tile_in_tile_block(grid_pos_t x, grid_pos_t y,
 }
 
 /** Returns the tile on the bottom layer at a position. */
-static actor_t get_bottom_tile(grid_pos_t x, grid_pos_t y) {
+static tile_t get_bottom_tile(grid_pos_t x, grid_pos_t y) {
     return get_tile_in_tile_block(x, y, tworld.bottom_layer);
 }
 
@@ -165,8 +165,8 @@ static AVR_OPTIMIZE void set_tile_in_tile_block(grid_pos_t x, grid_pos_t y,
         case 2: {
             // swap, andi, andi, or, andi, andi, or
             uint8_t s = nibble_swap(value);
-            block[1] = (block[0] & ~0xf0) | (s & 0xf0);
-            block[2] = (block[1] & ~0x03) | (s & 0x03);
+            block[1] = (block[1] & ~0xf0) | (s & 0xf0);
+            block[2] = (block[2] & ~0x03) | (s & 0x03);
             break;
         }
         case 3: {
@@ -364,10 +364,11 @@ static void build_actor_list(void) {
         for (grid_pos_t x = 0; x < GRID_WIDTH; ++x) {
             actor_t actor = actor_get_entity(get_top_tile(x, y));
             if (actor_get_entity(actor) == ENTITY_CHIP) {
-                chip_index = count++;
-            } else if (actor_is_on_actor_list(actor) && !tile_is_static(get_bottom_tile(x, y))) {
-                tworld.actors[count++] = act_actor_with_pos(x, y);
+                chip_index = count;
+            } else if (!actor_is_on_actor_list(actor) || tile_is_static(get_bottom_tile(x, y))) {
+                continue;
             }
+            tworld.actors[count++] = act_actor_with_pos(x, y);
         }
     }
     tworld.actors_size = count;
@@ -416,4 +417,19 @@ bool tworld_is_game_over(void) {
 position_t tworld_get_current_position(void) {
     active_actor_t chip = tworld.actors[0];
     return (position_t) {.x = act_actor_get_x(chip), .y = act_actor_get_y(chip)};
+}
+
+tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y) {
+    return get_bottom_tile(x, y);
+}
+
+actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y) {
+    return get_top_tile(x, y);
+}
+
+void tworld_set_current_position(position_t pos, actor_t actor) {
+    active_actor_t chip = tworld.actors[0];
+    set_top_tile(act_actor_get_x(chip), act_actor_get_y(chip), ACTOR_NONE);
+    tworld.actors[0] = act_actor_create(pos.x, pos.y, 0, ACTOR_STATE_NONE);
+    set_top_tile(pos.x, pos.y, actor);
 }
