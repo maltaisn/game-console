@@ -57,18 +57,26 @@ typedef struct {
 } level_pack_info_t;
 
 /**
+ * Groups all data loaded when a level isn't loaded and not currently playing a level.
+ */
+typedef struct {
+    level_pack_info_t packs[LEVEL_PACK_COUNT];
+    char password_buf[LEVEL_PASSWORD_LENGTH];
+} level_packs_t;
+
+/**
  * Either pack data or level data is needed at a time, but never both.
  * To save on RAM, these two structures are placed in an union.
  */
 typedef union {
-    level_pack_info_t level_packs[LEVEL_PACK_COUNT];
+    level_packs_t packs;
     level_t level;
 } level_data_t;
 
 extern level_data_t tworld_data;
 
 #define tworld (tworld_data.level)
-#define tworld_packs (tworld_data.level_packs)
+#define tworld_packs (tworld_data.packs)
 
 /**
  * Load all the level packs.
@@ -107,10 +115,10 @@ flash_t level_get_hint(void);
 void level_get_links(void);
 
 /**
- * Set the current pack and current level for a password.
+ * Set the current pack and current level for the entered password.
  * A level pack must be unlocked for the password to work for a level in it.
  * Returns true if password is valid and level was set.
  */
-bool level_use_password(const char password[LEVEL_PASSWORD_LENGTH]);
+bool level_use_password(void);
 
 #endif //TWORLD_TWORLD_LEVEL_H

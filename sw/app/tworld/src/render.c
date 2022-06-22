@@ -134,7 +134,7 @@ static void draw_level_packs_overlay(void) {
             image = ASSET_IMAGE_PACK_PASSWORD;
 
         } else {
-            const level_pack_info_t* info = &tworld_packs[index];
+            const level_pack_info_t* info = &tworld_packs.packs[index];
 
             // level pack progress: <completed>/<total>
             char buf[8];
@@ -172,7 +172,7 @@ static void draw_levels_overlay(void) {
     draw_vertical_navigation_arrows(25);
     graphics_set_font(ASSET_FONT_7X7);
 
-    const level_pack_info_t* info = &tworld_packs[game.current_pack];
+    const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
     level_idx_t number = game.pos_first_y * LEVELS_PER_SCREEN_H;
 
     // draw level pack title

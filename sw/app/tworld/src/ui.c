@@ -24,8 +24,6 @@
 
 static const char* const CHOICES_ON_OFF[] = {"OFF", "ON"};
 
-static char password[5];
-
 void open_main_menu_dialog(void) {
     dialog_init_hcentered(54, 96, 56);
     dialog.selection = 0;
@@ -66,7 +64,7 @@ void open_password_dialog(void) {
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
     dialog.selection = 0;
 
-    dialog_add_item_text("LEVEL PASSWORD:", 4, password);
+    dialog_add_item_text("LEVEL PASSWORD:", 4, tworld_packs.password_buf);
 }
 
 void open_pause_dialog(void) {

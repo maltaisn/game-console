@@ -22,10 +22,15 @@
 
 #include <core/flash.h>
 
-#define INDEX_POS_TITLE 10
-#define INDEX_POS_HINT 12
-#define INDEX_POS_TRAP_LINKS 14
-#define INDEX_POS_CLONER_LINKS 16
+#include <string.h>
+
+#define POS_LEVEL_INDEX 3
+#define POS_PASSWORD 6
+#define POS_INDEX_TITLE 10
+#define POS_INDEX_HINT 12
+#define POS_INDEX_TRAP_LINKS 14
+#define POS_INDEX_CLONER_LINKS 16
+#define POS_LAYER_DATA 18
 
 level_data_t tworld_data;
 
@@ -35,7 +40,7 @@ static flash_t get_level_pack_addr(level_pack_idx_t pack) {
 
 void level_read_packs(void) {
     uint16_t pos = 0;
-    level_pack_info_t* info = tworld_packs;
+    level_pack_info_t* info = tworld_packs.packs;
     for (level_pack_idx_t i = 0; i < LEVEL_PACK_COUNT; ++i) {
         flash_t addr = get_level_pack_addr(i);
         uint8_t header[3];
@@ -61,7 +66,7 @@ void level_read_packs(void) {
 void level_read_level(void) {
     // Read level pack index to get the start address of the current level.
     flash_t addr = get_level_pack_addr(game.current_pack);
-    flash_t index_addr = addr + 3;  // skip signature & level count field
+    flash_t index_addr = addr + POS_LEVEL_INDEX;
     for (level_idx_t i = 0; i <= game.current_level; ++i) {
         uint16_t offset;
         flash_read(index_addr, 2, &offset);
@@ -80,7 +85,7 @@ void level_read_level(void) {
     // bottom layer before top layer, row-major order and little-endian.
     // We only need to decompress it.
     uint16_t layer_data_size = buf[4] | buf[5] << 8;
-    lzss_decode(addr + 18, layer_data_size, tworld.bottom_layer);
+    lzss_decode(addr + POS_LAYER_DATA, layer_data_size, tworld.bottom_layer);
 
     tworld_init();
 }
@@ -96,12 +101,12 @@ void level_get_password(char password[LEVEL_PASSWORD_LENGTH]) {
 }
 
 void level_get_title(char title[LEVEL_TITLE_MAX_LENGTH]) {
-    flash_t addr = get_metadata_address(INDEX_POS_TITLE);
+    flash_t addr = get_metadata_address(POS_INDEX_TITLE);
     flash_read(addr, LEVEL_TITLE_MAX_LENGTH, title);
 }
 
 flash_t level_get_hint(void) {
-    return get_metadata_address(INDEX_POS_HINT);
+    return get_metadata_address(POS_INDEX_HINT);
 }
 
 static void get_links(links_t *links, uint8_t index_pos) {
@@ -115,11 +120,39 @@ static void get_links(links_t *links, uint8_t index_pos) {
 }
 
 void level_get_links(void) {
-    get_links(&trap_links, INDEX_POS_TRAP_LINKS);
-    get_links(&cloner_links, INDEX_POS_CLONER_LINKS);
+    get_links(&trap_links, POS_INDEX_TRAP_LINKS);
+    get_links(&cloner_links, POS_INDEX_CLONER_LINKS);
 }
 
-bool level_use_password(const char password[5]) {
-    // TODO
-    return true;
+bool level_use_password(void) {
+    // Iterate over unlocked level packs and iterate over levels in the pack to
+    // find a level with a password matching the given password.
+    char buf[4];
+    uint8_t mask = 1;
+    for (level_pack_idx_t i = 0; i < LEVEL_PACK_COUNT; ++i) {
+        if (game.options.unlocked_packs & mask) {
+            const level_pack_info_t* info = &tworld_packs.packs[i];
+
+            flash_t addr = get_level_pack_addr(i);
+            flash_t index_addr = addr + POS_LEVEL_INDEX;
+            addr += POS_PASSWORD;
+
+            for (level_idx_t j = 0; j <= info->total_levels; ++j) {
+                uint16_t offset;
+                flash_read(index_addr, 2, &offset);
+                addr += offset;
+                index_addr += 2;
+                flash_read(addr, sizeof buf, buf);
+                if (memcmp(tworld_packs.password_buf, buf, sizeof buf) == 0) {
+                    // Level found matching password, go to it.
+                    game.current_pack = i;
+                    game.current_level = j;
+                    return true;
+                }
+            }
+        }
+        mask <<= 1;
+    }
+
+    return false;
 }

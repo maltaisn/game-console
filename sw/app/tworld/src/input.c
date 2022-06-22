@@ -24,6 +24,8 @@
 #include <core/app.h>
 #include <core/dialog.h>
 
+#include <string.h>
+
 // mask indicating buttons which should be considered not pressed until released.
 static uint8_t input_wait_released;
 
@@ -98,7 +100,7 @@ static dialog_result_t handle_level_navigation_input(void) {
             }
         } else {
             // only start level if unlocked or previously completed.
-            const level_pack_info_t *info = &tworld_packs[game.current_pack];
+            const level_pack_info_t *info = &tworld_packs.packs[game.current_pack];
             level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
             if (level <= info->last_unlocked ||
                 info->completed_array[level / 8] & (1 << (level % 8))) {
@@ -120,7 +122,7 @@ static void setup_level_packs_selection(void) {
 }
 
 static void setup_level_selection(void) {
-    level_pack_info_t* info = &tworld_packs[game.current_pack];
+    level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
 
     // Find the last level in the consecutive streak of completed levels starting from the first.
     // The level after that is unlocked and will be selected by default.
@@ -191,7 +193,10 @@ game_state_t game_handle_input_dialog(void) {
         return GAME_STATE_LEVEL_COMPLETE;
 
     } else if (res == RESULT_ENTER_PASSWORD) {
-        // TODO
+        if (level_use_password()) {
+            level_read_level();
+            return GAME_STATE_PLAY;
+        }
         return GAME_STATE_LEVEL_PACKS;
 
     } else if (res == RESULT_OPEN_LEVEL_PACKS) {
@@ -203,6 +208,7 @@ game_state_t game_handle_input_dialog(void) {
         return GAME_STATE_LEVELS;
 
     } else if (res == RESULT_OPEN_PASSWORD) {
+        memset(tworld_packs.password_buf, 0, LEVEL_PASSWORD_LENGTH);
         return GAME_STATE_PASSWORD;
 
     } else if (res == RESULT_OPEN_OPTIONS) {

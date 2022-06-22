@@ -8,13 +8,43 @@ from pathlib import Path
 from typing import List, Optional, Union, Dict, Tuple, Iterable
 
 import numpy
-from PIL import Image as Img
 
 import lzss
 from tworld import TileWorld, Tile, Level, Actor, Entity, Direction
 
 sys.path.append(str(Path(__file__).absolute().parent / "../../../utils"))  # for standalone run
 from assets.types import PackResult, DataObject, PackError
+
+# LEVEL DATA FORMAT
+# The data format for a level pack is described below. All multi-byte fields are little-endian.
+#
+# - [0..1]: signature, 0x5754 ('TW')
+# - [2]: number of levels, -1 (=N)
+# - [3..(N*2+2)]: level index, with each entry being offset from previous level position.
+#     the first offset is from the start of level pack data
+# - level pack name: zero terminated string (max size 12 including terminator).
+# - level data:
+# - [0..1]: time limit in seconds. 0 for unlimited duration (max 999)
+# - [2..3]: required number of chips
+# - [4..5]: layer data size in bytes
+# - [6..9]: 4 letters password (only A-Z allowed)
+# - [10..17]: index from the start position of level data to various chunks, in order:
+#     - [10..11]: title
+#     - [12..13]: hint (0 if none)
+#     - [14..15]: trap-button linkage
+#     - [16..17]: cloner-button linkage
+# - [18..]: LZSS-compressed layer data. Uncompressed layout is:
+#     - [0..767]: bottom layer, 6-bit per tile
+#     - [768..1535]: top layer, 6-bit per tile
+# - title: zero terminated string, max 64 chars
+# - hint: zero terminated string, max 128 chars
+# - linkage (trap & cloner):
+#     - [0]: number of links (max 32)
+#     - [1..]: a list of chunks with the following format:
+#         - [0]: button x
+#         - [1]: button y
+#         - [2]: trap/cloner x
+#         - [3]: trap/cloner y
 
 # All tiles are re-encoded in tworld from MS DAT IDs.
 # Not all tiles can appear on bottom and top layers.
@@ -721,8 +751,6 @@ def create_config(args: argparse.Namespace) -> Config:
     return Config(input_file, output_file, input_file.stem)
 
 
-
-
 def readable_size(size: int) -> str:
     """Print size in human readable format, with units."""
     if size < 1024:
@@ -747,6 +775,7 @@ def create_level_data(config: Config) -> bytes:
           f"and {writer.warnings_count} warnings")
     print(f"Level data written to {config.output_file} ({readable_size(len(writer.data))})")
     return writer.data
+
 
 @dataclass(frozen=True)
 class LevelPackObject(DataObject):

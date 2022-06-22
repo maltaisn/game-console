@@ -18,10 +18,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List, Callable, Optional, Union, NoReturn, Dict, Set, Tuple, Generator
+from typing import Any, List, Callable, Optional, Union, NoReturn, Dict, Set, Tuple, Generator, \
+    Iterable
 
 from PIL import Image
-
 from assets import font_gen, image_gen, sound_gen
 from assets.codegen import CodeGenerator
 from assets.types import DataObject, PackResult, PackError, Location
@@ -86,20 +86,32 @@ class RawObject(DataObject):
 
 def register_raw_builders(packer) -> None:
     @packer.builder
-    def raw(data: bytes, *, unified_space: bool = False) -> DataObject:
-        return RawObject(data, unified_space)
+    def raw(data: Union[str, Iterable[int]], *, unified_space: bool = False):
+        if isinstance(data, str):
+            data = data.encode("ascii")
+        else:
+            data = bytes(data)
+        yield RawObject(data, unified_space)
 
     @packer.file_builder
-    def raw_file(filename: Path, *, unified_space: bool = False) -> DataObject:
+    def raw_file(filename: Path, *, unified_space: bool = False):
         try:
             with open(filename, "rb") as file:
-                return RawObject(file.read(), unified_space)
+                yield RawObject(file.read(), unified_space)
         except IOError as e:
             raise PackError(f"could not read raw file '{filename}': {e}")
 
 
 def uint_width_for_max(value: int) -> int:
     return math.ceil(math.log2(value) / 8)
+
+
+class GeneratorWrapper:
+    def __init__(self, gen):
+        self.gen = gen
+
+    def __iter__(self):
+        self.value = yield from self.gen
 
 
 @dataclass(frozen=True)
@@ -217,7 +229,7 @@ class Packer:
         return '_'.join(self._curr_group)
 
     @contextmanager
-    def group(self, name: str):
+    def group(self, name: str, location: Location = None):
         """Context manager used to create a new group.
         These can be nested to create nested groups."""
         if self._is_in_array:
@@ -233,58 +245,82 @@ class Packer:
             self._error(f"group '{group_name}' already exists. Groups cannot be split")
         self._group_names.add(group_name)
 
+        if not location:
+            location = self.location
+
+        old_location = self.location
+        self._location = location
         try:
             yield self
         finally:
+            self._location = old_location
             del self._curr_group[-1]
 
     @contextmanager
-    def array(self, name: str, array_type: ArrayType):
+    def array(self, name: str, array_type: ArrayType, location: Location = None):
         """Context manager used to create a new array. Arrays cannot be nested and cannot
         contain groups. Ideally, an array should contain objects of the same type, but this is
         not enforced (declarations are made assuming the type of the first object).
         All array types in all locations generate a macro that can be used transparently,
         without knowing how and where the array is stored. The macro result should be cached though.
         Different array types offer a size--performance compromise."""
-        if self.location == Location.INTERNAL and array_type == ArrayType.INDEXED_ABS_FLASH:
+        if not location:
+            location = self.location
+        if location == Location.INTERNAL and array_type == ArrayType.INDEXED_ABS_FLASH:
             self._error(f"{ArrayType.INDEXED_ABS_FLASH.name} array type "
                         f"cannot be stored in internal memory.")
         size_before = len(self._objects)
+        error = False
         try:
-            with self.group(name):
+            with self.group(name, location):
                 self._is_in_array = True
                 self._array_types[self._curr_group_name()] = array_type
                 yield
+        except:
+            # If there's an exception causing the array to be empty, the "empty array"
+            # error thrown below will hide that first exception and make debugging difficult.
+            error = True
+            raise
         finally:
             self._is_in_array = False
-            if size_before == len(self._objects):
+            if not error and size_before == len(self._objects):
                 self._error(f"array '{name}' is empty")
 
-    def builder(self, func: Callable[..., DataObject]):
-        """Decorator to use on a function to register as an object builder for the packer instance.
-        Builders take any number of parameters and keyword parameters and generate a packer method
-        with an additional name parameter (a required keyword-only parameter).
-        The decorated function can raise a PackError to indicate an error."""
+    def _add_objects(self, name: str, objects: List[DataObject]) -> None:
+        group = self._curr_group_name()
+        for i, obj in enumerate(objects):
+            obj_name = f"{name}_{i}" if len(objects) > 1 else name
+            self._objects.append(PackObject(obj_name, group, self.location, obj))
 
-        def wrapper(*args, name: Optional[str], **kwargs) -> None:
+    def builder(self, func: Generator[DataObject, None, Any]):
+        """
+        Decorator to use on a function to register as an object builder for the packer instance.
+        Builders take any number of parameters and keyword parameters and generate a packer method
+        with an additional "name" parameter (a required keyword-only parameter).
+        The decorated function is expected to yield zero or more DataObjects and may return a
+        value that will be returned afterwards by the builder.
+        It can also raise a PackError to indicate an error.
+        """
+
+        def wrapper(*args, name: Optional[str], **kwargs) -> Any:
             try:
-                data = func(*args, **kwargs)
+                gen = GeneratorWrapper(func(*args, **kwargs))
+                objects = list(gen)
             except PackError as e:
                 self._error(e, len(self._objects))
             name = self._check_name(name)
-            group = self._curr_group_name()
-            self._objects.append(PackObject(name, group, self.location, data))
+            self._add_objects(name, objects)
+            return gen.value
 
         setattr(self, func.__name__, wrapper)
         return func
 
-    def file_builder(self, func: Callable[..., DataObject]):
-        """Same as `builder` decorator but also adds a filename argument to the function as
+    def file_builder(self, func: Generator[DataObject, None, Any]):
+        """Same as `builder` decorator but also adds a "filename" argument to the function as
         the first parameter (non-keyword, Path type). Also the name parameter becomes optional
-        since it can be deduced automatically from the filename.
-        The decorated function can raise a PackError to indicate an error."""
+        since it can be deduced automatically from the filename."""
 
-        def wrapper(*args, name: Optional[str] = None, **kwargs) -> None:
+        def wrapper(*args, name: Optional[str] = None, **kwargs) -> Any:
             filename = args[0]
             filename = filename if isinstance(filename, Path) else Path(ASSETS_DIR, filename)
             if not filename.exists():
@@ -295,13 +331,13 @@ class Packer:
                 name = re.sub(r"[-_ .]+", "_", name)
 
             try:
-                data = func(filename, *args[1:], **kwargs)
+                gen = GeneratorWrapper(func(filename, *args[1:], **kwargs))
+                objects = list(gen)
             except PackError as e:
                 self._error(repr(e), len(self._objects))
             name = self._check_name(name)
-            group = self._curr_group_name()
-
-            self._objects.append(PackObject(name, group, self.location, data))
+            self._add_objects(name, objects)
+            return gen.value
 
         setattr(self, func.__name__, wrapper)
         return func
