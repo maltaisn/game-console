@@ -77,14 +77,16 @@ bool callback_loop(void) {
     uint8_t frame_delay = game.state == GAME_STATE_PLAY ?
                           millis_to_ticks(1000.0 / DISPLAY_MAX_FPS_GAME) :
                           millis_to_ticks(1000.0 / DISPLAY_MAX_FPS);
-    return time - last_draw_time > frame_delay;
+    if ((systime_t) (time - last_draw_time) >= frame_delay) {
+        // links are cached in display buffer memory, drawing will destroy them.
+        game.flags &= ~FLAG_LINKS_CACHED;
+        last_draw_time = time_get();
+        return true;
+    }
+    return false;
 }
 
 void callback_draw(void) {
-    // links are cached in display buffer memory, drawing will destroy them.
-    game.flags &= ~FLAG_LINKS_CACHED;
-
-    last_draw_time = time_get();
     draw();
 }
 

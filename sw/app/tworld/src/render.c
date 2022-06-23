@@ -30,6 +30,10 @@
 
 #include <string.h>
 
+#ifdef FPS_MONITOR
+#include <core/fpsmon.h>
+#endif
+
 #define ACTIVE_COLOR(cond) ((cond) ? 12 : 6)
 
 #define CONTROLS_COUNT 7
@@ -158,7 +162,7 @@ static void draw_level_packs_overlay(void) {
         graphics_image_4bit_mixed(image, 8, y + 3);
         y += 25;
 
-        if (index > LEVEL_PACK_COUNT) {
+        if (index >= LEVEL_PACK_COUNT) {
             break;
         }
         ++index;
@@ -302,4 +306,8 @@ void draw(void) {
             sysui_battery_overlay();
         }
     }
+
+#ifdef FPS_MONITOR
+    fpsmon_draw();
+#endif
 }

@@ -70,7 +70,7 @@ void lzss_decode(flash_t src, uint16_t length, void* dst) {
             const uint8_t *ref = out;
             if (b & 0x1) {
                 // two bytes encoding
-                uint16_t backref = (b | buf[buf_pos++] << 8) >> 1;
+                uint16_t backref = (uint16_t) (b | buf[buf_pos++] << 8) >> 1;
                 reflen = (backref & LENGTH_MASK2) + BREAKEVEN2;
                 ref -= backref >> LENGTH_BITS2;
                 --length;

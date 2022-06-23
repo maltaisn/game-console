@@ -21,6 +21,7 @@
 #include <core/defs.h>
 
 #include <stdint.h>
+#include <math.h>
 
 #define SYSTICK_FREQUENCY 256
 
@@ -28,7 +29,7 @@
  * Convert a number of milliseconds to a number of system ticks.
  * Note: this will return 0 if less than a system tick!
  */
-#define millis_to_ticks(n) ((systime_t) ((n) / 1000.0 * SYSTICK_FREQUENCY + 0.5))
+#define millis_to_ticks(n) ((systime_t) lround((n) / 1000.0 * SYSTICK_FREQUENCY))
 
 /**
  * Type used to store system time.
