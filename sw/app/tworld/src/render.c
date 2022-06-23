@@ -57,6 +57,36 @@ static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
         BUTTON_ACTION,
 };
 
+#define display_ystart_for_page(page) ((page) * DISPLAY_PAGE_HEIGHT)
+
+/**
+ * Draw the inventory overlay at the bottom of the screen.
+ */
+static void draw_inventory_overlay(void) {
+    // For performance, do early page check to avoid loading font and making unused draw calls.
+    // When the inventory is shown, 10 fewer tiles are drawn, performance should be ok.
+    if (sys_display_page_ystart >= display_ystart_for_page(4)) {
+        graphics_set_color(DISPLAY_COLOR_BLACK);
+        graphics_fill_rect(1, 99, 126, 28);
+        graphics_set_font(ASSET_FONT_7X7);
+        graphics_set_color(DISPLAY_COLOR_WHITE);
+        graphics_text(28, 102, "INVENTORY");
+    }
+    if (sys_display_page_ystart == display_ystart_for_page(5)) {
+        // create inventory content
+        uint8_t boot_mask = 1;
+        disp_x_t x = 8;
+        for (uint8_t i = 0; i < 4; ++i) {
+            tile_t key_tile = tworld.keys[i] > 0 ? tile_make_key(i) : TILE_FLOOR;
+            draw_bottom_tile(x, 112, key_tile);
+            x += GAME_TILE_SIZE;
+            tile_t boot_tile = tworld.boots & boot_mask ? tile_make_boots(i) : TILE_FLOOR;
+            draw_bottom_tile(x, 112, boot_tile);
+            x += GAME_TILE_SIZE;
+        }
+    }
+}
+
 /**
  * Draw the game tile map.
  */
@@ -68,7 +98,8 @@ static void draw_game(void) {
 
     disp_y_t y = 1;
     const uint8_t xend = xstart + GAME_MAP_SIZE;
-    const uint8_t yend = ystart + GAME_MAP_SIZE;
+    const uint8_t yend = ystart + (tworld_is_inventory_shown() ? GAME_MAP_SIZE - 2 : GAME_MAP_SIZE);
+
     for (grid_pos_t py = ystart; py < yend; ++py) {
         y += GAME_TILE_SIZE;  // at this point Y is the start coordinate of *next* tile.
         if (y < sys_display_page_ystart) {
@@ -97,6 +128,10 @@ static void draw_game(void) {
         }
 
         y += GAME_TILE_SIZE;
+    }
+
+    if (tworld_is_inventory_shown()) {
+        draw_inventory_overlay();
     }
 }
 

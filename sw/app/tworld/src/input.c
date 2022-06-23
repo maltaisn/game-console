@@ -317,9 +317,8 @@ game_state_t game_handle_input_tworld(void) {
             trace("action button click");
 
         } else if ((clicked & BUTTON_INVENTORY) == BUTTON_INVENTORY) {
-            // TODO show inventory
             click_processed |= BUTTON_INVENTORY;
-            trace("inventory button click");
+            tworld_toggle_inventory();
         }
     }
 

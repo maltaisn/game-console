@@ -38,6 +38,8 @@ enum {
     FLAG_CHIP_CAN_UNSLIDE = 1 << 4,
     // Indicates that chip is stuck on a teleporter.
     FLAG_CHIP_STUCK = 1 << 5,
+    // Indicates that inventory is currently shown.
+    FLAG_INVENTORY_SHOWN = 1 << 6,
     // Indicates that the level is untimed.
     FLAG_NO_TIME_LIMIT = 1 << 7,
 };
@@ -463,4 +465,12 @@ tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y) {
 
 actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y) {
     return get_top_tile(x, y);
+}
+
+bool tworld_is_inventory_shown(void) {
+    return (tworld.flags & FLAG_INVENTORY_SHOWN) != 0;
+}
+
+void tworld_toggle_inventory(void) {
+    tworld.flags ^= FLAG_INVENTORY_SHOWN;
 }

@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <game.h>
-#include <assets.h>
-#include <tworld.h>
-#include <ui.h>
-#include <render.h>
-#include <input.h>
-#include <save.h>
+#include "game.h"
+#include "assets.h"
+#include "tworld.h"
+#include "ui.h"
+#include "render.h"
+#include "input.h"
+#include "save.h"
 
 #include <core/callback.h>
 #include <core/graphics.h>

@@ -163,4 +163,14 @@ tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y);
  */
 actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y);
 
+/**
+ * Returns true if inventory is currently shown.
+ */
+bool tworld_is_inventory_shown(void);
+
+/**
+ * Toggle inventory visibility.
+ */
+void tworld_toggle_inventory(void);
+
 #endif //TWORLD_TWORLD_H

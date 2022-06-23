@@ -142,4 +142,11 @@ tile_t tile_with_toggle_state(tile_t tile, uint8_t state);
 /** Returns a toggle tile in the opposite state. */
 tile_t tile_toggle_state(tile_t tile);
 
+/** Returns a key tile of a particular variant. */
+tile_t tile_make_key(uint8_t variant);
+
+/** Returns a boot tile of a particular variant. */
+tile_t tile_make_boots(uint8_t variant);
+
+
 #endif //TWORLD_TWORLD_TILE_H

@@ -85,3 +85,11 @@ tile_t tile_with_toggle_state(tile_t tile, uint8_t state) {
 tile_t tile_toggle_state(tile_t tile) {
     return tile ^ 0x1;
 }
+
+tile_t tile_make_key(uint8_t variant) {
+    return TILE_KEY_BLUE | variant;
+}
+
+tile_t tile_make_boots(uint8_t variant) {
+    return TILE_BOOTS_WATER | variant;
+}
