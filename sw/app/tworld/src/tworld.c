@@ -208,7 +208,7 @@ static active_actor_t act_actor_with_pos(grid_pos_t x, grid_pos_t y) {
 
 static active_actor_t act_actor_create(grid_pos_t x, grid_pos_t y,
                                        step_t step, actor_state_t state) {
-    return x | state | (uint16_t) (y << 7) | (uint16_t) ((step + STEP_BIAS) << 12);
+    return x | state | (uint16_t) (y << 7) | (uint16_t) ((uint8_t) (step + STEP_BIAS) << 12);
 }
 
 static grid_pos_t act_actor_get_x(active_actor_t a) {
@@ -406,8 +406,46 @@ void tworld_init(void) {
     build_actor_list();
 }
 
-void tworld_update(uint8_t input_state) {
-    // TODO
+void tworld_update(void) {
+    active_actor_t chip = tworld.actors[0];
+    step_t step = act_actor_get_step(chip);
+    --step;
+
+    grid_pos_t ox = act_actor_get_x(chip);
+    grid_pos_t oy = act_actor_get_y(chip);
+    grid_pos_t nx = ox;
+    grid_pos_t ny = oy;
+    if (step <= 0) {
+        actor_t actor = ENTITY_CHIP;
+        if (tworld.input_state & DIR_NORTH_MASK) {
+            if (oy > 0) {
+                ny = oy - 1;
+            }
+            actor |= DIR_NORTH;
+        } else if (tworld.input_state & DIR_WEST_MASK) {
+            if (ox > 0) {
+                nx = ox - 1;
+            }
+            actor |= DIR_WEST;
+        } else if (tworld.input_state & DIR_SOUTH_MASK) {
+            if (oy < GRID_HEIGHT - 1) {
+                ny = oy + 1;
+            }
+            actor |= DIR_SOUTH;
+        } else if (tworld.input_state & DIR_EAST_MASK) {
+            if (ox < GRID_WIDTH - 1) {
+                nx = ox + 1;
+            }
+            actor |= DIR_EAST;
+        } else {
+            return;
+        }
+        set_top_tile(ox, oy, ACTOR_NONE);
+        set_top_tile(nx, ny, actor);
+        step = 4;
+    }
+
+    tworld.actors[0] = act_actor_create(nx, ny, step, ACTOR_STATE_NONE);
 }
 
 bool tworld_is_game_over(void) {
@@ -425,11 +463,4 @@ tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y) {
 
 actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y) {
     return get_top_tile(x, y);
-}
-
-void tworld_set_current_position(position_t pos, actor_t actor) {
-    active_actor_t chip = tworld.actors[0];
-    set_top_tile(act_actor_get_x(chip), act_actor_get_y(chip), ACTOR_NONE);
-    tworld.actors[0] = act_actor_create(pos.x, pos.y, 0, ACTOR_STATE_NONE);
-    set_top_tile(pos.x, pos.y, actor);
 }

@@ -19,15 +19,19 @@
 #include "assets.h"
 #include "save.h"
 #include "render.h"
-#include "ui.h"
 
 #include <core/app.h>
 #include <core/dialog.h>
+#include <core/trace.h>
 
 #include <string.h>
 
 // mask indicating buttons which should be considered not pressed until released.
 static uint8_t input_wait_released;
+// indicates pressed buttons for which click event has been processed.
+static uint8_t click_processed;
+// time since buttons was pressed, in game ticks.
+static uint8_t button_hold_time[BUTTONS_COUNT];
 
 static uint8_t preprocess_input_state() {
     uint8_t state = input_get_state();
@@ -100,7 +104,7 @@ static dialog_result_t handle_level_navigation_input(void) {
             }
         } else {
             // only start level if unlocked or previously completed.
-            const level_pack_info_t *info = &tworld_packs.packs[game.current_pack];
+            const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
             level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
             if (level <= info->last_unlocked ||
                 info->completed_array[level / 8] & (1 << (level % 8))) {
@@ -156,6 +160,11 @@ static void setup_level_selection(void) {
     }
 }
 
+static void start_level(void) {
+    level_read_level();
+    game_ignore_current_input();
+}
+
 game_state_t game_handle_input_dialog(void) {
     dialog_result_t res = dialog_handle_input();
 
@@ -172,7 +181,7 @@ game_state_t game_handle_input_dialog(void) {
     game.flags &= ~FLAG_DIALOG_SHOWN;
 
     if (res == RESULT_START_LEVEL) {
-        level_read_level();
+        start_level();
         return GAME_STATE_PLAY;
 
     } else if (res == RESULT_NEXT_LEVEL) {
@@ -194,7 +203,7 @@ game_state_t game_handle_input_dialog(void) {
 
     } else if (res == RESULT_ENTER_PASSWORD) {
         if (level_use_password()) {
-            level_read_level();
+            start_level();
             return GAME_STATE_PLAY;
         }
         return GAME_STATE_LEVEL_PACKS;
@@ -249,39 +258,69 @@ game_state_t game_handle_input_dialog(void) {
 }
 
 game_state_t game_handle_input_tworld(void) {
-//    uint8_t curr_state = preprocess_input_state();
+    const uint8_t curr_state = preprocess_input_state();
 
-    // TODO handle hint, inventory and pause input
+    // Create input direction bitfield.
+    uint8_t dir = 0;
+    if (curr_state & BUTTON_UP) {
+        dir |= DIR_NORTH_MASK;
+    }
+    if (curr_state & BUTTON_LEFT) {
+        dir |= DIR_WEST_MASK;
+    }
+    if (curr_state & BUTTON_DOWN) {
+        dir |= DIR_SOUTH_MASK;
+    }
+    if (curr_state & BUTTON_RIGHT) {
+        dir |= DIR_EAST_MASK;
+    }
+    tworld.input_state = dir;
 
-    // TEMP map navigation
-    uint8_t clicked = input_get_clicked();
-    position_t pos = tworld_get_current_position();
-    if (clicked & BUTTON_LEFT) {
-        if (pos.x > 0) {
-            tworld_set_current_position((position_t){.x = pos.x - 1, .y = pos.y},
-                                        actor_create(ENTITY_CHIP, DIR_WEST));
+    // update buttons hold time
+    // use hold time to determine which buttons were recently clicked.
+    uint8_t mask = BUTTON0;
+    uint8_t clicked = 0;  // clicked buttons (pressed and click wasn't processed)
+    uint8_t pressed_count = 0;  // number of pressed buttons
+    uint8_t last_hold_time = 0;
+    for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
+        uint8_t hold_time = button_hold_time[i];
+        if (curr_state & mask) {
+            // button pressed or held
+            if (hold_time != UINT8_MAX) {
+                ++hold_time;
+                if (!(click_processed & mask)) {
+                    // button is pressed and click wasn't processed yet: trigger a click.
+                    last_hold_time = hold_time;
+                    clicked |= mask;
+                }
+            }
+            ++pressed_count;
+        } else {
+            // button released
+            hold_time = 0;
+            click_processed &= ~mask;
         }
-    } else if (clicked & BUTTON_RIGHT) {
-        if (pos.x < GRID_WIDTH - 1) {
-            tworld_set_current_position((position_t){.x = pos.x + 1, .y = pos.y},
-                                        actor_create(ENTITY_CHIP, DIR_EAST));
-        }
+        button_hold_time[i] = hold_time;
+        mask <<= 1;
+    }
 
-    } else if (clicked & BUTTON_UP) {
-        if (pos.y > 0) {
-            tworld_set_current_position((position_t){.x = pos.x, .y = pos.y - 1},
-                                        actor_create(ENTITY_CHIP, DIR_NORTH));
-        }
+    if (clicked && (pressed_count > 1 || last_hold_time > BUTTON_COMBINATION_DELAY)) {
+        // If single button pressed, wait minimum time for other button to be pressed and
+        // create a two buttons combination. After that delay, treat as single button click.
+        if ((clicked & BUTTON_PAUSE) == BUTTON_PAUSE) {
+            click_processed |= BUTTON_PAUSE;
+            return GAME_STATE_PAUSE;
 
-    } else if (clicked & BUTTON_DOWN) {
-        if (pos.y < GRID_HEIGHT - 1) {
-            tworld_set_current_position((position_t){.x = pos.x, .y = pos.y + 1},
-                                        actor_create(ENTITY_CHIP, DIR_SOUTH));
-        }
+        } else if ((clicked & BUTTON_ACTION) == BUTTON_ACTION) {
+            // TODO show hint
+            click_processed |= BUTTON_ACTION;
+            trace("action button click");
 
-    } else if (clicked & BUTTON0) {
-        setup_level_packs_selection();
-        return GAME_STATE_LEVEL_PACKS;
+        } else if ((clicked & BUTTON_INVENTORY) == BUTTON_INVENTORY) {
+            // TODO show inventory
+            click_processed |= BUTTON_INVENTORY;
+            trace("inventory button click");
+        }
     }
 
     return GAME_STATE_PLAY;

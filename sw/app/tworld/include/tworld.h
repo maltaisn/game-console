@@ -108,6 +108,9 @@ typedef struct {
     actor_t teleported_chip;
     // Index of actor currently springing a trap, or INDEX_NONE if none.
     actor_idx_t actor_springing_trap;
+
+    // currently active input directions
+    uint8_t input_state;
 } level_t;
 
 /**
@@ -137,9 +140,8 @@ void tworld_init(void);
 /**
  * Advance the game state by a single tick (or step).
  * The level state must have been initialized first, and link data must be cached.
- * Input state is a bitfield with currently active directions.
  */
-void tworld_update(uint8_t input_state);
+void tworld_update(void);
 
 /**
  * Returns true if game is over (failed or completed).
@@ -160,8 +162,5 @@ tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y);
  * Returns the actor at a position in the game grid (or ACTOR_NONE if none).
  */
 actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y);
-
-// TEMP
-void tworld_set_current_position(position_t pos, actor_t actor);
 
 #endif //TWORLD_TWORLD_H

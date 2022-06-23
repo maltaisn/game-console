@@ -23,7 +23,9 @@
 #include <stdbool.h>
 #include <core/sound.h>
 
-// display frames per second
+// display maximum number of FPS, during gameplay.
+#define DISPLAY_MAX_FPS_GAME 16
+// same, but in all other game states, which don't require as high FPS rate.
 #define DISPLAY_MAX_FPS 8
 
 // game tick in number of system ticks, on which a state update is made and input is read.

@@ -74,7 +74,10 @@ bool callback_loop(void) {
 
     game.state = game_state_update(dt);
 
-    return time - last_draw_time > millis_to_ticks(1000.0 / DISPLAY_MAX_FPS);
+    uint8_t frame_delay = game.state == GAME_STATE_PLAY ?
+                          millis_to_ticks(1000.0 / DISPLAY_MAX_FPS_GAME) :
+                          millis_to_ticks(1000.0 / DISPLAY_MAX_FPS);
+    return time - last_draw_time > frame_delay;
 }
 
 void callback_draw(void) {
@@ -99,7 +102,7 @@ static game_state_t update_tworld_state(uint8_t dt) {
 
     // do game steps for all ticks
     for (uint8_t i = 0; i < dt; ++i) {
-        tworld_update(0);  // TODO input state
+        tworld_update();
     }
 
     return GAME_STATE_PLAY;

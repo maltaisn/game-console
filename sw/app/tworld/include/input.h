@@ -29,6 +29,10 @@
 #define BUTTON_INVENTORY (BUTTON4)
 #define BUTTON_ACTION    (BUTTON0)
 
+// If a single button is pressed, wait for this delay in game ticks for a
+// second button click to create a two-buttons combination.
+#define BUTTON_COMBINATION_DELAY 1
+
 /**
  * Handle dialog input, including navigation between dialogs and previewing options.
  */
