@@ -33,7 +33,6 @@ void eeprom_write(eeprom_t address, uint8_t length, const void* src) {
 #include <boot/defs.h>
 
 #include <sys/spi.h>
-#include <stdlib.h>
 
 #define INSTRUCTION_WREN 0x06
 #define INSTRUCTION_RDSR 0x05

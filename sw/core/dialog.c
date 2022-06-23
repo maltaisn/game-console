@@ -16,6 +16,7 @@
 
 #include <core/dialog.h>
 #include <core/utils.h>
+#include <core/trace.h>
 
 #ifndef DIALOG_NO_TEXT
 #include <string.h>

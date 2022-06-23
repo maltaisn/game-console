@@ -237,13 +237,13 @@ static void draw_memory_overlay(const mem_usage_t* usage, const void* index,
         y = 53;
         for (uint8_t i = 0; i < items_count; ++i) {
             uint24_t size = 0;
-            memcpy(&size, (uint8_t*) index + sizeof_index * usage->index[i + state.position] + 1,
-                   3);
+            memcpy(&size, (uint8_t*) index + sizeof_index *
+                                             usage->index[i + state.position] + 1, 3);
             uint8_t size_len = format_readable_size(buf, size);
             graphics_set_color(10);
             graphics_text((int8_t) (123 - size_len * 4), y, buf);
             y += 7;
-            draw_progress_bar(y, 4, size * PROGRESS_BAR_WIDTH / max_size);
+            draw_progress_bar(y, 4, (uint32_t) size * PROGRESS_BAR_WIDTH / max_size);
             y += 9;
         }
     }

@@ -28,7 +28,7 @@
  * Convert a number of milliseconds to a number of system ticks.
  * Note: this will return 0 if less than a system tick!
  */
-#define millis_to_ticks(n) ((systime_t) (n / 1000.0 * SYSTICK_FREQUENCY + 0.5))
+#define millis_to_ticks(n) ((systime_t) ((n) / 1000.0 * SYSTICK_FREQUENCY + 0.5))
 
 /**
  * Type used to store system time.

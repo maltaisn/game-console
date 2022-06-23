@@ -38,6 +38,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include "core/led.h"
 
 #define MUXPOS_CHARGE_STATUS ADC_MUXPOS_AIN7_gc
 #define MUXPOS_VBAT_LEVEL ADC_MUXPOS_AIN6_gc
@@ -115,6 +116,13 @@ static battery_status_t find_battery_status(uint8_t res) {
     return BATTERY_UNKNOWN;
 }
 
+static void reset_battery_state(void) {
+    _battery_percent = 0;
+    _battery_percent_buf_size = 0;
+    _battery_percent_update = 0;
+    _sampler_state = STATE_DONE;
+}
+
 ISR(ADC0_RESRDY_vect) {
     uint16_t res = ADC0.RES;
     const sampler_state_t state = _sampler_state;
@@ -130,9 +138,7 @@ ISR(ADC0_RESRDY_vect) {
         } else {
             // no battery, or vbat is sourced from vbus,
             // in which case we can't know the battery voltage.
-            _battery_percent = 0;
-            _battery_percent_buf_size = 0;
-            _sampler_state = STATE_DONE;
+            reset_battery_state();
         }
 
     } else if (state == STATE_LEVEL) {
@@ -383,14 +389,18 @@ void sys_power_enable_sleep(void) {
         // by disabling interrupts, there will be no way to wakeup from sleep.
         cli();
     }
-    sys_power_schedule_sleep_cancel();
     sleep_cpu();
 
     // --> wake-up from sleep
-    // reset power state because some time may have passed since device was put to sleep.
-    sys_power_battery_status = BATTERY_UNKNOWN;
-    _battery_percent_buf_size = 0;
+    // reset power state because some time may have passed since device was put to sleep,
+    // and we also want to force the computation of battery level.
+    sys_power_state = 0;
+    reset_battery_state();
+
     sys_init_wakeup();
+    // note that sys_power_enable_sleep() may be called from sys_init_wakeup, but the risk of
+    // recursion is limited because if this happens, device won't wakeup again (low battery).
+
     if (sys_app_get_loaded_id() != SYS_APP_ID_NONE) {
         __callback_wakeup();
     }

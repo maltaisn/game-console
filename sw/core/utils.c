@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-#include <core/utils.h>
+#ifdef BOOTLOADER
 
+#include <core/utils.h>
+#include <boot/defs.h>
+
+BOOTLOADER_NOINLINE
 char* uint8_to_str(char buf[static 4], uint8_t n) {
     char* ptr = &buf[3];
     *ptr = '\0';
@@ -25,3 +29,5 @@ char* uint8_to_str(char buf[static 4], uint8_t n) {
     } while (n);
     return ptr;
 }
+
+#endif //BOOTLOADER
