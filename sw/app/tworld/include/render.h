@@ -26,6 +26,9 @@
 #define GAME_MAP_SIZE 9
 #define GAME_TILE_SIZE 14
 
+// low timer overlay will be shown if time left is less than this value.
+#define LOW_TIMER_THRESHOLD (20 * TICKS_PER_SECOND)
+
 void draw(void);
 
 #endif //TWORLD_RENDER_H

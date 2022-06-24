@@ -78,7 +78,7 @@ void level_read_level(void) {
     // Read data from flash
     uint8_t buf[6];
     flash_read(addr, sizeof buf, buf);
-    tworld.time_limit = (buf[0] | buf[1] << 8) * TICKS_PER_SECOND;
+    tworld.time_left = (buf[0] | buf[1] << 8) * TICKS_PER_SECOND;
     tworld.chips_left = buf[2] | buf[3] << 8;
 
     // Layer data is encoded in the same format as used at runtime, 6 bits per tile,

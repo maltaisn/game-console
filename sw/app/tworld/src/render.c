@@ -59,21 +59,41 @@ static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
 
 #define display_ystart_for_page(page) ((page) * DISPLAY_PAGE_HEIGHT)
 
+static void set_7x7_font(void) {
+    graphics_set_font(ASSET_FONT_7X7);
+}
+
 /**
  * Draw the inventory overlay at the bottom of the screen.
+ * Also show the time left in at the top of the screen.
  */
 static void draw_inventory_overlay(void) {
     // For performance, do early page check to avoid loading font and making unused draw calls.
-    // When the inventory is shown, 10 fewer tiles are drawn, performance should be ok.
+    // When the inventory is shown, 19 fewer tiles are drawn, performance should be great.
+    set_7x7_font();
+
+    if (sys_display_page_ystart == display_ystart_for_page(0)) {
+        // top bar indicating time left
+        graphics_set_color(DISPLAY_COLOR_BLACK);
+        graphics_fill_rect(1, 1, 126, 14);
+        graphics_set_color(12);
+        graphics_text(4, 4, "TIME LEFT");
+        char buf[4];
+        format_time_left(buf);
+        graphics_set_color(DISPLAY_COLOR_WHITE);
+        graphics_text(101, 4, buf);
+        return;
+    }
+
     if (sys_display_page_ystart >= display_ystart_for_page(4)) {
+        // bottom bar
         graphics_set_color(DISPLAY_COLOR_BLACK);
         graphics_fill_rect(1, 99, 126, 28);
-        graphics_set_font(ASSET_FONT_7X7);
-        graphics_set_color(DISPLAY_COLOR_WHITE);
+        graphics_set_color(12);
         graphics_text(28, 102, "INVENTORY");
     }
     if (sys_display_page_ystart == display_ystart_for_page(5)) {
-        // create inventory content
+        // draw inventory content
         uint8_t boot_mask = 1;
         disp_x_t x = 8;
         for (uint8_t i = 0; i < 4; ++i) {
@@ -88,9 +108,26 @@ static void draw_inventory_overlay(void) {
 }
 
 /**
+ * Draw a 2 digit counter on the top right of the screen with the time left.
+ */
+static void draw_low_timer_overlay(void) {
+    if (sys_display_page_ystart == display_ystart_for_page(0)) {
+        graphics_set_color(DISPLAY_COLOR_BLACK);
+        graphics_fill_rect(108, 1, 19, 10);
+        set_7x7_font();
+        char buf[4];
+        buf[1] = '0';  // for when time < 10;
+        uint8_to_str(buf, tworld_time_left_in_seconds());
+        graphics_set_color(DISPLAY_COLOR_WHITE);
+        graphics_text(111, 2, buf + 1);
+    }
+}
+
+/**
  * Draw the game tile map.
  */
 static void draw_game(void) {
+
     // get grid position of first tile shown on the top left.
     position_t pos = tworld_get_current_position();
     grid_pos_t xstart = get_camera_pos(pos.x);
@@ -98,7 +135,15 @@ static void draw_game(void) {
 
     disp_y_t y = 1;
     const uint8_t xend = xstart + GAME_MAP_SIZE;
-    const uint8_t yend = ystart + (tworld_is_inventory_shown() ? GAME_MAP_SIZE - 2 : GAME_MAP_SIZE);
+    uint8_t yend = ystart + GAME_MAP_SIZE;
+
+    bool inventory_shown = game.flags & FLAG_INVENTORY_SHOWN;
+    if (inventory_shown) {
+        // top row and bottom 2 rows hidden, don't draw them.
+        ystart += 1;
+        yend -= 2;
+        y += 14;
+    }
 
     for (grid_pos_t py = ystart; py < yend; ++py) {
         y += GAME_TILE_SIZE;  // at this point Y is the start coordinate of *next* tile.
@@ -110,7 +155,7 @@ static void draw_game(void) {
         y -= GAME_TILE_SIZE;  // at this point Y is the start coordinate of *current* tile.
         if (y > sys_display_page_yend) {
             // after end of page.
-            return;
+            break;
         }
 
         disp_x_t x = 0;
@@ -130,8 +175,10 @@ static void draw_game(void) {
         y += GAME_TILE_SIZE;
     }
 
-    if (tworld_is_inventory_shown()) {
+    if (inventory_shown) {
         draw_inventory_overlay();
+    } else if (!tworld_is_level_untimed() && tworld.time_left <= LOW_TIMER_THRESHOLD) {
+        draw_low_timer_overlay();
     }
 }
 
@@ -183,7 +230,7 @@ static void draw_level_packs_overlay(void) {
             graphics_text(30, (int8_t) (y + 13), ptr1);
 
             // level pack name
-            graphics_set_font(ASSET_FONT_7X7);
+            set_7x7_font();
             graphics_text(30, (int8_t) (y + 3), info->name);
 
             if (game.options.unlocked_packs & (1 << index)) {
@@ -209,7 +256,7 @@ static void draw_level_packs_overlay(void) {
  */
 static void draw_levels_overlay(void) {
     draw_vertical_navigation_arrows(25);
-    graphics_set_font(ASSET_FONT_7X7);
+    set_7x7_font();
 
     const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
     level_idx_t number = game.pos_first_y * LEVELS_PER_SCREEN_H;

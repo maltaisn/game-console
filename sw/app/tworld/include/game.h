@@ -84,6 +84,7 @@ enum {
 enum {
     FLAG_DIALOG_SHOWN = 1 << 0,
     FLAG_LINKS_CACHED = 1 << 1,
+    FLAG_INVENTORY_SHOWN = 1 << 2,
 };
 
 typedef struct {

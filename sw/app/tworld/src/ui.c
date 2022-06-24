@@ -36,6 +36,8 @@ void open_main_menu_dialog(void) {
     dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_CONTROLS);
     dialog_add_item_button("OPTIONS", RESULT_OPEN_OPTIONS);
     dialog_add_item_button("EXIT", RESULT_TERMINATE);
+
+    level_read_packs();
 }
 
 void open_level_packs_dialog(void) {
@@ -43,8 +45,6 @@ void open_level_packs_dialog(void) {
     dialog.title = "LEVEL PACKS";
     dialog.dismiss_result = RESULT_OPEN_MAIN_MENU;
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
-
-    level_read_packs();
 }
 
 void open_levels_dialog(void) {

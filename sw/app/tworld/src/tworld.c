@@ -399,7 +399,7 @@ void tworld_init(void) {
     memset(&tworld.zero_init_start, 0,
            sizeof tworld - (tworld.zero_init_start - (uint8_t*) &tworld));
 
-    if (tworld.time_limit == 0) {
+    if (tworld.time_left == 0) {
         tworld.flags = FLAG_NO_TIME_LIMIT;
     }
     tworld.collided_with = ACTOR_INDEX_NONE;
@@ -409,6 +409,11 @@ void tworld_init(void) {
 }
 
 void tworld_update(void) {
+    // TEMP
+    if (tworld.time_left > 0) {
+        --tworld.time_left;
+    }
+
     active_actor_t chip = tworld.actors[0];
     step_t step = act_actor_get_step(chip);
     --step;
@@ -467,10 +472,6 @@ actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y) {
     return get_top_tile(x, y);
 }
 
-bool tworld_is_inventory_shown(void) {
-    return (tworld.flags & FLAG_INVENTORY_SHOWN) != 0;
-}
-
-void tworld_toggle_inventory(void) {
-    tworld.flags ^= FLAG_INVENTORY_SHOWN;
-}
+bool tworld_is_level_untimed(void) {
+    return tworld.flags & FLAG_NO_TIME_LIMIT;
+};

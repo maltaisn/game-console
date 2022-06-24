@@ -71,8 +71,8 @@ typedef struct {
     uint8_t bottom_layer[LEVEL_LAYER_SIZE];
     uint8_t top_layer[LEVEL_LAYER_SIZE];
 
-    // Time limit for level.
-    uint16_t time_limit;
+    // Time left for level (time limit initially).
+    uint16_t time_left;
     // Number of required chips left.
     uint16_t chips_left;
 
@@ -86,8 +86,6 @@ typedef struct {
 
     // Game flags (FLAG_* constants below).
     uint8_t flags;
-    // Current time elapsed since start, in ticks.
-    uint24_t current_time;
     // Number of keys held (in order: blue, red, green, yellow).
     uint8_t keys[LEVEL_KEY_COUNT];
     // Boots held (bitfield on bits 0 to 3).
@@ -164,13 +162,8 @@ tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y);
 actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y);
 
 /**
- * Returns true if inventory is currently shown.
+ * Returns true if there's no time limit for current level.
  */
-bool tworld_is_inventory_shown(void);
-
-/**
- * Toggle inventory visibility.
- */
-void tworld_toggle_inventory(void);
+bool tworld_is_level_untimed(void);
 
 #endif //TWORLD_TWORLD_H

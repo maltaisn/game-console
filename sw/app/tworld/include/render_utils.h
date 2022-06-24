@@ -24,6 +24,16 @@
 
 #include <core/graphics.h>
 
+#define tworld_time_left_in_seconds() \
+    ((uint16_t) (tworld.time_left + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND)
+
+/**
+ * Format the time left in in-game seconds to a buffer.
+ * The result is right aligned (3 chars width) and padded with spaces.
+ * Creates a "---" string if level is untimed.
+ */
+void format_time_left(char buf[static 4]);
+
 /**
  * From Chip's position on the grid (X or Y), return the first shown tile in that axis.
  */

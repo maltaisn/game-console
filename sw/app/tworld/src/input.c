@@ -309,6 +309,7 @@ game_state_t game_handle_input_tworld(void) {
         // create a two buttons combination. After that delay, treat as single button click.
         if ((clicked & BUTTON_PAUSE) == BUTTON_PAUSE) {
             click_processed |= BUTTON_PAUSE;
+            game.flags &= ~FLAG_INVENTORY_SHOWN;
             return GAME_STATE_PAUSE;
 
         } else if ((clicked & BUTTON_ACTION) == BUTTON_ACTION) {
@@ -318,7 +319,7 @@ game_state_t game_handle_input_tworld(void) {
 
         } else if ((clicked & BUTTON_INVENTORY) == BUTTON_INVENTORY) {
             click_processed |= BUTTON_INVENTORY;
-            tworld_toggle_inventory();
+            game.flags ^= FLAG_INVENTORY_SHOWN;
         }
     }
 

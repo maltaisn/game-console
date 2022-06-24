@@ -105,11 +105,9 @@ void save_dialog_options(void) {
     uint8_t volume = dialog.items[0].number.value;
     uint8_t contrast = dialog.items[2].number.value;
 
-    game.options = (game_options_t) {
-            .features = features,
-            .volume = volume,
-            .contrast = contrast,
-    };
+    game.options.features = features;
+    game.options.volume = volume;
+    game.options.contrast = contrast;
 
     // contrast, volume and music enabled were already changed during preview
 

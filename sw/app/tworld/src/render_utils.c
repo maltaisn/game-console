@@ -18,9 +18,12 @@
 #include "render.h"
 #include "defs.h"
 #include "assets.h"
+#include "tworld_level.h"
 
 #include <core/trace.h>
 #include <sys/display.h>
+
+#include <string.h>
 
 /**
  * Considering there's 4 bytes needed to transfer the command and address to the flash,
@@ -52,6 +55,26 @@
 #define LD_X(ptr, val) asm volatile("ld %0, %a1" : "=r" (val), "=x" (ptr) : "1" (ptr))
 #define ST_X_INC(ptr, val) asm volatile("st %a0+, %1" : "=x" (ptr) : "r" (val), "0" (ptr))
 #endif
+
+void format_time_left(char buf[static 4]) {
+    buf[0] = '0';
+    buf[1] = '0';
+    buf[3] = '\0';
+
+    if (tworld_is_level_untimed()) {
+        buf[0] = '-';
+        buf[1] = '-';
+        buf[2] = '-';
+        return;
+    }
+
+    char* ptr = &buf[3];
+    uint16_t time_left = tworld_time_left_in_seconds();
+    do {
+        *(--ptr) = (char) (time_left % 10 + '0');
+        time_left /= 10;
+    } while (time_left);
+}
 
 grid_pos_t get_camera_pos(const grid_pos_t pos) {
     int8_t start = (int8_t) (pos - GAME_MAP_SIZE / 2);
