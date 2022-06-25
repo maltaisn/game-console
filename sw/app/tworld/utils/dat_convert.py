@@ -36,7 +36,7 @@ from assets.types import PackResult, DataObject, PackError
 # - [18..]: LZSS-compressed layer data. Uncompressed layout is:
 #     - [0..767]: bottom layer, 6-bit per tile
 #     - [768..1535]: top layer, 6-bit per tile
-# - title: zero terminated string, max 64 chars
+# - title: zero terminated string, max 40 chars
 # - hint: zero terminated string, max 128 chars
 # - linkage (trap & cloner):
 #     - [0]: number of links (max 32)
@@ -291,6 +291,13 @@ class DatFileReader:
         time_limit = self._read(2)
         required_chips = self._read(2)
         self.pos += 2  # "unclear" field
+
+        if time_limit == 0:
+            time_limit = 0xffff  # untimed
+        elif time_limit >= 1000:
+            raise EncodeError("level time limit over 999 seconds")
+        else:
+            time_limit *= TileWorld.TICKS_PER_SECOND
 
         top_layer = self._read_layer()
         bottom_layer = self._read_layer()

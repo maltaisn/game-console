@@ -22,10 +22,6 @@
 #include <string.h>
 #endif
 
-#ifdef RUNTIME_CHECKS
-#include <core/trace.h>
-#endif
-
 #if defined(DIALOG_NO_CHOICE) && defined(DIALOG_NO_NUMBER)
 #define DIALOG_NO_SPINNER
 
@@ -47,6 +43,16 @@ static const char TEXT_FIELD_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-*!";
 dialog_t dialog;
 
 void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height) {
+#ifdef RUNTIME_CHECKS
+    if (width > 126 || height > 126) {
+        trace("dialog size out of bounds");
+        return;
+    }
+    if (x >= DISPLAY_WIDTH || y >= DISPLAY_HEIGHT) {
+        trace("dialog position out of bounds");
+        return;
+    }
+#endif
     dialog.flags = 0;
     dialog.x = x;
     dialog.y = y;

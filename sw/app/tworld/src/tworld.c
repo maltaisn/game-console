@@ -399,7 +399,7 @@ void tworld_init(void) {
     memset(&tworld.zero_init_start, 0,
            sizeof tworld - (tworld.zero_init_start - (uint8_t*) &tworld));
 
-    if (tworld.time_left == 0) {
+    if (tworld.time_left == TIME_LEFT_NONE) {
         tworld.flags = FLAG_NO_TIME_LIMIT;
     }
     tworld.collided_with = ACTOR_INDEX_NONE;
@@ -410,7 +410,7 @@ void tworld_init(void) {
 
 void tworld_update(void) {
     // TEMP
-    if (tworld.time_left > 0) {
+    if (!(tworld.flags & FLAG_NO_TIME_LIMIT) && tworld.time_left > 0) {
         --tworld.time_left;
     }
 

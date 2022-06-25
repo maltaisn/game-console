@@ -42,10 +42,11 @@ typedef enum {
     GAME_STATE_OPTIONS = 2,
     // states with no background
     GAME_STATE_PASSWORD,
-    GAME_STATE_LEVEL_PACKS,  // no battery indicator (first)
-    GAME_STATE_LEVELS,  // no battery indicator
+    GAME_STATE_LEVEL_PACKS,
+    GAME_STATE_LEVELS,
     // states with game background
-    GAME_STATE_PLAY,  // no battery indicator (last)
+    GAME_STATE_PLAY,
+    GAME_STATE_LEVEL_INFO,
     GAME_STATE_LEVEL_FAIL,
     GAME_STATE_LEVEL_COMPLETE,
     GAME_STATE_OPTIONS_PLAY,
@@ -55,6 +56,7 @@ typedef enum {
 
 // all dialog result codes
 enum {
+    RESULT_LEVEL_INFO,
     RESULT_START_LEVEL,
     RESULT_NEXT_LEVEL,
     RESULT_PAUSE,
@@ -117,6 +119,7 @@ typedef struct {
     // game-related
     level_pack_idx_t current_pack;
     level_idx_t current_level;
+    uint16_t current_level_pos;
 } game_t;
 
 extern game_t game;

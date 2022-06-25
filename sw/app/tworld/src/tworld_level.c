@@ -43,6 +43,7 @@ void level_read_packs(void) {
     level_pack_info_t* info = tworld_packs.packs;
     for (level_pack_idx_t i = 0; i < LEVEL_PACK_COUNT; ++i) {
         flash_t addr = get_level_pack_addr(i);
+
         uint8_t header[3];
         flash_read(addr, sizeof header, header);
         if (header[0] != 0x54 || header[1] != 0x57) {
@@ -51,8 +52,10 @@ void level_read_packs(void) {
             info->completed_levels = 0;
             return;
         }
+
         uint8_t count = header[2] + 1;
         addr += count * 2 + 3;
+        info->pos = pos;
         info->total_levels = count;
 
         flash_read(addr, LEVEL_PACK_NAME_MAX_LENGTH, &info->name);
@@ -78,7 +81,7 @@ void level_read_level(void) {
     // Read data from flash
     uint8_t buf[6];
     flash_read(addr, sizeof buf, buf);
-    tworld.time_left = (buf[0] | buf[1] << 8) * TICKS_PER_SECOND;
+    tworld.time_left = buf[0] | buf[1] << 8;
     tworld.chips_left = buf[2] | buf[3] << 8;
 
     // Layer data is encoded in the same format as used at runtime, 6 bits per tile,
@@ -100,16 +103,15 @@ void level_get_password(char password[LEVEL_PASSWORD_LENGTH]) {
     flash_read(tworld.addr + 4, LEVEL_PASSWORD_LENGTH, password);
 }
 
-void level_get_title(char title[LEVEL_TITLE_MAX_LENGTH]) {
-    flash_t addr = get_metadata_address(POS_INDEX_TITLE);
-    flash_read(addr, LEVEL_TITLE_MAX_LENGTH, title);
+flash_t level_get_title(void) {
+    return get_metadata_address(POS_INDEX_TITLE);
 }
 
 flash_t level_get_hint(void) {
     return get_metadata_address(POS_INDEX_HINT);
 }
 
-static void get_links(links_t *links, uint8_t index_pos) {
+static void get_links(links_t* links, uint8_t index_pos) {
     flash_t addr = get_metadata_address(index_pos);
     uint8_t size;
     flash_read(addr, 1, &size);
@@ -147,6 +149,7 @@ bool level_use_password(void) {
                     // Level found matching password, go to it.
                     game.current_pack = i;
                     game.current_level = j;
+                    game.current_level_pos = info->pos + j;
                     return true;
                 }
             }

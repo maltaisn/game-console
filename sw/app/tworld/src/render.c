@@ -21,6 +21,7 @@
 #include "assets.h"
 #include "input.h"
 #include "tworld_level.h"
+#include "save.h"
 
 #include <core/graphics.h>
 #include <core/sysui.h>
@@ -79,7 +80,7 @@ static void draw_inventory_overlay(void) {
         graphics_set_color(12);
         graphics_text(4, 4, "TIME LEFT");
         char buf[4];
-        format_time_left(buf);
+        format_time_left(tworld.time_left, buf);
         graphics_set_color(DISPLAY_COLOR_WHITE);
         graphics_text(101, 4, buf);
         return;
@@ -117,7 +118,7 @@ static void draw_low_timer_overlay(void) {
         set_7x7_font();
         char buf[4];
         buf[1] = '0';  // for when time < 10;
-        uint8_to_str(buf, tworld_time_left_in_seconds());
+        uint8_to_str(buf, time_left_to_seconds(tworld.time_left));
         graphics_set_color(DISPLAY_COLOR_WHITE);
         graphics_text(111, 2, buf + 1);
     }
@@ -177,7 +178,7 @@ static void draw_game(void) {
 
     if (inventory_shown) {
         draw_inventory_overlay();
-    } else if (!tworld_is_level_untimed() && tworld.time_left <= LOW_TIMER_THRESHOLD) {
+    } else if (tworld.time_left <= LOW_TIMER_THRESHOLD) {
         draw_low_timer_overlay();
     }
 }
@@ -328,6 +329,31 @@ static void draw_levels_overlay(void) {
 }
 
 /**
+ * Draw the content for the level info dialog.
+ */
+static void draw_level_info_overlay(void) {
+    // level title, centered on 1-2 lines
+    flash_t title = level_get_title();
+    uint8_t lines = find_text_line_count(title, 122);
+    disp_y_t y = lines == 2 ? 39 : 44;
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    draw_text_wrap(3, y, 122, 2, title, true);
+
+    graphics_set_color(10);
+    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    graphics_text(30, 61, "TIME LIMIT");
+    graphics_text(34, 70, "BEST TIME");
+
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    set_7x7_font();
+    char buf[4];
+    format_time_left(tworld.time_left, buf);
+    graphics_text(74, 60, buf);
+    format_time_left(get_best_level_time(game.current_level_pos), buf);
+    graphics_text(74, 69, buf);
+}
+
+/**
  * Draw the content for the controls dialog.
  */
 static void draw_controls_overlay(void) {
@@ -381,10 +407,12 @@ void draw(void) {
             draw_level_packs_overlay();
         } else if (s == GAME_STATE_LEVELS) {
             draw_levels_overlay();
+        } else if (s == GAME_STATE_LEVEL_INFO) {
+            draw_level_info_overlay();
         } else if (s == GAME_STATE_CONTROLS || s == GAME_STATE_CONTROLS_PLAY) {
             draw_controls_overlay();
         }
-        if (s < GAME_STATE_LEVEL_PACKS || s > GAME_STATE_PLAY) {
+        if (s < GAME_STATE_LEVEL_PACKS || s > GAME_STATE_LEVEL_INFO) {
             sysui_battery_overlay();
         }
     }

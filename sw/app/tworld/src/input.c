@@ -107,9 +107,10 @@ static dialog_result_t handle_level_navigation_input(void) {
             const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
             level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
             if (level <= info->last_unlocked ||
-                info->completed_array[level / 8] & (1 << (level % 8))) {
+                    info->completed_array[level / 8] & (1 << (level % 8))) {
                 game.current_level = level;
-                return RESULT_START_LEVEL;
+                game.current_level_pos = info->pos + level;
+                return RESULT_LEVEL_INFO;
             }
         }
     }
@@ -180,7 +181,11 @@ game_state_t game_handle_input_dialog(void) {
     }
     game.flags &= ~FLAG_DIALOG_SHOWN;
 
-    if (res == RESULT_START_LEVEL) {
+    if (res == RESULT_LEVEL_INFO) {
+        start_level();
+        return GAME_STATE_LEVEL_INFO;
+
+    } else if (res == RESULT_START_LEVEL) {
         start_level();
         return GAME_STATE_PLAY;
 
@@ -204,7 +209,7 @@ game_state_t game_handle_input_dialog(void) {
     } else if (res == RESULT_ENTER_PASSWORD) {
         if (level_use_password()) {
             start_level();
-            return GAME_STATE_PLAY;
+            return GAME_STATE_LEVEL_INFO;
         }
         return GAME_STATE_LEVEL_PACKS;
 

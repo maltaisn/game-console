@@ -148,11 +148,17 @@ static void read_level_time_block(eeprom_t addr, uint16_t times[4]) {
     times[3] = block.time3;
 }
 
-uint16_t get_best_level_time(uint16_t pos) {
+time_left_t get_best_level_time(uint16_t pos) {
     eeprom_t addr = SAVE_TIME_POS + pos / 4 * 5;
     uint16_t times[4];
     read_level_time_block(addr, times);
-    return times[pos % 4];
+
+    uint16_t time = times[pos % 4];
+    if (time == SAVE_TIME_NONE) {
+        return TIME_LEFT_NONE;
+    } else {
+        return time * TICKS_PER_SECOND;
+    }
 }
 
 void fill_completed_levels_array(uint16_t pos, uint8_t size, level_pack_info_t *info) {

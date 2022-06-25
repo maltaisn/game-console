@@ -24,15 +24,12 @@
 
 #include <core/graphics.h>
 
-#define tworld_time_left_in_seconds() \
-    ((uint16_t) (tworld.time_left + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND)
-
 /**
- * Format the time left in in-game seconds to a buffer.
- * The result is right aligned (3 chars width) and padded with spaces.
- * Creates a "---" string if level is untimed.
+ * Format the time left in in-game seconds to a buffer from the specified time in game ticks.
+ * The result is right aligned (3 chars width) and padded with zeroes.
+ * Creates a "---" string if the time is `SAVE_TIME_NONE` (e.g. if untimed or unknown).
  */
-void format_time_left(char buf[static 4]);
+void format_time_left(time_left_t time, char buf[static 4]);
 
 /**
  * From Chip's position on the grid (X or Y), return the first shown tile in that axis.
@@ -52,5 +49,25 @@ void draw_bottom_tile(disp_x_t x, disp_y_t y, tile_t tile);
  * X position must be even.
  */
 void draw_top_tile(disp_x_t x, disp_y_t y, actor_t tile);
+
+/**
+ * Draw text in a box at top left coordinates and with specified dimensions,
+ * wrapping text at the end of lines. The text can be left aligned or centered.
+ * The text is drawn in the 5x7 font with current color.
+ * Text is stored in flash.
+ */
+void draw_text_wrap(disp_x_t x, disp_y_t y, uint8_t width, uint8_t max_lines,
+                    flash_t text, bool centered);
+
+/**
+ * Returns the address in flash for the start of a text line to be drawn in a box.
+ */
+flash_t find_text_line_start(flash_t text, uint8_t width, uint8_t line);
+
+/**
+ * Returns the number of lines for a text stored in flash, to be drawn with `draw_text_wrap`.
+ */
+uint8_t find_text_line_count(flash_t text, uint8_t width);
+
 
 #endif //TWORLD_RENDER_UTILS_H

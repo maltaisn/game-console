@@ -125,12 +125,14 @@ static game_state_t game_state_update(uint8_t dt) {
         // all other states show a dialog, and it wasn't initialized yet.
         if (s == GAME_STATE_MAIN_MENU) {
             open_main_menu_dialog();
+        } else if (s == GAME_STATE_PASSWORD) {
+            open_password_dialog();
         } else if (s == GAME_STATE_LEVEL_PACKS) {
             open_level_packs_dialog();
         } else if (s == GAME_STATE_LEVELS) {
             open_levels_dialog();
-        } else if (s == GAME_STATE_PASSWORD) {
-            open_password_dialog();
+        } else if (s == GAME_STATE_LEVEL_INFO) {
+            open_level_info_dialog();
         } else if (s == GAME_STATE_PAUSE) {
             open_pause_dialog();
         } else if (s == GAME_STATE_LEVEL_FAIL) {

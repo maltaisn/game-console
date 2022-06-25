@@ -39,6 +39,8 @@
 #define GRID_HEIGHT 32
 #define GRID_SIZE (GRID_WIDTH * GRID_HEIGHT)
 
+#define TIME_LEFT_NONE 0xffff
+
 typedef enum {
     END_CAUSE_NONE,
     END_CAUSE_COMPLETE,
@@ -48,6 +50,13 @@ typedef enum {
     END_CAUSE_OUTOFTIME,
     END_CAUSE_COLLIDED,
 } end_cause_t;
+
+/** Time left in a level in game ticks, or `TIME_LEFT_NONE` if untimed or not applicable. */
+typedef uint16_t time_left_t;
+
+/** Convert a game time in ticks to a game time in seconds, rounding up. */
+#define time_left_to_seconds(time) \
+        (uint16_t) ((uint16_t) ((time) + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND)
 
 /** Position on the grid (X or Y), between 0 and 31. */
 typedef uint8_t grid_pos_t;
@@ -72,7 +81,7 @@ typedef struct {
     uint8_t top_layer[LEVEL_LAYER_SIZE];
 
     // Time left for level (time limit initially).
-    uint16_t time_left;
+    time_left_t time_left;
     // Number of required chips left.
     uint16_t chips_left;
 
@@ -160,10 +169,5 @@ tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y);
  * Returns the actor at a position in the game grid (or ACTOR_NONE if none).
  */
 actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y);
-
-/**
- * Returns true if there's no time limit for current level.
- */
-bool tworld_is_level_untimed(void);
 
 #endif //TWORLD_TWORLD_H

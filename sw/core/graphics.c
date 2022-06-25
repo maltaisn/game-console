@@ -1222,7 +1222,7 @@ void graphics_text_wrap(const int8_t x, const int8_t y, const uint8_t wrap_x, co
         if (!next_wrap_pos) {
             // find the last space before text line wraps.
             int8_t glyph_end_x;
-            bool overflow = __builtin_add_overflow(x, graphics_font.glyph_size, &glyph_end_x);
+            bool overflow = __builtin_add_overflow(x, graphics_font.width, &glyph_end_x);
             const char* pos = text;
             while (true) {
                 if (!*pos) {

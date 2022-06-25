@@ -44,6 +44,8 @@ typedef uint8_t level_idx_t;
  * Data structure for a level pack.
  */
 typedef struct {
+    // Position in the global level list (for EEPROM).
+    uint16_t pos;
     // Number of levels in the pack
     uint8_t total_levels;
     // Number of completed levels in the pack
@@ -100,7 +102,7 @@ void level_get_password(char password[LEVEL_PASSWORD_LENGTH]);
  * Copy the level title from flash to a buffer.
  * A level must be loaded before using this.
  */
-void level_get_title(char title[LEVEL_TITLE_MAX_LENGTH]);
+flash_t level_get_title(void);
 
 /**
  * Returns the address in flash of the start of the hint for current level.

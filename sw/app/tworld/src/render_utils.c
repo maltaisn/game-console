@@ -56,24 +56,24 @@
 #define ST_X_INC(ptr, val) asm volatile("st %a0+, %1" : "=x" (ptr) : "r" (val), "0" (ptr))
 #endif
 
-void format_time_left(char buf[static 4]) {
+void format_time_left(time_left_t time, char buf[static 4]) {
     buf[0] = '0';
     buf[1] = '0';
     buf[3] = '\0';
 
-    if (tworld_is_level_untimed()) {
+    if (time == TIME_LEFT_NONE) {
         buf[0] = '-';
         buf[1] = '-';
         buf[2] = '-';
         return;
     }
 
+    time = time_left_to_seconds(time);
     char* ptr = &buf[3];
-    uint16_t time_left = tworld_time_left_in_seconds();
     do {
-        *(--ptr) = (char) (time_left % 10 + '0');
-        time_left /= 10;
-    } while (time_left);
+        *(--ptr) = (char) (time % 10 + '0');
+        time /= 10;
+    } while (time);
 }
 
 grid_pos_t get_camera_pos(const grid_pos_t pos) {
@@ -259,4 +259,130 @@ start:
 
         disp_buf += DISPLAY_NUM_COLS - TOP_TILE_COLS;
     }
+}
+
+#define FLAG_END_OF_TEXT 0x80
+#define TEXT_UTILS_WIDTH 5  // width of text drawn for utility text functions
+#define TEXT_UTILS_HEIGHT 10  // height of text drawn for text functions + line spacing
+
+typedef struct {
+    uint8_t width;
+    uint8_t leading_spaces;
+    bool end_of_text;
+} line_width_result_t;
+
+/**
+ * Find number of chars in a text line stored in flash, to be drawn in a box of a certain width.
+ * Any leading and trailing spaces are not counted.
+ * If no breaking space is found before the end of the line, line is split in middle of word.
+ */
+static line_width_result_t find_text_line_width(flash_t text, uint8_t width) {
+    char buf[16];
+    const char* ptr;
+
+#ifdef RUNTIME_CHECKS
+    if (width < TEXT_UTILS_WIDTH) {
+        trace("text box width too small");
+    }
+#endif
+
+    // subtract width of last character from box width.
+    ++width;
+
+    line_width_result_t result;
+    result.end_of_text = false;
+    result.leading_spaces = 0;
+
+    uint8_t line_chars = 0;  // number of chars currently in the line.
+    uint8_t line_width = 0;  // current line width in pixels.
+    uint8_t skipped_spaces = 0;  // number of spaces since first space of current run was found.
+    uint8_t last_wrap_pos = 0;  // position of first space in current run.
+
+    goto start;
+    while (line_width <= width) {
+        if (ptr == buf + sizeof buf)
+start:
+            {
+                flash_read(text, sizeof buf, buf);
+                text += sizeof buf;
+                ptr = buf;
+            }
+        char c = *ptr++;
+
+        if (c == '\0') {
+            last_wrap_pos = line_chars;
+            result.end_of_text = true;
+            break;
+        } else if (c <= ' ') {
+            if (line_chars == 0) {
+                // leading space
+                ++result.leading_spaces;
+                continue;
+            } else if (c == '\n') {
+                last_wrap_pos = line_chars;
+                break;
+            } else if (skipped_spaces == 0) {
+                last_wrap_pos = line_chars;
+            }
+            ++skipped_spaces;
+            continue;
+        }
+
+        ++skipped_spaces; // +1 for current non-space character.
+        line_chars += skipped_spaces;
+        line_width += skipped_spaces * (TEXT_UTILS_WIDTH + GRAPHICS_GLYPH_SPACING);
+        skipped_spaces = 0;
+    }
+
+    // if no space was found (no wrap position), split the line on the first word.
+    result.width = (last_wrap_pos == 0 ? line_chars - 1 : last_wrap_pos);
+    return result;
+}
+
+void draw_text_wrap(const disp_x_t x, disp_y_t y, const uint8_t width,
+                    const uint8_t max_lines, flash_t text, const bool centered) {
+    graphics_set_font(ASSET_FONT_5X7);
+    char buf[24];
+    for (uint8_t i = 0; i < max_lines; ++i) {
+        const line_width_result_t result = find_text_line_width(text, width);
+
+        text += result.leading_spaces;
+        flash_read(text, result.width, buf);
+        buf[result.width] = '\0';
+        text += result.width;
+
+        disp_x_t px = x;
+        if (centered) {
+            const uint8_t line_width = (uint8_t) (result.width * (TEXT_UTILS_WIDTH + 1)) - 1;
+            px += (uint8_t) (width - line_width) / 2;
+        }
+        graphics_text((int8_t) px, (int8_t) y, buf);
+
+        if (result.end_of_text) {
+            break;
+        }
+
+        y += TEXT_UTILS_HEIGHT;
+    }
+}
+
+flash_t find_text_line_start(flash_t text, uint8_t width, uint8_t line) {
+    line_width_result_t result;
+    for (uint8_t i = 0; i < line; ++i) {
+        result = find_text_line_width(text, width);
+        text += result.width + result.leading_spaces;
+    }
+    return text;
+}
+
+uint8_t find_text_line_count(flash_t text, const uint8_t width) {
+    // iterate over the text by finding the number of chars in each wrapped lines.
+    line_width_result_t result;
+    uint8_t lines = 0;
+    do {
+        result = find_text_line_width(text, width);
+        text += result.width + result.leading_spaces;
+        ++lines;
+    } while (!result.end_of_text);
+    return lines;
 }

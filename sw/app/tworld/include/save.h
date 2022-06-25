@@ -36,11 +36,11 @@ void update_sound_volume(uint8_t volume);
 void update_music_enabled(void);
 
 /**
- * Returns the best time for a completed level or `SAVE_TIME_NONE` if not completed.
- * The time is given in number of seconds left when level is completed.
- * Returns the number of completed levels.
+ * Returns the best time for a completed level or `TIME_LEFT_NONE` if not completed.
+ * The time is given in number of game ticks left when level is completed,
+ * rounded to an in-game second.
  */
-uint16_t get_best_level_time(uint16_t pos);
+time_left_t get_best_level_time(uint16_t pos);
 
 /**
  * For `size` levels starting at `pos`, set a bit in the completed levels bitset to 1

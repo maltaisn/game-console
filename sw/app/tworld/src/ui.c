@@ -54,6 +54,13 @@ void open_levels_dialog(void) {
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
 }
 
+void open_level_info_dialog(void) {
+    dialog_init_centered(126, 56);
+    dialog.pos_btn = "START";
+    dialog.selection = DIALOG_SELECTION_POS;
+    dialog.pos_result = RESULT_START_LEVEL;
+}
+
 void open_password_dialog(void) {
     dialog_init_centered(100, 52);
     dialog.title = "GO TO LEVEL";

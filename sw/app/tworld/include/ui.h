@@ -28,6 +28,8 @@ void open_levels_dialog(void);
 
 void open_password_dialog(void);
 
+void open_level_info_dialog(void);
+
 void open_pause_dialog(void);
 
 void open_options_dialog(uint8_t result_pos, uint8_t result_neg);
