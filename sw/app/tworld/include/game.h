@@ -36,17 +36,21 @@
 #define MAX_DELTA_TIME 4
 
 typedef enum {
-    // states with art background
     GAME_STATE_MAIN_MENU = 0,
     GAME_STATE_CONTROLS = 1,
     GAME_STATE_OPTIONS = 2,
-    // states with no background
+    GAME_SSEP_COVER_BG,
     GAME_STATE_PASSWORD,
+    GAME_SSEP_NO_BAT_START,
+    GAME_SSEP_VERT_NAV_START,
     GAME_STATE_LEVEL_PACKS,
     GAME_STATE_LEVELS,
-    // states with game background
+    GAME_SSEP_LEVEL_BG,
+    GAME_STATE_HINT,
+    GAME_SSEP_VERT_NAV_END,
     GAME_STATE_PLAY,
     GAME_STATE_LEVEL_INFO,
+    GAME_SSEP_NO_BAT_END,
     GAME_STATE_LEVEL_FAIL,
     GAME_STATE_LEVEL_COMPLETE,
     GAME_STATE_OPTIONS_PLAY,

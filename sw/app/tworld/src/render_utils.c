@@ -19,6 +19,7 @@
 #include "defs.h"
 #include "assets.h"
 #include "tworld_level.h"
+#include "game.h"
 
 #include <core/trace.h>
 #include <sys/display.h>
@@ -385,4 +386,12 @@ uint8_t find_text_line_count(flash_t text, const uint8_t width) {
         ++lines;
     } while (!result.end_of_text);
     return lines;
+}
+
+void draw_vertical_navigation_arrows(uint8_t top_y, uint8_t bottom_y) {
+    graphics_set_color(ACTIVE_COLOR(game.pos_first_y > 0));
+    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_UP, 62, top_y);
+    graphics_set_color(ACTIVE_COLOR((int8_t) game.pos_first_y <=
+                                    (int8_t) (game.pos_max_y - game.pos_shown_y)));
+    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_DOWN, 62, bottom_y);
 }

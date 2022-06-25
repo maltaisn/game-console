@@ -135,6 +135,8 @@ static game_state_t game_state_update(uint8_t dt) {
             open_level_info_dialog();
         } else if (s == GAME_STATE_PAUSE) {
             open_pause_dialog();
+        } else if (s == GAME_STATE_HINT) {
+            open_hint_dialog();
         } else if (s == GAME_STATE_LEVEL_FAIL) {
             open_level_fail_dialog();
         } else if (s == GAME_STATE_LEVEL_COMPLETE) {

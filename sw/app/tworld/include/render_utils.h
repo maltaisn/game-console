@@ -24,6 +24,8 @@
 
 #include <core/graphics.h>
 
+#define ACTIVE_COLOR(cond) ((cond) ? 12 : 6)
+
 /**
  * Format the time left in in-game seconds to a buffer from the specified time in game ticks.
  * The result is right aligned (3 chars width) and padded with zeroes.
@@ -69,5 +71,9 @@ flash_t find_text_line_start(flash_t text, uint8_t width, uint8_t line);
  */
 uint8_t find_text_line_count(flash_t text, uint8_t width);
 
+/**
+ * Draw up and down navigation arrows for current dialog, at specified positions.
+ */
+void draw_vertical_navigation_arrows(uint8_t top_y, uint8_t bottom_y);
 
 #endif //TWORLD_RENDER_UTILS_H

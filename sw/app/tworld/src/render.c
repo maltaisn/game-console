@@ -35,8 +35,6 @@
 #include <core/fpsmon.h>
 #endif
 
-#define ACTIVE_COLOR(cond) ((cond) ? 12 : 6)
-
 #define CONTROLS_COUNT 7
 
 static const char* const CONTROL_NAMES[CONTROLS_COUNT] = {
@@ -190,19 +188,11 @@ static void draw_main_menu(void) {
     // TODO
 }
 
-static void draw_vertical_navigation_arrows(uint8_t top_y) {
-    graphics_set_color(ACTIVE_COLOR(game.pos_first_y > 0));
-    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_UP, 62, top_y);
-    graphics_set_color(ACTIVE_COLOR(game.pos_first_y <=
-                                    (uint8_t) (game.pos_max_y - game.pos_shown_y)));
-    graphics_image_1bit_mixed(ASSET_IMAGE_ARROW_DOWN, 62, 122);
-}
-
 /**
  * Draw the content for the level pack selection dialog.
  */
 static void draw_level_packs_overlay(void) {
-    draw_vertical_navigation_arrows(16);
+    draw_vertical_navigation_arrows(16, 122);
 
     uint8_t index = game.pos_first_y;
     disp_y_t y = 21;
@@ -256,7 +246,7 @@ static void draw_level_packs_overlay(void) {
  * Draw the content for the level selection dialog.
  */
 static void draw_levels_overlay(void) {
-    draw_vertical_navigation_arrows(25);
+    draw_vertical_navigation_arrows(25, 122);
     set_7x7_font();
 
     const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
@@ -333,9 +323,9 @@ static void draw_levels_overlay(void) {
  */
 static void draw_level_info_overlay(void) {
     // level title, centered on 1-2 lines
-    flash_t title = level_get_title();
-    uint8_t lines = find_text_line_count(title, 122);
-    disp_y_t y = lines == 2 ? 39 : 44;
+    const flash_t title = level_get_title();
+    const uint8_t lines = find_text_line_count(title, 122);
+    const disp_y_t y = lines == 2 ? 39 : 44;
     graphics_set_color(DISPLAY_COLOR_WHITE);
     draw_text_wrap(3, y, 122, 2, title, true);
 
@@ -351,6 +341,17 @@ static void draw_level_info_overlay(void) {
     graphics_text(74, 60, buf);
     format_time_left(get_best_level_time(game.current_level_pos), buf);
     graphics_text(74, 69, buf);
+}
+
+/**
+ * Draw the content for the hint dialog.
+ */
+static void draw_hint_overlay(void) {
+    draw_vertical_navigation_arrows(34, 91);
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    const flash_t hint = find_text_line_start(
+            level_get_hint(), HINT_TEXT_WIDTH, game.pos_selection_y);
+    draw_text_wrap(8, 39, HINT_TEXT_WIDTH, HINT_LINES_PER_SCREEN, hint, false);
 }
 
 /**
@@ -384,7 +385,7 @@ static void draw_controls_overlay(void) {
 
 void draw(void) {
     game_state_t s = game.state;
-    if (s >= GAME_STATE_PLAY) {
+    if (s >= GAME_SSEP_LEVEL_BG) {
         // there's no point in clearing the full display, most of it will be redrawn for the grid.
         // only clear the outer border on which tiles aren't drawn.
         graphics_set_color(DISPLAY_COLOR_BLACK);
@@ -396,7 +397,7 @@ void draw(void) {
 
     } else {
         graphics_clear(DISPLAY_COLOR_BLACK);
-        if (s <= GAME_STATE_CONTROLS) {
+        if (s <= GAME_SSEP_COVER_BG) {
             draw_main_menu();
         }
     }
@@ -409,10 +410,12 @@ void draw(void) {
             draw_levels_overlay();
         } else if (s == GAME_STATE_LEVEL_INFO) {
             draw_level_info_overlay();
+        } else if (s == GAME_STATE_HINT) {
+            draw_hint_overlay();
         } else if (s == GAME_STATE_CONTROLS || s == GAME_STATE_CONTROLS_PLAY) {
             draw_controls_overlay();
         }
-        if (s < GAME_STATE_LEVEL_PACKS || s > GAME_STATE_LEVEL_INFO) {
+        if (!(s >= GAME_SSEP_NO_BAT_START && s <= GAME_SSEP_NO_BAT_END)) {
             sysui_battery_overlay();
         }
     }

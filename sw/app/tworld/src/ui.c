@@ -88,6 +88,14 @@ void open_pause_dialog(void) {
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
 }
 
+void open_hint_dialog(void) {
+    dialog_init_centered(120, 88);
+    dialog.title = "HINT";
+    dialog.pos_btn = "OK";
+    dialog.selection = DIALOG_SELECTION_POS;
+    dialog.pos_result = RESULT_RESUME;
+}
+
 void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
     dialog_init_hcentered(26, 108, 67);
     dialog.title = "GAME OPTIONS";

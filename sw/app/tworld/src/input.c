@@ -19,10 +19,10 @@
 #include "assets.h"
 #include "save.h"
 #include "render.h"
+#include "render_utils.h"
 
 #include <core/app.h>
 #include <core/dialog.h>
-#include <core/trace.h>
 
 #include <string.h>
 
@@ -54,7 +54,7 @@ static void apply_options_dialog_changes(void) {
     update_music_enabled();
 }
 
-static dialog_result_t handle_level_navigation_input(void) {
+static dialog_result_t handle_vertical_navigation_input(void) {
     uint8_t clicked = input_get_clicked();
     if (clicked & BUTTON_LEFT) {
         if (game.pos_selection_x > 0) {
@@ -102,7 +102,8 @@ static dialog_result_t handle_level_navigation_input(void) {
                 game.current_pack = game.pos_selection_y;
                 return RESULT_OPEN_LEVELS;
             }
-        } else {
+
+        } else if (game.state == GAME_STATE_LEVELS) {
             // only start level if unlocked or previously completed.
             const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
             level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
@@ -112,8 +113,9 @@ static dialog_result_t handle_level_navigation_input(void) {
                 game.current_level_pos = info->pos + level;
                 return RESULT_LEVEL_INFO;
             }
-        }
+        } // else game.state == GAME_STATE_HINT
     }
+
     return DIALOG_RESULT_NONE;
 }
 
@@ -161,6 +163,23 @@ static void setup_level_selection(void) {
     }
 }
 
+static bool show_hint_if_needed(void) {
+    const position_t pos = tworld_get_current_position();
+    if (tworld_get_bottom_tile(pos.x, pos.y) != TILE_HINT) {
+        return false;
+    }
+
+    const flash_t hint = level_get_hint();
+    uint8_t lines = find_text_line_count(hint, HINT_TEXT_WIDTH);
+    game.pos_selection_x = 0;
+    game.pos_selection_y = 0;
+    game.pos_first_y = 0;
+    game.pos_max_x = 0;
+    game.pos_max_y = lines > HINT_LINES_PER_SCREEN ? lines - HINT_LINES_PER_SCREEN : 0;
+    game.pos_shown_y = 1;
+    return true;
+}
+
 static void start_level(void) {
     level_read_level();
     game_ignore_current_input();
@@ -172,8 +191,8 @@ game_state_t game_handle_input_dialog(void) {
     if (game.state == GAME_STATE_OPTIONS || game.state == GAME_STATE_OPTIONS_PLAY) {
         apply_options_dialog_changes();
     } else if (res == DIALOG_RESULT_NONE &&
-               (game.state == GAME_STATE_LEVELS || game.state == GAME_STATE_LEVEL_PACKS)) {
-        res = handle_level_navigation_input();
+               (game.state >= GAME_SSEP_VERT_NAV_START || game.state <= GAME_SSEP_VERT_NAV_END)) {
+        res = handle_vertical_navigation_input();
     }
 
     if (res == DIALOG_RESULT_NONE) {
@@ -318,9 +337,11 @@ game_state_t game_handle_input_tworld(void) {
             return GAME_STATE_PAUSE;
 
         } else if ((clicked & BUTTON_ACTION) == BUTTON_ACTION) {
-            // TODO show hint
             click_processed |= BUTTON_ACTION;
-            trace("action button click");
+            if (show_hint_if_needed()) {
+                game.flags &= ~FLAG_INVENTORY_SHOWN;
+                return GAME_STATE_HINT;
+            }
 
         } else if ((clicked & BUTTON_INVENTORY) == BUTTON_INVENTORY) {
             click_processed |= BUTTON_INVENTORY;

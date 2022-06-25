@@ -32,6 +32,8 @@ void open_level_info_dialog(void);
 
 void open_pause_dialog(void);
 
+void open_hint_dialog(void);
+
 void open_options_dialog(uint8_t result_pos, uint8_t result_neg);
 
 void open_controls_dialog(uint8_t result);
