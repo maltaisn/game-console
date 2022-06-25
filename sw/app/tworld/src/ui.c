@@ -89,7 +89,7 @@ void open_pause_dialog(void) {
 }
 
 void open_hint_dialog(void) {
-    dialog_init_centered(120, 88);
+    dialog_init_centered(120, 87);
     dialog.title = "HINT";
     dialog.pos_btn = "OK";
     dialog.selection = DIALOG_SELECTION_POS;

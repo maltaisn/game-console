@@ -96,15 +96,17 @@ static game_state_t update_tworld_state(uint8_t dt) {
         return new_state;
     }
 
-    // cache trap and cloner links if needed
-    if (!(game.flags & FLAG_LINKS_CACHED)) {
-        level_get_links();
-        game.flags |= FLAG_LINKS_CACHED;
-    }
+    if (game.flags & FLAG_GAME_STARTED) {
+        // cache trap and cloner links if needed
+        if (!(game.flags & FLAG_LINKS_CACHED)) {
+            level_get_links();
+            game.flags |= FLAG_LINKS_CACHED;
+        }
 
-    // do game steps for all ticks
-    for (uint8_t i = 0; i < dt; ++i) {
-        tworld_update();
+        // do game steps for all ticks
+        for (uint8_t i = 0; i < dt; ++i) {
+            tworld_update();
+        }
     }
 
     return GAME_STATE_PLAY;

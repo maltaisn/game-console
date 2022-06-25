@@ -347,7 +347,7 @@ static void draw_level_info_overlay(void) {
  * Draw the content for the hint dialog.
  */
 static void draw_hint_overlay(void) {
-    draw_vertical_navigation_arrows(34, 91);
+    draw_vertical_navigation_arrows(34, 90);
     graphics_set_color(DISPLAY_COLOR_WHITE);
     const flash_t hint = find_text_line_start(
             level_get_hint(), HINT_TEXT_WIDTH, game.pos_selection_y);

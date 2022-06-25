@@ -56,7 +56,12 @@ void draw_top_tile(disp_x_t x, disp_y_t y, actor_t tile);
  * Draw text in a box at top left coordinates and with specified dimensions,
  * wrapping text at the end of lines. The text can be left aligned or centered.
  * The text is drawn in the 5x7 font with current color.
- * Text is stored in flash.
+ *
+ * Differences from `graphics_text_wrap`:
+ * - Text is stored in flash instead of RAM.
+ * - Text has a maximum height.
+ * - Ability to center align text.
+ * - Measurement utilities provided (line start & line count).
  */
 void draw_text_wrap(disp_x_t x, disp_y_t y, uint8_t width, uint8_t max_lines,
                     flash_t text, bool centered);

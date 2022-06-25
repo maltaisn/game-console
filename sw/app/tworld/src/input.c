@@ -182,7 +182,10 @@ static bool show_hint_if_needed(void) {
 
 static void start_level(void) {
     level_read_level();
+
+    // don't immediately start updating the game state, wait for first input.
     game_ignore_current_input();
+    game.flags &= ~FLAG_GAME_STARTED;
 }
 
 game_state_t game_handle_input_dialog(void) {
@@ -297,6 +300,9 @@ game_state_t game_handle_input_tworld(void) {
     }
     if (curr_state & BUTTON_RIGHT) {
         dir |= DIR_EAST_MASK;
+    }
+    if (dir) {
+        game.flags |= FLAG_GAME_STARTED;
     }
     tworld.input_state = dir;
 

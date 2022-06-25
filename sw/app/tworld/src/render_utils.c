@@ -314,14 +314,15 @@ start:
             last_wrap_pos = line_chars;
             result.end_of_text = true;
             break;
+        } else if (c == '\n') {
+            // The line ends here. Include the '\n' in the line, the character is invisible anyway.
+            last_wrap_pos = line_chars + 1;
+            break;
         } else if (c <= ' ') {
             if (line_chars == 0) {
                 // leading space
                 ++result.leading_spaces;
                 continue;
-            } else if (c == '\n') {
-                last_wrap_pos = line_chars;
-                break;
             } else if (skipped_spaces == 0) {
                 last_wrap_pos = line_chars;
             }
