@@ -97,7 +97,7 @@ void open_hint_dialog(void) {
 }
 
 void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
-    dialog_init_hcentered(26, 108, 67);
+    dialog_init_hcentered(48, 108, 67);
     dialog.title = "GAME OPTIONS";
     dialog.pos_btn = "OK";
     dialog.neg_btn = "Cancel";
@@ -114,7 +114,7 @@ void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
 }
 
 void open_controls_dialog(uint8_t result) {
-    dialog_init_hcentered(9, 108, 100);
+    dialog_init_hcentered(12, 108, 100);
     dialog.title = "HOW TO PLAY";
     dialog.pos_btn = "OK";
     dialog.pos_result = result;

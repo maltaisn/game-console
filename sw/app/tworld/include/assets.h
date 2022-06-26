@@ -5,36 +5,37 @@
 #include <core/data.h>
 #include <core/defs.h>
 
-#define ASSET_MUSIC_TEMPO 60
+#define ASSET_MUSIC_TEMPO 80
 
 #define ASSET_COVER data_flash(0x0000)
 
-#define ASSET_MUSIC_THEME0 data_flash(0x0181)
-#define ASSET_MUSIC_THEME1 data_flash(0x0420)
+#define ASSET_MUSIC_THEME0 data_flash(0x0d07)
+#define ASSET_MUSIC_THEME1 data_flash(0x0e7e)
 
-#define ASSET_FONT_5X7 data_flash(0x0599)
-#define ASSET_FONT_7X7 data_flash(0x0761)
+#define ASSET_FONT_5X7 data_flash(0x1116)
+#define ASSET_FONT_7X7 data_flash(0x12de)
 
-#define ASSET_IMAGE_ARROW_UP data_flash(0x08fd)
-#define ASSET_IMAGE_ARROW_DOWN data_flash(0x0904)
-#define ASSET_IMAGE_PACK_PASSWORD data_flash(0x090b)
-#define ASSET_IMAGE_PACK_LOCKED data_flash(0x0982)
+#define ASSET_IMAGE_ARROW_UP data_flash(0x147a)
+#define ASSET_IMAGE_ARROW_DOWN data_flash(0x1481)
+#define ASSET_IMAGE_MENU data_flash(0x1488)
+#define ASSET_IMAGE_PACK_PASSWORD data_flash(0x2925)
+#define ASSET_IMAGE_PACK_LOCKED data_flash(0x299c)
 
 extern const uint8_t ASSET_TILESET_MAP_BOTTOM[];
 extern const uint8_t ASSET_TILESET_MAP_TOP[];
 
 #define ASSET_IMAGE_PACK_PROGRESS_SIZE 9
-#define ASSET_IMAGE_PACK_PROGRESS_ADDR 0x0a04
+#define ASSET_IMAGE_PACK_PROGRESS_ADDR 0x2a1e
 #define ASSET_IMAGE_PACK_PROGRESS_OFFSET 103
 #define asset_image_pack_progress(n) data_flash(ASSET_IMAGE_PACK_PROGRESS_ADDR + (n) * ASSET_IMAGE_PACK_PROGRESS_OFFSET)
 
 #define ASSET_TILESET_BOTTOM_SIZE 52
-#define ASSET_TILESET_BOTTOM_ADDR 0x0da3
+#define ASSET_TILESET_BOTTOM_ADDR 0x2dbd
 #define ASSET_TILESET_BOTTOM_OFFSET 112
 #define asset_tileset_bottom(n) (ASSET_TILESET_BOTTOM_ADDR + (n) * ASSET_TILESET_BOTTOM_OFFSET)
 
 #define ASSET_TILESET_TOP_SIZE 24
-#define ASSET_TILESET_TOP_ADDR 0x2463
+#define ASSET_TILESET_TOP_ADDR 0x447d
 #define ASSET_TILESET_TOP_OFFSET 112
 #define asset_tileset_top(n) (ASSET_TILESET_TOP_ADDR + (n) * ASSET_TILESET_TOP_OFFSET)
 

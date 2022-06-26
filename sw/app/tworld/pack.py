@@ -24,6 +24,8 @@ with p.group("image"):
     p.image("arrow-up.png")
     p.image("arrow-down.png")
 
+    p.image("menu.png")
+
     p.image("pack/pack-password.png")
     p.image("pack/pack-locked.png")
     with p.array("pack_progress", ArrayType.REGULAR):

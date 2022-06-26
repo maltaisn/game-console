@@ -43,7 +43,7 @@ static const char* const CONTROL_NAMES[CONTROLS_COUNT] = {
         "Go right",
         "Go up",
         "Go down",
-        "Show items",
+        "Show inventory",
         "View hint",
 };
 static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
@@ -185,7 +185,7 @@ static void draw_game(void) {
  * Draw the main menu screen.
  */
 static void draw_main_menu(void) {
-    // TODO
+    graphics_image_4bit_mixed(ASSET_IMAGE_MENU, 0, 0);
 }
 
 /**
@@ -359,7 +359,7 @@ static void draw_hint_overlay(void) {
  */
 static void draw_controls_overlay(void) {
     graphics_set_font(ASSET_FONT_5X7);
-    disp_y_t y = 25;
+    disp_y_t y = 28;
     for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
         // control name text
         graphics_set_color(DISPLAY_COLOR_WHITE);
@@ -395,11 +395,10 @@ void draw(void) {
 
         draw_game();
 
+    } else if (s <= GAME_SSEP_COVER_BG) {
+        draw_main_menu();
     } else {
         graphics_clear(DISPLAY_COLOR_BLACK);
-        if (s <= GAME_SSEP_COVER_BG) {
-            draw_main_menu();
-        }
     }
 
     if (game.flags & FLAG_DIALOG_SHOWN) {
