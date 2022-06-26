@@ -21,6 +21,7 @@
 #include "render.h"
 #include "input.h"
 #include "save.h"
+#include "music.h"
 
 #include <core/callback.h>
 #include <core/graphics.h>
@@ -47,7 +48,7 @@ void callback_setup(void) {
 #endif
 
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, ASSET_FONT_3X5_BUILTIN);
-    sound_set_tempo(ASSET_MUSIC_TEMPO);
+    sound_set_tempo(encode_bpm_tempo(ASSET_MUSIC_TEMPO));
 
     // load saved (or default) settings and apply them.
     load_from_eeprom();
@@ -72,6 +73,7 @@ bool callback_loop(void) {
 
     input_latch();
 
+    game_music_update(dt);
     game.state = game_state_update(dt);
 
     uint8_t frame_delay = game.state == GAME_STATE_PLAY ?

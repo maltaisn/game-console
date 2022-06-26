@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-#include <save.h>
-#include <assets.h>
-#include <game.h>
+#include "save.h"
+#include "assets.h"
+#include "game.h"
+#include "music.h"
 
 #include <core/eeprom.h>
 #include <core/dialog.h>
@@ -129,7 +130,16 @@ void update_sound_volume(uint8_t volume) {
 }
 
 void update_music_enabled(void) {
-    // TODO
+    if (game.options.features & GAME_FEATURE_MUSIC) {
+        if (game.state >= GAME_SSEP_LEVEL_BG) {
+            game_music_start_level_music(0);
+        } else {
+            // TODO menu music
+            game_music_stop();
+        }
+    } else {
+        game_music_stop();
+    }
 }
 
 struct time_block {

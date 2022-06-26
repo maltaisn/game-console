@@ -20,6 +20,7 @@
 #include "save.h"
 #include "render.h"
 #include "render_utils.h"
+#include "music.h"
 
 #include <core/app.h>
 #include <core/dialog.h>
@@ -108,7 +109,7 @@ static dialog_result_t handle_vertical_navigation_input(void) {
             const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
             level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
             if (level <= info->last_unlocked ||
-                    info->completed_array[level / 8] & (1 << (level % 8))) {
+                info->completed_array[level / 8] & (1 << (level % 8))) {
                 game.current_level = level;
                 game.current_level_pos = info->pos + level;
                 return RESULT_LEVEL_INFO;
@@ -205,9 +206,13 @@ game_state_t game_handle_input_dialog(void) {
 
     if (res == RESULT_LEVEL_INFO) {
         start_level();
+        game_music_start_level_music(MUSIC_FLAG_DELAYED);
         return GAME_STATE_LEVEL_INFO;
 
     } else if (res == RESULT_START_LEVEL) {
+        return GAME_STATE_PLAY;
+
+    } else if (res == RESULT_RESTART_LEVEL) {
         start_level();
         return GAME_STATE_PLAY;
 
@@ -231,6 +236,7 @@ game_state_t game_handle_input_dialog(void) {
     } else if (res == RESULT_ENTER_PASSWORD) {
         if (level_use_password()) {
             start_level();
+            game_music_start_level_music(MUSIC_FLAG_DELAYED);
             return GAME_STATE_LEVEL_INFO;
         }
         return GAME_STATE_LEVEL_PACKS;
@@ -281,6 +287,7 @@ game_state_t game_handle_input_dialog(void) {
         app_terminate();
     }
 
+    game_music_stop();  // TODO menu music
     return GAME_STATE_MAIN_MENU;
 }
 
