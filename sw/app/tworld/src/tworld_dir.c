@@ -54,10 +54,10 @@ direction_t direction_left(direction_t dir) {
     return (dir + 1) % 4;
 }
 
-uint8_t direction_to_mask(direction_t dir) {
+direction_mask_t direction_to_mask(direction_t dir) {
     return DIR_TO_MASK[dir];
 }
 
-direction_t direction_from_mask(uint8_t mask) {
+direction_t direction_from_mask(direction_mask_t mask) {
     return DIR_FROM_MASK[mask];
 }

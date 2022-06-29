@@ -293,7 +293,7 @@ class DatFileReader:
         self.pos += 2  # "unclear" field
 
         if time_limit == 0:
-            time_limit = 0xffff  # untimed
+            time_limit = TileWorld.TIME_LIMIT_NONE
         elif time_limit >= 1000:
             raise EncodeError("level time limit over 999 seconds")
         else:
@@ -619,8 +619,7 @@ class DatFileWriter:
         DatFileWriter._preprocess_layers_unlinked(level, bottom_layer, top_layer)
         DatFileWriter._preprocess_layers_static_blocks(bottom_layer, top_layer)
         DatFileWriter._preprocess_layers_static_monsters(bottom_layer, top_layer)
-        DatFileWriter._preprocess_layers_static_monsters(bottom_layer, top_layer)
-        DatFileWriter._preprocess_layers_ghost_blocks(bottom_layer, top_layer)
+        # DatFileWriter._preprocess_layers_ghost_blocks(bottom_layer, top_layer)
 
         # count non-static actors
         actor_count = 0

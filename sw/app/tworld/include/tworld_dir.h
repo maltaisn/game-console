@@ -27,13 +27,15 @@ typedef enum {
     DIR_EAST = 0x3,
 } direction_t;
 
-#define DIR_NORTH_MASK (1 << DIR_NORTH)
-#define DIR_WEST_MASK (1 << DIR_WEST)
-#define DIR_SOUTH_MASK (1 << DIR_SOUTH)
-#define DIR_EAST_MASK (1 << DIR_EAST)
-
-#define DIR_VERTICAL_MASK (DIR_NORTH_MASK | DIR_SOUTH_MASK)
-#define DIR_HORIZONTAL_MASK (DIR_WEST | DIR_EAST)
+typedef enum {
+    DIR_NORTH_MASK = 1 << DIR_NORTH,
+    DIR_WEST_MASK = 1 << DIR_WEST,
+    DIR_SOUTH_MASK = 1 << DIR_SOUTH,
+    DIR_EAST_MASK = 1 << DIR_EAST,
+    DIR_VERTICAL_MASK = DIR_NORTH_MASK | DIR_SOUTH_MASK,
+    DIR_HORIZONTAL_MASK = DIR_WEST_MASK | DIR_EAST_MASK,
+    // typedef is also used for any combination of the above.
+} direction_mask_t;
 
 /** Returns the direction opposite to the given direction. */
 direction_t direction_back(direction_t dir);
@@ -45,9 +47,9 @@ direction_t direction_right(direction_t dir);
 direction_t direction_left(direction_t dir);
 
 /** Returns the direction mask for a direction. */
-uint8_t direction_to_mask(direction_t dir);
+direction_mask_t direction_to_mask(direction_t dir);
 
 /** Returns the direction for a direction mask. */
-direction_t direction_from_mask(uint8_t mask);
+direction_t direction_from_mask(direction_mask_t mask);
 
 #endif //TWORLD_TWORLD_DIR_H

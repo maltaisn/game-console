@@ -41,6 +41,7 @@
 
 #define TIME_LEFT_NONE 0xffff
 
+/** Cause of death for an actor, also used to indicate level outcome. */
 typedef enum {
     END_CAUSE_NONE,
     END_CAUSE_COMPLETE,
@@ -67,6 +68,12 @@ typedef struct {
     grid_pos_t y;
 } position_t;
 
+/** A position or the grid, or outside of it. */
+typedef struct {
+    int8_t x;
+    int8_t y;
+} sposition_t;
+
 /**
  * Data structure for the current level state.
  */
@@ -75,11 +82,9 @@ typedef struct {
     flash_t addr;
     // Next direction for random force floor.
     direction_t random_slide_dir;
-
     // Top and bottom layers, 6 bits per tile, row-major order and little-endian.
     uint8_t bottom_layer[LEVEL_LAYER_SIZE];
     uint8_t top_layer[LEVEL_LAYER_SIZE];
-
     // Time left for level (time limit initially).
     time_left_t time_left;
     // Number of required chips left.
@@ -87,12 +92,12 @@ typedef struct {
 
     // This zero length field is only used to mark the start of zero-initialized field on init.
     uint8_t zero_init_start[0];
-
     // Actor list, bounded size.
     active_actor_t actors[MAX_ACTORS_COUNT];
-    // size of the actor buffer (some actors may be hidden).
+    // Size of the actor buffer (some actors may be hidden).
     uint8_t actors_size;
-
+    // Last byte of current time, used with stepping.
+    uint24_t current_time;
     // Game flags (FLAG_* constants below).
     uint8_t flags;
     // Number of keys held (in order: blue, red, green, yellow).
@@ -100,7 +105,7 @@ typedef struct {
     // Boots held (bitfield on bits 0 to 3).
     uint8_t boots;
     // Position after chip moved (cached).
-    position_t chip_new_pos;
+    sposition_t chip_new_pos;
     // Index of actor that collided with chip, or INDEX_NONE if none.
     actor_idx_t collided_with;
     // Actor that collision occured with.
@@ -115,19 +120,27 @@ typedef struct {
     actor_t teleported_chip;
     // Index of actor currently springing a trap, or INDEX_NONE if none.
     actor_idx_t actor_springing_trap;
-
     // currently active input directions
-    uint8_t input_state;
+    direction_mask_t input_state;
+    // used to accumulate active input directions in-between moves.
+    direction_mask_t input_since_move;
+
+#ifdef TESTING
+    // stepping value 0-7 (affects teeth only)
+    uint8_t stepping;
+    // PRNG state
+    uint32_t prng_value0;
+    uint8_t prng_value1;
+    uint8_t prng_value2;
+#endif //TESTING
 } level_t;
 
 /**
  * Link for traps and cloners.
  */
 typedef struct {
-    grid_pos_t btn_x;
-    grid_pos_t btn_y;
-    grid_pos_t link_x;
-    grid_pos_t link_y;
+    position_t btn;
+    position_t link;
 } link_t;
 
 typedef struct {
@@ -163,11 +176,12 @@ position_t tworld_get_current_position(void);
 /**
  * Returns the tile at a position in the game grid.
  */
-tile_t tworld_get_bottom_tile(grid_pos_t x, grid_pos_t y);
+tile_t tworld_get_bottom_tile(position_t pos);
+
 
 /**
  * Returns the actor at a position in the game grid (or ACTOR_NONE if none).
  */
-actor_t tworld_get_top_tile(grid_pos_t x, grid_pos_t y);
+actor_t tworld_get_top_tile(position_t pos);
 
 #endif //TWORLD_TWORLD_H

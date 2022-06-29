@@ -70,6 +70,8 @@ void format_time_left(time_left_t time, char buf[static 4]) {
     }
 
     time = time_left_to_seconds(time);
+    assert(time < 1000, "invalid time value");
+
     char* ptr = &buf[3];
     do {
         *(--ptr) = (char) (time % 10 + '0');
@@ -133,7 +135,10 @@ static void draw_checks(const disp_x_t x, const disp_y_t y) {
 AVR_OPTIMIZE void draw_bottom_tile(const disp_x_t x, const disp_y_t y, const tile_t tile) {
     draw_checks(x, y);
 
-    flash_t addr = asset_tileset_bottom(ASSET_TILESET_MAP_BOTTOM[tile]);
+    const uint8_t index = ASSET_TILESET_MAP_BOTTOM[tile];
+    assert(index != 0xff, "invalid bottom tile");
+
+    flash_t addr = asset_tileset_bottom(index);
     uint8_t buf[BOTTOM_TILE_BUFFER_SIZE];
     uint8_t* buf_ptr;
 
@@ -196,7 +201,10 @@ AVR_OPTIMIZE void draw_top_tile(disp_x_t x, disp_y_t y, actor_t actor) {
 
     x += 2;
 
-    flash_t addr = asset_tileset_top(ASSET_TILESET_MAP_TOP[actor]);
+    const uint8_t index = ASSET_TILESET_MAP_TOP[actor];
+    assert(index != 0xff, "invalid top tile");
+
+    flash_t addr = asset_tileset_top(index);
     uint8_t buf[TOP_TILE_BUFFER_SIZE];
     uint8_t* buf_ptr;
 

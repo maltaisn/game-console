@@ -35,6 +35,9 @@
 // maximum delta time in game ticks
 #define MAX_DELTA_TIME 4
 
+// delay in number of game ticks after level ends before showing dialog.
+#define LEVEL_END_STATE_DELAY 16
+
 typedef enum {
     GAME_STATE_MAIN_MENU = 0,
     GAME_STATE_CONTROLS = 1,

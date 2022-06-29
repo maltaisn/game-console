@@ -85,14 +85,16 @@ def register_builder(packer) -> None:
                                      (x + 1) * tile_width, (y + 1) * TILE_HEIGHT))
 
                 data = tile_img.getdata()
+                check_data = data
                 if alpha:
+                    check_data = (c[1] for c in data)
                     data = itertools.chain(*data)  # flatten, 2 bytes per pixel
-                data = bytes(data)
-                if all(b == 0 for b in data):
+                if all(b == 0 for b in check_data):
                     # fully black/transparent tile, treat as undefined.
-                    map_flat.append(0)
+                    map_flat.append(0xff)
                     continue
 
+                data = bytes(data)
                 if data not in map:
                     map[data] = pos
                     yield TileObject(tile_img, alpha)

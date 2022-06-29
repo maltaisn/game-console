@@ -99,9 +99,10 @@ static void draw_inventory_overlay(void) {
             tile_t key_tile = tworld.keys[i] > 0 ? tile_make_key(i) : TILE_FLOOR;
             draw_bottom_tile(x, 112, key_tile);
             x += GAME_TILE_SIZE;
-            tile_t boot_tile = tworld.boots & boot_mask ? tile_make_boots(i) : TILE_FLOOR;
+            tile_t boot_tile = (tworld.boots & boot_mask) ? tile_make_boots(i) : TILE_FLOOR;
             draw_bottom_tile(x, 112, boot_tile);
             x += GAME_TILE_SIZE;
+            boot_mask <<= 1;
         }
     }
 }
@@ -126,11 +127,10 @@ static void draw_low_timer_overlay(void) {
  * Draw the game tile map.
  */
 static void draw_game(void) {
-
     // get grid position of first tile shown on the top left.
-    position_t pos = tworld_get_current_position();
-    grid_pos_t xstart = get_camera_pos(pos.x);
-    grid_pos_t ystart = get_camera_pos(pos.y);
+    const position_t curr_pos = tworld_get_current_position();
+    grid_pos_t xstart = get_camera_pos(curr_pos.x);
+    grid_pos_t ystart = get_camera_pos(curr_pos.y);
 
     disp_y_t y = 1;
     const uint8_t xend = xstart + GAME_MAP_SIZE;
@@ -159,11 +159,18 @@ static void draw_game(void) {
 
         disp_x_t x = 0;
         for (grid_pos_t px = xstart; px < xend; ++px) {
-            tile_t tile = tworld_get_bottom_tile(px, py);
-            actor_t actor = tworld_get_top_tile(px, py);
+            const position_t pos = {px, py};
+            const tile_t tile = tworld_get_bottom_tile(pos);
+            const actor_t actor = tworld_get_top_tile(pos);
             if (!actor_is_block(actor)) {
                 // don't draw a bottom tile if actor is a block (fully opaque image).
                 draw_bottom_tile(x, y, tile);
+            }
+            if (tworld.end_cause == END_CAUSE_COLLIDED) {
+                const position_t chip_pos = tworld_get_current_position();
+                if (chip_pos.x == px && chip_pos.y == py) {
+                    draw_top_tile(x, y, tworld.collided_actor);
+                }
             }
             if (actor_get_entity(actor) != ENTITY_NONE) {
                 draw_top_tile(x, y, actor);

@@ -167,6 +167,7 @@ time_left_t get_best_level_time(uint16_t pos) {
     if (time == SAVE_TIME_NONE) {
         return TIME_LEFT_NONE;
     } else {
+        assert(time < 1000, "invalid time value");
         return time * TICKS_PER_SECOND;
     }
 }

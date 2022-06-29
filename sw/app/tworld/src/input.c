@@ -166,7 +166,7 @@ static void setup_level_selection(void) {
 
 static bool show_hint_if_needed(void) {
     const position_t pos = tworld_get_current_position();
-    if (tworld_get_bottom_tile(pos.x, pos.y) != TILE_HINT) {
+    if (tworld_get_bottom_tile(pos) != TILE_HINT) {
         return false;
     }
 
@@ -291,28 +291,55 @@ game_state_t game_handle_input_dialog(void) {
     return GAME_STATE_MAIN_MENU;
 }
 
-game_state_t game_handle_input_tworld(void) {
-    const uint8_t curr_state = preprocess_input_state();
+static void handle_movement_key_down(const direction_mask_t dir) {
+    // remove any colinear direction mask to avoid having both set at once.
+    if (dir & DIR_VERTICAL_MASK) {
+        tworld.input_state &= ~DIR_VERTICAL_MASK;
+        tworld.input_since_move &= ~DIR_VERTICAL_MASK;
+    } else {
+        tworld.input_state &= ~DIR_HORIZONTAL_MASK;
+        tworld.input_since_move &= ~DIR_HORIZONTAL_MASK;
+    }
 
-    // Create input direction bitfield.
-    uint8_t dir = 0;
-    if (curr_state & BUTTON_UP) {
-        dir |= DIR_NORTH_MASK;
-    }
-    if (curr_state & BUTTON_LEFT) {
-        dir |= DIR_WEST_MASK;
-    }
-    if (curr_state & BUTTON_DOWN) {
-        dir |= DIR_SOUTH_MASK;
-    }
-    if (curr_state & BUTTON_RIGHT) {
-        dir |= DIR_EAST_MASK;
-    }
-    if (dir) {
-        game.flags |= FLAG_GAME_STARTED;
-    }
-    tworld.input_state = dir;
+    // add new direction to current input state.
+    tworld.input_state |= dir;
+    tworld.input_since_move |= dir;
+}
 
+static void handle_movement_input(const uint8_t curr_state) {
+    const uint8_t last_state = input_get_last_state();
+
+    // handle key down events
+    const uint8_t key_down = curr_state & ~last_state;
+    if (key_down & BUTTON_UP) {
+        handle_movement_key_down(DIR_NORTH_MASK);
+    } else if (key_down & BUTTON_DOWN) {
+        handle_movement_key_down(DIR_SOUTH_MASK);
+    }
+    if (key_down & BUTTON_LEFT) {
+        handle_movement_key_down(DIR_WEST_MASK);
+    } else if (key_down & BUTTON_RIGHT) {
+        handle_movement_key_down(DIR_EAST_MASK);
+    }
+
+    // handle key up events: only remove direction from current input state, but not from input
+    // state since move, so that short click in between two moves is still registered.
+    const uint8_t key_up = last_state & ~curr_state;
+    if (key_up & BUTTON_UP) {
+        tworld.input_state &= ~DIR_NORTH_MASK;
+    }
+    if (key_up & BUTTON_LEFT) {
+        tworld.input_state &= ~DIR_WEST_MASK;
+    }
+    if (key_up & BUTTON_DOWN) {
+        tworld.input_state &= ~DIR_SOUTH_MASK;
+    }
+    if (key_up & BUTTON_RIGHT) {
+        tworld.input_state &= ~DIR_EAST_MASK;
+    }
+}
+
+static game_state_t handle_misc_input(const uint8_t curr_state) {
     // update buttons hold time
     // use hold time to determine which buttons were recently clicked.
     uint8_t mask = BUTTON0;
@@ -363,6 +390,18 @@ game_state_t game_handle_input_tworld(void) {
     }
 
     return GAME_STATE_PLAY;
+}
+
+game_state_t game_handle_input_tworld(void) {
+    const uint8_t curr_state = preprocess_input_state();
+
+    handle_movement_input(curr_state);
+
+    if (tworld.input_state) {
+        game.flags |= FLAG_GAME_STARTED;
+    }
+
+    return handle_misc_input(curr_state);
 }
 
 void game_ignore_current_input(void) {

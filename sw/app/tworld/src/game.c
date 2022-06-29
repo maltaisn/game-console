@@ -108,6 +108,15 @@ static game_state_t update_tworld_state(uint8_t dt) {
         // do game steps for all ticks
         for (uint8_t i = 0; i < dt; ++i) {
             tworld_update();
+
+            if (tworld_is_game_over()) {
+                game.state_delay = LEVEL_END_STATE_DELAY;
+                if (tworld.end_cause == END_CAUSE_COMPLETE) {
+                    return GAME_STATE_LEVEL_COMPLETE;
+                } else {
+                    return GAME_STATE_LEVEL_FAIL;
+                }
+            }
         }
     }
 
