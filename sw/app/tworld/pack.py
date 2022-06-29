@@ -13,6 +13,7 @@ with p.group("music"):
     p.sound("music0.mid", name="theme0", **music_args)
     p.sound("music1.mid", name="theme1", **music_args)
     p.sound("music-menu.mid", name="menu", **music_args)
+    p.sound("music-fail.mid", name="fail", **music_args)
     p.define("tempo", tempo)
 
 # fonts
@@ -46,6 +47,19 @@ with p.group("tileset"):
     with p.group("map", Location.INTERNAL):
         p.raw(bottom_map, name="bottom")
         p.raw(top_map, name="top")
+
+# death messages
+with p.array("end_cause", ArrayType.INDEXED_ABS):
+    messages = [
+        "Ooops! Don't step in the fire without fire boots!",
+        "Ooops! Look out for creatures!",
+        "Ooops! Watch out for moving blocks!",
+        "Ooops! Chip can't swim without flippers!",
+        "Ooops! Don't touch the bombs!",
+        "Ooops!\nOut of time!",
+    ]
+    for i, message in enumerate(messages):
+        p.string(message, name=f"{i}")
 
 # levels
 with p.array("level_packs", ArrayType.INDEXED_ABS):

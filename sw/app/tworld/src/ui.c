@@ -125,9 +125,10 @@ void open_controls_dialog(uint8_t result) {
 }
 
 void open_level_fail_dialog(void) {
-    dialog_init_centered(96, 42);
+    dialog_init_centered(120, 76);
     dialog.title = "FAILED";
     dialog.selection = 0;
+    dialog.top_margin = 34;
 
     dialog_add_item_button("TRY AGAIN", RESULT_RESTART_LEVEL);
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);

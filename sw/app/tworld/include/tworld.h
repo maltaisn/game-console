@@ -43,13 +43,14 @@
 
 /** Cause of death for an actor, also used to indicate level outcome. */
 typedef enum {
-    END_CAUSE_NONE,
-    END_CAUSE_COMPLETE,
-    END_CAUSE_DROWNED,
-    END_CAUSE_BURNED,
-    END_CAUSE_BOMBED,
-    END_CAUSE_OUTOFTIME,
-    END_CAUSE_COLLIDED,
+    END_CAUSE_NONE = 0,
+    END_CAUSE_BURNED = 1,
+    END_CAUSE_COLLIDED_MONSTER = 2,
+    END_CAUSE_COLLIDED_BLOCK = 3,
+    END_CAUSE_DROWNED = 4,
+    END_CAUSE_BOMBED = 5,
+    END_CAUSE_OUTOFTIME = 6,
+    END_CAUSE_COMPLETE = 7,
 } end_cause_t;
 
 /** Time left in a level in game ticks, or `TIME_LEFT_NONE` if untimed or not applicable. */
@@ -183,5 +184,10 @@ tile_t tworld_get_bottom_tile(position_t pos);
  * Returns the actor at a position in the game grid (or ACTOR_NONE if none).
  */
 actor_t tworld_get_top_tile(position_t pos);
+
+/**
+ * Returns true if the end cause is a collision.
+ */
+bool tworld_has_collided(void);
 
 #endif //TWORLD_TWORLD_H

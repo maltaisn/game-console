@@ -176,11 +176,9 @@ static void draw_game(void) {
                 // don't draw a bottom tile if actor is a block (fully opaque image).
                 draw_bottom_tile(x, y, tile);
             }
-            if (tworld.end_cause == END_CAUSE_COLLIDED) {
-                const position_t chip_pos = tworld_get_current_position();
-                if (chip_pos.x == px && chip_pos.y == py) {
-                    draw_top_tile(x, y, tworld.collided_actor);
-                }
+            if (tworld_has_collided() && curr_pos.x == px && curr_pos.y == py) {
+                // draw actor on top of chip or chip on top of actor in case of collision.
+                draw_top_tile(x, y, tworld.collided_actor);
             }
             if (actor_get_entity(actor) != ENTITY_NONE) {
                 draw_top_tile(x, y, actor);
@@ -364,6 +362,25 @@ static void draw_level_info_overlay(void) {
 }
 
 /**
+ * Draw the content for the level fail dialog.
+ */
+static void draw_level_fail_overlay(void) {
+    // End cause text
+    set_5x7_font();
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    const flash_t text = asset_end_cause(tworld.end_cause - 1);
+    const uint8_t lines = find_text_line_count(text, 116);
+    draw_text_wrap(6, 42 + (3 - lines) * 5, 116, 3, text, true);
+}
+
+/**
+ * Draw the content for the level complete dialog.
+ */
+static void draw_level_complete_overlay(void) {
+    // TODO
+}
+
+/**
  * Draw the content for the hint dialog.
  */
 static void draw_hint_overlay(void) {
@@ -429,6 +446,10 @@ void draw(void) {
             draw_levels_overlay();
         } else if (s == GAME_STATE_LEVEL_INFO) {
             draw_level_info_overlay();
+        } else if (s == GAME_STATE_LEVEL_FAIL) {
+            draw_level_fail_overlay();
+        } else if (s == GAME_STATE_LEVEL_COMPLETE) {
+            draw_level_complete_overlay();
         } else if (s == GAME_STATE_HINT) {
             draw_hint_overlay();
         } else if (s == GAME_STATE_CONTROLS || s == GAME_STATE_CONTROLS_PLAY) {

@@ -187,6 +187,9 @@ static void start_level(void) {
     // don't immediately start updating the game state, wait for first input.
     game_ignore_current_input();
     game.flags &= ~FLAG_GAME_STARTED;
+
+    // start music (will do nothing if already started)
+    game_music_start_level_music(MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);
 }
 
 game_state_t game_handle_input_dialog(void) {
@@ -206,7 +209,6 @@ game_state_t game_handle_input_dialog(void) {
 
     if (res == RESULT_LEVEL_INFO) {
         start_level();
-        game_music_start_level_music(MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);
         return GAME_STATE_LEVEL_INFO;
 
     } else if (res == RESULT_START_LEVEL) {
@@ -236,7 +238,6 @@ game_state_t game_handle_input_dialog(void) {
     } else if (res == RESULT_ENTER_PASSWORD) {
         if (level_use_password()) {
             start_level();
-            game_music_start_level_music(MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);
             return GAME_STATE_LEVEL_INFO;
         }
         return GAME_STATE_LEVEL_PACKS;

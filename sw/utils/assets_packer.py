@@ -84,13 +84,9 @@ class RawObject(DataObject):
         return "raw"
 
 
-def register_raw_builders(packer) -> None:
+def register_builtin_builders(packer) -> None:
     @packer.builder
-    def raw(data: Union[str, Iterable[int]], *, unified_space: bool = False):
-        if isinstance(data, str):
-            data = data.encode("ascii")
-        else:
-            data = bytes(data)
+    def raw(data: Iterable[int], *, unified_space: bool = False):
         yield RawObject(data, unified_space)
 
     @packer.file_builder
@@ -100,6 +96,10 @@ def register_raw_builders(packer) -> None:
                 yield RawObject(file.read(), unified_space)
         except IOError as e:
             raise PackError(f"could not read raw file '{filename}': {e}")
+
+    @packer.builder
+    def string(data: str, *, encoding: str = "latin1", unified_space: bool = False):
+        yield RawObject(data.encode(encoding) + b"\x00", unified_space)
 
 
 def uint_width_for_max(value: int) -> int:
@@ -180,7 +180,7 @@ class Packer:
         self._location = Location.FLASH
 
         # register builders for built-in object types
-        register_raw_builders(self)
+        register_builtin_builders(self)
         font_gen.register_builder(self)
         image_gen.register_builder(self)
         sound_gen.register_builder(self)
@@ -376,11 +376,15 @@ class Packer:
              extra_line_spacing: int = None, name: str = None) -> None:
         pass  # implemented by registered builder
 
-    def raw(self, data: bytes, *, name: str, unified_space: bool = False) -> None:
+    def raw(self, data: Iterable[int], *, name: str, unified_space: bool = False) -> None:
         pass  # implemented by registered builder
 
     def raw_file(self, filename: PathLike, *,
                  unified_space: bool = False, name: str = None) -> None:
+        pass  # implemented by registered builder
+
+    def string(self, data: str, *, name: str,
+               encoding: str = "latin1", unified_space: bool = False) -> None:
         pass  # implemented by registered builder
 
     # ==========================

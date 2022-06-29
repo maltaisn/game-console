@@ -23,8 +23,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// delay in game ticks before starting a different music (= 500 ms)
-#define MUSIC_START_DELAY 8
+// delay in game ticks before starting a different music (= 310 ms)
+#define MUSIC_START_DELAY 5
 
 #define MUSIC_NONE 0
 

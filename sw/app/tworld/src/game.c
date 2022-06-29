@@ -114,6 +114,7 @@ static game_state_t update_tworld_state(uint8_t dt) {
                 if (tworld.end_cause == END_CAUSE_COMPLETE) {
                     return GAME_STATE_LEVEL_COMPLETE;
                 } else {
+                    game_music_start(ASSET_MUSIC_FAIL, MUSIC_FLAG_DELAYED);
                     return GAME_STATE_LEVEL_FAIL;
                 }
             }

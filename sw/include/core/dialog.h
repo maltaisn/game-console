@@ -66,6 +66,7 @@ typedef enum {
 } dialog_selection_t;
 
 typedef enum {
+    DIALOG_ITEM_SPACE,
     DIALOG_ITEM_BUTTON,
 #ifndef DIALOG_NO_CHOICE
     DIALOG_ITEM_CHOICE,
@@ -130,18 +131,19 @@ enum {
 };
 
 typedef struct {
-    uint8_t flags;
-
-    disp_x_t x;
-    disp_y_t y;
-    uint8_t width;
-    uint8_t height;
-
     graphics_font_t title_font;
     graphics_font_t action_font;
 #ifndef DIALOG_NO_ITEM_TEXT
     graphics_font_t item_font;
 #endif
+
+    uint8_t _zero_init_start[0];
+    uint8_t flags;
+    disp_x_t x;
+    disp_y_t y;
+    uint8_t width;
+    uint8_t height;
+    uint8_t top_margin;
 
     const char* title;
     const char* pos_btn;

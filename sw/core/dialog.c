@@ -19,7 +19,9 @@
 #include <core/trace.h>
 
 #ifndef DIALOG_NO_TEXT
+
 #include <string.h>
+
 #endif
 
 #if defined(DIALOG_NO_CHOICE) && defined(DIALOG_NO_NUMBER)
@@ -53,29 +55,27 @@ void dialog_init(disp_x_t x, disp_y_t y, uint8_t width, uint8_t height) {
         return;
     }
 #endif
-    dialog.flags = 0;
+    memset(dialog._zero_init_start, 0,
+           sizeof(dialog_t) - (dialog._zero_init_start - (uint8_t*) &dialog));
     dialog.x = x;
     dialog.y = y;
     dialog.width = width;
     dialog.height = height;
-    dialog.title = 0;
-    dialog.pos_btn = 0;
-    dialog.neg_btn = 0;
     dialog.pos_result = DIALOG_RESULT_NONE;
     dialog.neg_result = DIALOG_RESULT_NONE;
     dialog.dismiss_result = DIALOG_RESULT_NONE;
-    dialog.item_count = 0;
     dialog.selection = DIALOG_SELECTION_NONE;
-    dialog.cursor_pos = 0;
 }
 
 #ifndef DIALOG_NO_ITEM_TEXT
+
 void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font,
                      graphics_font_t item_font) {
     dialog.title_font = title_font;
     dialog.action_font = action_font;
     dialog.item_font = item_font;
 }
+
 #else
 void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font) {
     dialog.title_font = title_font;
@@ -84,6 +84,7 @@ void dialog_set_font(graphics_font_t title_font, graphics_font_t action_font) {
 #endif //DIALOG_NO_ITEM_TEXT
 
 #ifdef RUNTIME_CHECKS
+
 static bool dialog_add_item_check(void) {
     if (dialog.item_count == DIALOG_MAX_ITEMS) {
         trace("dialog already reached maximum number of items.");
@@ -91,6 +92,7 @@ static bool dialog_add_item_check(void) {
     }
     return true;
 }
+
 #endif
 
 void dialog_add_item_button(const char* name, dialog_result_t result) {
@@ -127,6 +129,7 @@ void dialog_add_item_choice(const char* const name, uint8_t selection,
 #endif //DIALOG_NO_CHOICE
 
 #ifndef DIALOG_NO_NUMBER
+
 void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
                             uint8_t mul, uint8_t value) {
 #ifdef RUNTIME_CHECKS
@@ -147,9 +150,11 @@ void dialog_add_item_number(const char* name, uint8_t min, uint8_t max,
     item->number.mul = mul;
     ++dialog.item_count;
 }
+
 #endif //DIALOG_NO_NUMBER
 
 #ifndef DIALOG_NO_TEXT
+
 void dialog_add_item_text(const char* name, uint8_t max_length, char text[static max_length + 1]) {
 #ifdef RUNTIME_CHECKS
     if (!dialog_add_item_check()) {
@@ -226,6 +231,7 @@ static void change_text_field_char(dialog_text_t* item, int8_t direction) {
         dialog.cursor_pos = length;
     }
 }
+
 #endif //DIALOG_NO_TEXT
 
 dialog_result_t dialog_handle_input(void) {
@@ -251,9 +257,9 @@ dialog_result_t dialog_handle_input(void) {
                 if (curr_item->type == DIALOG_ITEM_BUTTON) {
                     result = curr_item->button.result;
 #ifndef DIALOG_NO_TEXT
-                    } else if (curr_item->type == DIALOG_ITEM_TEXT) {
-                        // in a text field, enter button changes the character under cursor.
-                        change_text_field_char(&curr_item->text, +1);
+                } else if (curr_item->type == DIALOG_ITEM_TEXT) {
+                    // in a text field, enter button changes the character under cursor.
+                    change_text_field_char(&curr_item->text, +1);
 #endif //DIALOG_NO_TEXT
                 } else {
                     // otherwise move to next item below
@@ -411,6 +417,7 @@ static void draw_action(disp_color_t color, disp_x_t x, disp_y_t y, uint8_t widt
 }
 
 #ifndef DIALOG_NO_TEXT
+
 static void draw_text_field(disp_x_t x, disp_y_t y, uint8_t width, dialog_text_t* item,
                             bool selected) {
     graphics_set_color(DISPLAY_COLOR_WHITE);
@@ -429,6 +436,7 @@ static void draw_text_field(disp_x_t x, disp_y_t y, uint8_t width, dialog_text_t
         graphics_glyph((int8_t) cursor_x, (int8_t) y, item->text[dialog.cursor_pos]);
     }
 }
+
 #endif
 
 void dialog_draw(void) {
@@ -494,7 +502,7 @@ void dialog_draw(void) {
     }
 
     // button items, choice display (current font is action font)
-    disp_y_t action_y = y + 3;
+    disp_y_t action_y = dialog.top_margin + y + 3;
     for (uint8_t i = 0; i < dialog.item_count; ++i) {
         dialog_item_t* item = &dialog.items[i];
         bool selected = (dialog.selection == i);
@@ -545,7 +553,7 @@ void dialog_draw(void) {
     graphics_set_font(dialog.item_font);
     graphics_set_color(DISPLAY_COLOR_WHITE);
     uint8_t name_y_offset = ((int8_t) action_height - item_font_height) / 2;
-    action_y = y + 3;
+    action_y = dialog.top_margin + y + 3;
     for (uint8_t i = 0; i < dialog.item_count; ++i) {
         dialog_item_t* item = &dialog.items[i];
         if (item->type != DIALOG_ITEM_BUTTON) {

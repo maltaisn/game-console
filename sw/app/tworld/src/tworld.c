@@ -1047,7 +1047,12 @@ static move_result_t start_movement(moving_actor_t* act, const uint8_t flags) {
     }
 
     if (chip_collided) {
-        tworld.end_cause = END_CAUSE_COLLIDED;
+        if (actor_get_entity(tworld.collided_actor) == ENTITY_BLOCK ||
+            act->entity == ENTITY_BLOCK) {
+            tworld.end_cause = END_CAUSE_COLLIDED_BLOCK;
+        } else {
+            tworld.end_cause = END_CAUSE_COLLIDED_MONSTER;
+        }
         return MOVE_RESULT_DIED;
     }
 
@@ -1566,4 +1571,9 @@ tile_t tworld_get_bottom_tile(const position_t pos) {
 
 actor_t tworld_get_top_tile(const position_t pos) {
     return get_top_tile(pos);
+}
+
+bool tworld_has_collided(void) {
+    return tworld.end_cause == END_CAUSE_COLLIDED_MONSTER ||
+           tworld.end_cause == END_CAUSE_COLLIDED_BLOCK;
 }
