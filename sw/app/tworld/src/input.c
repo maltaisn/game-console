@@ -206,7 +206,7 @@ game_state_t game_handle_input_dialog(void) {
 
     if (res == RESULT_LEVEL_INFO) {
         start_level();
-        game_music_start_level_music(MUSIC_FLAG_DELAYED);
+        game_music_start_level_music(MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);
         return GAME_STATE_LEVEL_INFO;
 
     } else if (res == RESULT_START_LEVEL) {
@@ -236,7 +236,7 @@ game_state_t game_handle_input_dialog(void) {
     } else if (res == RESULT_ENTER_PASSWORD) {
         if (level_use_password()) {
             start_level();
-            game_music_start_level_music(MUSIC_FLAG_DELAYED);
+            game_music_start_level_music(MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);
             return GAME_STATE_LEVEL_INFO;
         }
         return GAME_STATE_LEVEL_PACKS;
@@ -287,7 +287,7 @@ game_state_t game_handle_input_dialog(void) {
         app_terminate();
     }
 
-    game_music_stop();  // TODO menu music
+    game_music_start(ASSET_MUSIC_MENU, MUSIC_FLAG_DELAYED | MUSIC_FLAG_LOOP);
     return GAME_STATE_MAIN_MENU;
 }
 

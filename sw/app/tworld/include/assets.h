@@ -11,31 +11,32 @@
 
 #define ASSET_MUSIC_THEME0 data_flash(0x0d07)
 #define ASSET_MUSIC_THEME1 data_flash(0x0e7e)
+#define ASSET_MUSIC_MENU data_flash(0x1116)
 
-#define ASSET_FONT_5X7 data_flash(0x1116)
-#define ASSET_FONT_7X7 data_flash(0x12de)
+#define ASSET_FONT_5X7 data_flash(0x11d9)
+#define ASSET_FONT_7X7 data_flash(0x13a1)
 
-#define ASSET_IMAGE_ARROW_UP data_flash(0x147a)
-#define ASSET_IMAGE_ARROW_DOWN data_flash(0x1481)
-#define ASSET_IMAGE_MENU data_flash(0x1488)
-#define ASSET_IMAGE_PACK_PASSWORD data_flash(0x2925)
-#define ASSET_IMAGE_PACK_LOCKED data_flash(0x299c)
+#define ASSET_IMAGE_ARROW_UP data_flash(0x153d)
+#define ASSET_IMAGE_ARROW_DOWN data_flash(0x1544)
+#define ASSET_IMAGE_MENU data_flash(0x154b)
+#define ASSET_IMAGE_PACK_PASSWORD data_flash(0x29e8)
+#define ASSET_IMAGE_PACK_LOCKED data_flash(0x2a5f)
 
 extern const uint8_t ASSET_TILESET_MAP_BOTTOM[];
 extern const uint8_t ASSET_TILESET_MAP_TOP[];
 
 #define ASSET_IMAGE_PACK_PROGRESS_SIZE 9
-#define ASSET_IMAGE_PACK_PROGRESS_ADDR 0x2a1e
+#define ASSET_IMAGE_PACK_PROGRESS_ADDR 0x2ae1
 #define ASSET_IMAGE_PACK_PROGRESS_OFFSET 103
 #define asset_image_pack_progress(n) data_flash(ASSET_IMAGE_PACK_PROGRESS_ADDR + (n) * ASSET_IMAGE_PACK_PROGRESS_OFFSET)
 
 #define ASSET_TILESET_BOTTOM_SIZE 52
-#define ASSET_TILESET_BOTTOM_ADDR 0x2dbd
+#define ASSET_TILESET_BOTTOM_ADDR 0x2e80
 #define ASSET_TILESET_BOTTOM_OFFSET 112
 #define asset_tileset_bottom(n) (ASSET_TILESET_BOTTOM_ADDR + (n) * ASSET_TILESET_BOTTOM_OFFSET)
 
 #define ASSET_TILESET_TOP_SIZE 24
-#define ASSET_TILESET_TOP_ADDR 0x447d
+#define ASSET_TILESET_TOP_ADDR 0x4540
 #define ASSET_TILESET_TOP_OFFSET 112
 #define asset_tileset_top(n) (ASSET_TILESET_TOP_ADDR + (n) * ASSET_TILESET_TOP_OFFSET)
 

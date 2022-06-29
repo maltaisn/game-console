@@ -132,10 +132,9 @@ void update_sound_volume(uint8_t volume) {
 void update_music_enabled(void) {
     if (game.options.features & GAME_FEATURE_MUSIC) {
         if (game.state >= GAME_SSEP_LEVEL_BG) {
-            game_music_start_level_music(0);
+            game_music_start_level_music(MUSIC_FLAG_LOOP);
         } else {
-            // TODO menu music
-            game_music_stop();
+            game_music_start(ASSET_MUSIC_MENU, MUSIC_FLAG_LOOP);
         }
     } else {
         game_music_stop();

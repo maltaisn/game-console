@@ -27,7 +27,7 @@ static uint8_t music_start_delay;
 
 void game_music_start_level_music(uint8_t flags) {
     sound_t music = (game.current_level & 1) ? ASSET_MUSIC_THEME1 : ASSET_MUSIC_THEME0;
-    game_music_start(music, flags | MUSIC_FLAG_LOOP);
+    game_music_start(music, flags);
 }
 
 void game_music_start(sound_t music, uint8_t flags) {
