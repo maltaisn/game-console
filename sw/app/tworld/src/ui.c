@@ -55,7 +55,7 @@ void open_levels_dialog(void) {
 }
 
 void open_level_info_dialog(void) {
-    dialog_init_centered(126, 56);
+    dialog_init_centered(126, 66);
     dialog.pos_btn = "START";
     dialog.selection = DIALOG_SELECTION_POS;
     dialog.pos_result = RESULT_START_LEVEL;
@@ -97,7 +97,8 @@ void open_hint_dialog(void) {
 }
 
 void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
-    dialog_init_hcentered(48, 108, 67);
+    // dialog is centered if in game, and at the same position of main menu dialog if in menu.
+    dialog_init_hcentered(result_pos == RESULT_SAVE_OPTIONS ? 48 : 30, 108, 67);
     dialog.title = "GAME OPTIONS";
     dialog.pos_btn = "OK";
     dialog.neg_btn = "Cancel";

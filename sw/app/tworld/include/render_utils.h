@@ -27,11 +27,16 @@
 #define ACTIVE_COLOR(cond) ((cond) ? 12 : 6)
 
 /**
+ * Format a number under 1000 to a buffer, right-aligned to a width of 3 chars, padded with zeroes.
+ */
+void uint16_to_str_zero_pad(char buf[static 4], uint16_t n);
+
+/**
  * Format the time left in in-game seconds to a buffer from the specified time in game ticks.
  * The result is right aligned (3 chars width) and padded with zeroes.
- * Creates a "---" string if the time is `SAVE_TIME_NONE` (e.g. if untimed or unknown).
+ * Creates a "---" string if the time is `TIME_LEFT_NONE` (e.g. if untimed or unknown).
  */
-void format_time_left(time_left_t time, char buf[static 4]);
+void format_time_left(char buf[static 4], time_left_t time);
 
 /**
  * From Chip's position on the grid (X or Y), return the first shown tile in that axis.

@@ -62,6 +62,10 @@ static void set_7x7_font(void) {
     graphics_set_font(ASSET_FONT_7X7);
 }
 
+static void set_5x7_font(void) {
+    graphics_set_font(ASSET_FONT_5X7);
+}
+
 /**
  * Draw the inventory overlay at the bottom of the screen.
  * Also show the time left in at the top of the screen.
@@ -69,23 +73,29 @@ static void set_7x7_font(void) {
 static void draw_inventory_overlay(void) {
     // For performance, do early page check to avoid loading font and making unused draw calls.
     // When the inventory is shown, 19 fewer tiles are drawn, performance should be great.
-    set_7x7_font();
 
     if (sys_display_page_ystart == display_ystart_for_page(0)) {
         // top bar indicating time left
+        set_5x7_font();
         graphics_set_color(DISPLAY_COLOR_BLACK);
         graphics_fill_rect(1, 1, 126, 14);
         graphics_set_color(12);
-        graphics_text(4, 4, "TIME LEFT");
-        char buf[4];
-        format_time_left(tworld.time_left, buf);
+        graphics_text(4, 4, "CHIPS");
+        graphics_text(71, 4, "TIME");
+
+        set_7x7_font();
         graphics_set_color(DISPLAY_COLOR_WHITE);
-        graphics_text(101, 4, buf);
+        char buf[4];
+        uint16_to_str_zero_pad(buf, tworld.chips_left);
+        graphics_text(38, 4, buf);
+        format_time_left(buf, tworld.time_left);
+        graphics_text(100, 4, buf);
         return;
     }
 
     if (sys_display_page_ystart >= display_ystart_for_page(4)) {
         // bottom bar
+        set_7x7_font();
         graphics_set_color(DISPLAY_COLOR_BLACK);
         graphics_fill_rect(1, 99, 126, 28);
         graphics_set_color(12);
@@ -209,7 +219,7 @@ static void draw_level_packs_overlay(void) {
         graphics_rect(4, y, 120, 23);
 
         graphics_set_color(selected ? 12 : 9);
-        graphics_set_font(ASSET_FONT_5X7);
+        set_5x7_font();
 
         graphics_image_t image;
         if (index == LEVEL_PACK_COUNT) {
@@ -332,22 +342,25 @@ static void draw_level_info_overlay(void) {
     // level title, centered on 1-2 lines
     const flash_t title = level_get_title();
     const uint8_t lines = find_text_line_count(title, 122);
-    const disp_y_t y = lines == 2 ? 39 : 44;
+    const disp_y_t y = lines == 2 ? 35 : 40;
     graphics_set_color(DISPLAY_COLOR_WHITE);
     draw_text_wrap(3, y, 122, 2, title, true);
 
     graphics_set_color(10);
     graphics_set_font(GRAPHICS_BUILTIN_FONT);
-    graphics_text(30, 61, "TIME LIMIT");
-    graphics_text(34, 70, "BEST TIME");
+    graphics_text(22, 57, "CHIPS NEEDED");
+    graphics_text(30, 66, "TIME LIMIT");
+    graphics_text(34, 75, "BEST TIME");
 
     graphics_set_color(DISPLAY_COLOR_WHITE);
     set_7x7_font();
     char buf[4];
-    format_time_left(tworld.time_left, buf);
-    graphics_text(74, 60, buf);
-    format_time_left(get_best_level_time(game.current_level_pos), buf);
-    graphics_text(74, 69, buf);
+    uint16_to_str_zero_pad(buf, tworld.chips_left);
+    graphics_text(74, 56, buf);
+    format_time_left(buf, tworld.time_left);
+    graphics_text(74, 65, buf);
+    format_time_left(buf, get_best_level_time(game.current_level_pos));
+    graphics_text(74, 74, buf);
 }
 
 /**
@@ -365,7 +378,7 @@ static void draw_hint_overlay(void) {
  * Draw the content for the controls dialog.
  */
 static void draw_controls_overlay(void) {
-    graphics_set_font(ASSET_FONT_5X7);
+    set_5x7_font();
     disp_y_t y = 28;
     for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
         // control name text

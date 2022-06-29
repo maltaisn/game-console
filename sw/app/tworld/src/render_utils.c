@@ -57,26 +57,28 @@
 #define ST_X_INC(ptr, val) asm volatile("st %a0+, %1" : "=x" (ptr) : "r" (val), "0" (ptr))
 #endif
 
-void format_time_left(time_left_t time, char buf[static 4]) {
+void uint16_to_str_zero_pad(char buf[static 4], uint16_t n) {
+    assert(n < 1000, "invalid value");
+
     buf[0] = '0';
     buf[1] = '0';
     buf[3] = '\0';
 
+    char* ptr = &buf[3];
+    do {
+        *(--ptr) = (char) (n % 10 + '0');
+        n /= 10;
+    } while (n);
+}
+
+void format_time_left(char buf[static 4], time_left_t time) {
     if (time == TIME_LEFT_NONE) {
         buf[0] = '-';
         buf[1] = '-';
         buf[2] = '-';
-        return;
+    } else {
+        uint16_to_str_zero_pad(buf, time_left_to_seconds(time));
     }
-
-    time = time_left_to_seconds(time);
-    assert(time < 1000, "invalid time value");
-
-    char* ptr = &buf[3];
-    do {
-        *(--ptr) = (char) (time % 10 + '0');
-        time /= 10;
-    } while (time);
 }
 
 grid_pos_t get_camera_pos(const grid_pos_t pos) {
