@@ -58,6 +58,10 @@ static const uint8_t CONTROL_BUTTONS[CONTROLS_COUNT] = {
 
 #define display_ystart_for_page(page) ((page) * DISPLAY_PAGE_HEIGHT)
 
+static void set_3x5_font(void) {
+    graphics_set_font(ASSET_FONT_3X5_BUILTIN);
+}
+
 static void set_7x7_font(void) {
     graphics_set_font(ASSET_FONT_7X7);
 }
@@ -104,13 +108,12 @@ static void draw_inventory_overlay(void) {
     if (sys_display_page_ystart == display_ystart_for_page(5)) {
         // draw inventory content
         uint8_t boot_mask = 1;
-        disp_x_t x = 8;
+        disp_x_t x = 6;
         for (uint8_t i = 0; i < 4; ++i) {
-            tile_t key_tile = tworld.keys[i] > 0 ? tile_make_key(i) : TILE_FLOOR;
+            const tile_t key_tile = tworld.keys[i] > 0 ? tile_make_key(i) : TILE_FLOOR;
             draw_bottom_tile(x, 112, key_tile);
-            x += GAME_TILE_SIZE;
-            tile_t boot_tile = (tworld.boots & boot_mask) ? tile_make_boots(i) : TILE_FLOOR;
-            draw_bottom_tile(x, 112, boot_tile);
+            const tile_t boot_tile = (tworld.boots & boot_mask) ? tile_make_boots(i) : TILE_FLOOR;
+            draw_bottom_tile(x + 60, 112, boot_tile);
             x += GAME_TILE_SIZE;
             boot_mask <<= 1;
         }
@@ -345,7 +348,7 @@ static void draw_level_info_overlay(void) {
     draw_text_wrap(3, y, 122, 2, title, true);
 
     graphics_set_color(10);
-    graphics_set_font(GRAPHICS_BUILTIN_FONT);
+    set_3x5_font();
     graphics_text(22, 57, "CHIPS NEEDED");
     graphics_text(30, 66, "TIME LIMIT");
     graphics_text(34, 75, "BEST TIME");
@@ -377,7 +380,23 @@ static void draw_level_fail_overlay(void) {
  * Draw the content for the level complete dialog.
  */
 static void draw_level_complete_overlay(void) {
-    // TODO
+    set_3x5_font();
+    graphics_set_color(10);
+    graphics_text(34, 43, "TIME LEFT");
+    graphics_text(34, 52, "BEST TIME");
+    graphics_set_color(8);
+    graphics_text(32, 64, "PASSWORD");
+
+    set_7x7_font();
+    char buf[5];
+    format_time_left(buf, tworld.time_left);
+    graphics_set_color(DISPLAY_COLOR_WHITE);
+    graphics_text(74, 42, buf);
+    format_time_left(buf, get_best_level_time(game.current_level_pos));
+    graphics_text(74, 51, buf);
+    level_get_password(buf);
+    graphics_set_color(10);
+    graphics_text(68, 63, buf);
 }
 
 /**

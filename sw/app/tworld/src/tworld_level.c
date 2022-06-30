@@ -53,7 +53,7 @@ void level_read_packs(void) {
             return;
         }
 
-        uint8_t count = header[2] + 1;
+        uint8_t count = header[2];
         addr += count * 2 + 3;
         info->pos = pos;
         info->total_levels = count;
@@ -99,8 +99,9 @@ static flash_t get_metadata_address(uint8_t index_pos) {
     return tworld.addr + offset;
 }
 
-void level_get_password(char password[LEVEL_PASSWORD_LENGTH]) {
-    flash_read(tworld.addr + 4, LEVEL_PASSWORD_LENGTH, password);
+void level_get_password(char password[static LEVEL_PASSWORD_LENGTH]) {
+    flash_read(tworld.addr + POS_PASSWORD, LEVEL_PASSWORD_LENGTH, password);
+    password[LEVEL_PASSWORD_LENGTH - 1] = '\0';
 }
 
 flash_t level_get_title(void) {
@@ -150,6 +151,7 @@ bool level_use_password(void) {
                     game.current_pack = i;
                     game.current_level = j;
                     game.current_level_pos = info->pos + j;
+                    game.flags |= FLAG_PASSWORD_USED;
                     return true;
                 }
             }
@@ -158,4 +160,9 @@ bool level_use_password(void) {
     }
 
     return false;
+}
+
+bool level_is_unlocked(const level_pack_info_t *info, level_idx_t level) {
+    return level <= info->last_unlocked ||
+           info->completed_array[level / 8] & (1 << (level % 8));
 }

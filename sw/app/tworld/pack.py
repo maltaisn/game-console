@@ -9,11 +9,10 @@ tile_gen.register_builder(p)
 # music
 tempo = 80
 with p.group("music"):
-    music_args = {"tempo": tempo, "channels": {0, 1}, "merge_midi_tracks": True}
-    p.sound("music0.mid", name="theme0", **music_args)
-    p.sound("music1.mid", name="theme1", **music_args)
-    p.sound("music-menu.mid", name="menu", **music_args)
-    p.sound("music-fail.mid", name="fail", **music_args)
+    all_music = ["theme0", "theme1", "menu", "fail", "complete"]
+    for music in all_music:
+        p.sound(f"music-{music}.mid", name=music, tempo=tempo,
+                channels={0, 1}, merge_midi_tracks=True)
     p.define("tempo", tempo)
 
 # fonts

@@ -19,8 +19,8 @@ from assets.types import PackResult, DataObject, PackError
 # The data format for a level pack is described below. All multi-byte fields are little-endian.
 #
 # - [0..1]: signature, 0x5754 ('TW')
-# - [2]: number of levels, -1 (=N)
-# - [3..(N*2+2)]: level index, with each entry being offset from previous level position.
+# - [2]: number of levels (=N)
+# - [3..(N*2)]: level index, with each entry being offset from previous level position.
 #     the first offset is from the start of level pack data
 # - level pack name: zero terminated string (max size 12 including terminator).
 # - level data:
@@ -350,7 +350,7 @@ class DatFileWriter:
         # number of levels
         if not (1 <= level_count <= 256):
             raise EncodeError(f"there must be between 1 and 256 levels (got {level_count})")
-        self._write(level_count - 1, 1)
+        self._write(level_count, 1)
 
         # index
         self.levels_written = 0

@@ -92,6 +92,33 @@ void callback_draw(void) {
     draw();
 }
 
+static game_state_t prepare_level_end(void) {
+    game.flags &= ~FLAG_INVENTORY_SHOWN;
+
+    if (tworld.end_cause == END_CAUSE_COMPLETE) {
+        set_best_level_time();
+        // TODO unlock next level pack at some point
+        game.state_delay = LEVEL_FAIL_STATE_DELAY;
+        game_music_start(ASSET_MUSIC_COMPLETE, MUSIC_FLAG_DELAYED);
+        return GAME_STATE_LEVEL_COMPLETE;
+    } else {
+        game.state_delay = LEVEL_COMPLETE_STATE_DELAY;
+        game_music_start(ASSET_MUSIC_FAIL, MUSIC_FLAG_DELAYED);
+        return GAME_STATE_LEVEL_FAIL;
+    }
+}
+
+void callback_sleep_scheduled(void) {
+    if (game.state == GAME_STATE_PLAY) {
+        game.state = GAME_STATE_PAUSE;
+    }
+}
+
+void callback_wakeup(void) {
+    // last tick has probably happened very long ago, reset last tick time.
+    last_tick_time = time_get();
+}
+
 static game_state_t update_tworld_state(uint8_t dt) {
     game_state_t new_state = game_handle_input_tworld();
     if (new_state != GAME_STATE_PLAY) {
@@ -108,15 +135,8 @@ static game_state_t update_tworld_state(uint8_t dt) {
         // do game steps for all ticks
         for (uint8_t i = 0; i < dt; ++i) {
             tworld_update();
-
             if (tworld_is_game_over()) {
-                game.state_delay = LEVEL_END_STATE_DELAY;
-                if (tworld.end_cause == END_CAUSE_COMPLETE) {
-                    return GAME_STATE_LEVEL_COMPLETE;
-                } else {
-                    game_music_start(ASSET_MUSIC_FAIL, MUSIC_FLAG_DELAYED);
-                    return GAME_STATE_LEVEL_FAIL;
-                }
+                return prepare_level_end();
             }
         }
     }
@@ -169,15 +189,4 @@ static game_state_t game_state_update(uint8_t dt) {
 
     game.last_state = s;
     return game_handle_input_dialog();
-}
-
-void callback_sleep_scheduled(void) {
-    if (game.state == GAME_STATE_PLAY) {
-        game.state = GAME_STATE_PAUSE;
-    }
-}
-
-void callback_wakeup(void) {
-    // last tick has probably happened very long ago, reset last tick time.
-    last_tick_time = time_get();
 }

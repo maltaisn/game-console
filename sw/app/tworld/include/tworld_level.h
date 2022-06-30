@@ -96,7 +96,7 @@ void level_read_level(void);
  * Copy the level password from flash to a buffer.
  * A level must be loaded before using this.
  */
-void level_get_password(char password[LEVEL_PASSWORD_LENGTH]);
+void level_get_password(char password[static LEVEL_PASSWORD_LENGTH]);
 
 /**
  * Copy the level title from flash to a buffer.
@@ -122,5 +122,10 @@ void level_get_links(void);
  * Returns true if password is valid and level was set.
  */
 bool level_use_password(void);
+
+/**
+ * Returns true if specified level in pack is unlocked.
+ */
+bool level_is_unlocked(const level_pack_info_t *info, level_idx_t level);
 
 #endif //TWORLD_TWORLD_LEVEL_H

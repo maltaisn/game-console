@@ -108,10 +108,10 @@ static dialog_result_t handle_vertical_navigation_input(void) {
             // only start level if unlocked or previously completed.
             const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
             level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
-            if (level <= info->last_unlocked ||
-                info->completed_array[level / 8] & (1 << (level % 8))) {
+            if (level_is_unlocked(info, level)) {
                 game.current_level = level;
                 game.current_level_pos = info->pos + level;
+                game.flags &= ~FLAG_PASSWORD_USED;
                 return RESULT_LEVEL_INFO;
             }
         } // else game.state == GAME_STATE_HINT
@@ -129,29 +129,11 @@ static void setup_level_packs_selection(void) {
     game.pos_shown_y = LEVEL_PACKS_PER_SCREEN;
 }
 
-static void setup_level_selection(void) {
+static void setup_level_selection(const level_idx_t selection) {
     level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
 
-    // Find the last level in the consecutive streak of completed levels starting from the first.
-    // The level after that is unlocked and will be selected by default.
-    // Other levels may be completed with a password but that doesn't unlock the level after
-    uint8_t byte = 0;
-    uint8_t bits = 0;
-    const uint8_t* completed = info->completed_array;
-    level_idx_t i = 0;
-    for (; i < info->total_levels; ++i) {
-        if (bits == 0) {
-            byte = *completed++;
-        }
-        if (!(byte & 1)) {
-            break;
-        }
-        byte >>= 1;
-        bits = (bits + 1) % 8;
-    }
-
-    game.pos_selection_x = i % LEVELS_PER_SCREEN_H;
-    game.pos_selection_y = i / LEVELS_PER_SCREEN_H;
+    game.pos_selection_x = selection % LEVELS_PER_SCREEN_H;
+    game.pos_selection_y = selection / LEVELS_PER_SCREEN_H;
     game.pos_max_x = LEVELS_PER_SCREEN_H - 1;
     game.pos_max_y = (info->total_levels - 1) / LEVELS_PER_SCREEN_H;
     game.pos_last_x = (info->total_levels - 1) % LEVELS_PER_SCREEN_H;
@@ -159,8 +141,8 @@ static void setup_level_selection(void) {
 
     game.pos_first_y = game.pos_selection_y;
     uint8_t max_first_y = game.pos_max_y - LEVELS_PER_SCREEN_V + 1;
-    if (game.pos_selection_y > max_first_y) {
-        game.pos_selection_y = max_first_y;
+    if (game.pos_first_y > max_first_y) {
+        game.pos_first_y = max_first_y;
     }
 }
 
@@ -181,7 +163,7 @@ static bool show_hint_if_needed(void) {
     return true;
 }
 
-static void start_level(void) {
+static game_state_t start_level(void) {
     level_read_level();
 
     // don't immediately start updating the game state, wait for first input.
@@ -190,6 +172,27 @@ static void start_level(void) {
 
     // start music (will do nothing if already started)
     game_music_start_level_music(MUSIC_FLAG_LOOP | MUSIC_FLAG_DELAYED);
+
+    return GAME_STATE_LEVEL_INFO;
+}
+
+static game_state_t next_level(void) {
+    level_read_packs();
+    const level_pack_info_t *info = &tworld_packs.packs[game.current_pack];
+
+    if ((info->completed_levels == info->total_levels) || (game.flags & FLAG_PASSWORD_USED)) {
+        // All levels have been completed, or level was accessed
+        // via a password, go back to level selection.
+        setup_level_selection(game.current_level);
+        return GAME_STATE_LEVELS;
+    }
+    // If playing on last level but not all levels are completed, then the level
+    // was necessarily unlocked by a password.
+    // So at this point game.current_level < info->total_levels - 1;
+
+    // Start next level.
+    ++game.current_level;
+    return start_level();
 }
 
 game_state_t game_handle_input_dialog(void) {
@@ -208,8 +211,7 @@ game_state_t game_handle_input_dialog(void) {
     game.flags &= ~FLAG_DIALOG_SHOWN;
 
     if (res == RESULT_LEVEL_INFO) {
-        start_level();
-        return GAME_STATE_LEVEL_INFO;
+        return start_level();
 
     } else if (res == RESULT_START_LEVEL) {
         return GAME_STATE_PLAY;
@@ -219,8 +221,7 @@ game_state_t game_handle_input_dialog(void) {
         return GAME_STATE_PLAY;
 
     } else if (res == RESULT_NEXT_LEVEL) {
-        // TODO
-        return GAME_STATE_PLAY;
+        return next_level();
 
     } else if (res == RESULT_RESUME) {
         game_ignore_current_input();
@@ -237,8 +238,7 @@ game_state_t game_handle_input_dialog(void) {
 
     } else if (res == RESULT_ENTER_PASSWORD) {
         if (level_use_password()) {
-            start_level();
-            return GAME_STATE_LEVEL_INFO;
+            return start_level();
         }
         return GAME_STATE_LEVEL_PACKS;
 
@@ -247,7 +247,7 @@ game_state_t game_handle_input_dialog(void) {
         return GAME_STATE_LEVEL_PACKS;
 
     } else if (res == RESULT_OPEN_LEVELS) {
-        setup_level_selection();
+        setup_level_selection(tworld_packs.packs[game.current_pack].last_unlocked);
         return GAME_STATE_LEVELS;
 
     } else if (res == RESULT_OPEN_PASSWORD) {

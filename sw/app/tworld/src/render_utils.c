@@ -76,6 +76,7 @@ void format_time_left(char buf[static 4], time_left_t time) {
         buf[0] = '-';
         buf[1] = '-';
         buf[2] = '-';
+        buf[3] = '\0';
     } else {
         uint16_to_str_zero_pad(buf, time_left_to_seconds(time));
     }

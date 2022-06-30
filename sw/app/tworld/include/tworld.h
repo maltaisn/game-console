@@ -53,6 +53,13 @@ typedef enum {
     END_CAUSE_COMPLETE = 7,
 } end_cause_t;
 
+typedef enum {
+    BOOT_MASK_WATER = 1 << BOOT_WATER,
+    BOOT_MASK_FIRE = 1 << BOOT_FIRE,
+    BOOT_MASK_ICE = 1 << BOOT_ICE,
+    BOOT_MASK_SLIDE = 1 << BOOT_SLIDE,
+} boot_mask_t;
+
 /** Time left in a level in game ticks, or `TIME_LEFT_NONE` if untimed or not applicable. */
 typedef uint16_t time_left_t;
 

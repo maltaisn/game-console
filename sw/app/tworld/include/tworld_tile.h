@@ -91,6 +91,20 @@ typedef enum {
     TILE_BOMB = 0x3f,
 } tile_t;
 
+typedef enum {
+    BOOT_WATER = 0,
+    BOOT_FIRE = 1,
+    BOOT_ICE = 2,
+    BOOT_SLIDE = 3,
+} boot_type_t;
+
+typedef enum {
+    KEY_BLUE = 0,
+    KEY_RED = 1,
+    KEY_GREEN = 2,
+    KEY_YELLOW = 3,
+} key_type_t;
+
 /** Returns the tile variant 0-3 (key, lock, boot, button, force floor, ice corner).  */
 uint8_t tile_get_variant(tile_t tile);
 
@@ -143,10 +157,9 @@ tile_t tile_with_toggle_state(tile_t tile, uint8_t state);
 tile_t tile_toggle_state(tile_t tile);
 
 /** Returns a key tile of a particular variant. */
-tile_t tile_make_key(uint8_t variant);
+tile_t tile_make_key(key_type_t variant);
 
 /** Returns a boot tile of a particular variant. */
-tile_t tile_make_boots(uint8_t variant);
-
+tile_t tile_make_boots(boot_type_t variant);
 
 #endif //TWORLD_TWORLD_TILE_H

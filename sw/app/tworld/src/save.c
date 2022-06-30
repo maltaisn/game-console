@@ -34,6 +34,8 @@
 
 #define EEPROM_GUARD_BYTE 0x43
 
+#define save_time_block_address(pos) (SAVE_TIME_POS + (pos) / 4 * 5)
+
 static SHARED_DISP_BUF uint8_t save_buf[255];
 
 static void set_default_options(void) {
@@ -158,23 +160,64 @@ static void read_level_time_block(eeprom_t addr, uint16_t times[4]) {
 }
 
 time_left_t get_best_level_time(uint16_t pos) {
-    eeprom_t addr = SAVE_TIME_POS + pos / 4 * 5;
+    const eeprom_t addr = save_time_block_address(pos);
     uint16_t times[4];
     read_level_time_block(addr, times);
 
-    uint16_t time = times[pos % 4];
-    if (time == SAVE_TIME_NONE) {
+    const uint16_t time = times[pos % 4];
+    if (time >= 1000) {
+        // Either unknown (not completed), or untimed.
         return TIME_LEFT_NONE;
     } else {
-        assert(time < 1000, "invalid time value");
         return time * TICKS_PER_SECOND;
     }
+}
+
+void set_best_level_time(void) {
+    // Get new time in in-game seconds, rounded up.
+    const uint16_t pos = game.current_level_pos;
+    time_left_t new_time = tworld.time_left;
+    if (new_time == TIME_LEFT_NONE) {
+        // Level is untimed; still save something to unlock the level.
+        new_time = SAVE_TIME_UNTIMED;
+    } else {
+        new_time += TICKS_PER_SECOND - 1;
+        if (new_time <= get_best_level_time(pos)) {
+            // New not better than old time, don't save it.
+            return;
+        }
+        new_time /= TICKS_PER_SECOND;
+    }
+
+    // Save new time to EEPROM. Write the whole block, it's easier.
+    const eeprom_t addr = save_time_block_address(pos);
+    struct time_block block;
+    eeprom_read(addr, sizeof block, &block);
+    switch (pos % 4) {
+        case 0:
+            block.time0 = new_time;
+            break;
+        case 1:
+            block.time1 = new_time;
+            break;
+        case 2:
+            block.time2 = new_time;
+            break;
+        case 3:
+            block.time3 = new_time;
+            break;
+    }
+    eeprom_write(addr, sizeof block, &block);
+
+#ifdef SIMULATION
+    sim_eeprom_save();
+#endif
 }
 
 void fill_completed_levels_array(uint16_t pos, uint8_t size, level_pack_info_t *info) {
     info->last_unlocked = 0;
     uint8_t *arr = info->completed_array - 1;
-    eeprom_t addr = SAVE_TIME_POS + pos / 4 * 5;
+    eeprom_t addr = save_time_block_address(pos);
     uint16_t times[4];
     uint8_t bit = 0;
     uint8_t mask = 1;
@@ -192,7 +235,7 @@ start:
             *(++arr) = 0;
             mask = 1;
         }
-        if (times[block_pos] != SAVE_TIME_NONE) {
+        if (times[block_pos] != SAVE_TIME_UNKNOWN) {
             *arr |= mask;
             ++completed;
         } else if (i == completed) {

@@ -36,7 +36,8 @@
 #define MAX_DELTA_TIME 4
 
 // delay in number of game ticks after level ends before showing dialog.
-#define LEVEL_END_STATE_DELAY 16
+#define LEVEL_FAIL_STATE_DELAY 16  // 1000 ms
+#define LEVEL_COMPLETE_STATE_DELAY 8  // 500 ms
 
 typedef enum {
     GAME_STATE_MAIN_MENU = 0,
@@ -92,10 +93,16 @@ enum {
 };
 
 enum {
+    /** Set when a dialog is currently shown. */
     FLAG_DIALOG_SHOWN = 1 << 0,
+    /** Set when trap and cloner links have been cached to a buffer in RAM. */
     FLAG_LINKS_CACHED = 1 << 1,
+    /** Set when inventory overlay is shown. */
     FLAG_INVENTORY_SHOWN = 1 << 2,
+    /** Set when game has been started (timer is counting). */
     FLAG_GAME_STARTED = 1 << 3,
+    /** Set if current level was unlocked with a password. */
+    FLAG_PASSWORD_USED = 1 << 4,
 };
 
 typedef struct {

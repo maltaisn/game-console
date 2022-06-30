@@ -68,13 +68,6 @@ typedef enum {
 
 #define ACTOR_STATE_MASK (0x3 << 5)
 
-enum {
-    BOOTS_WATER = 1 << 0,
-    BOOTS_FIRE = 1 << 1,
-    BOOTS_ICE = 1 << 2,
-    BOOTS_SLIDE = 1 << 3,
-};
-
 /**
  * An actor step indicates how many ticks before actor makes a move.
  * This type represents values between -3 and 12 inclusively.
@@ -264,19 +257,19 @@ static void set_top_tile(const position_t pos, const actor_t tile) {
 }
 
 static bool has_water_boots(void) {
-    return (tworld.boots & BOOTS_WATER) != 0;
+    return (tworld.boots & BOOT_MASK_WATER) != 0;
 }
 
 static bool has_fire_boots(void) {
-    return (tworld.boots & BOOTS_FIRE) != 0;
+    return (tworld.boots & BOOT_MASK_FIRE) != 0;
 }
 
 static bool has_ice_boots(void) {
-    return (tworld.boots & BOOTS_ICE) != 0;
+    return (tworld.boots & BOOT_MASK_ICE) != 0;
 }
 
 static bool has_slide_boots(void) {
-    return (tworld.boots & BOOTS_SLIDE) != 0;
+    return (tworld.boots & BOOT_MASK_SLIDE) != 0;
 }
 
 static void receive_boots(uint8_t variant) {
@@ -1187,7 +1180,7 @@ static end_cause_t end_movement(moving_actor_t* act) {
             new_tile = TILE_WALL;
         } else if (tile_is_lock(tile)) {
             if (tile != TILE_LOCK_GREEN) {
-                tworld.keys[variant] -= 1;
+                --tworld.keys[variant];
             }
             new_tile = TILE_FLOOR;
         } else if (tile_is_key(tile)) {

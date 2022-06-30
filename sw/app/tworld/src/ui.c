@@ -135,14 +135,11 @@ void open_level_fail_dialog(void) {
 }
 
 void open_level_complete_dialog(void) {
-    dialog_init_centered(100, 42);
+    dialog_init_centered(100, 76);
     dialog.title = "COMPLETED";
     dialog.selection = 0;
+    dialog.top_margin = 34;
 
-    // TODO show time stats (current, best)
-
-    // TODO next level not available if not unlocked or last level.
     dialog_add_item_button("NEXT LEVEL", RESULT_NEXT_LEVEL);
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
 }
-

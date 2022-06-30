@@ -21,7 +21,10 @@
 #include "game.h"
 #include "tworld_level.h"
 
-#define SAVE_TIME_NONE 0x3ff
+// Level has never been completed.
+#define SAVE_TIME_UNKNOWN 0x3ff
+// Level has been completed, but is untimed.
+#define SAVE_TIME_UNTIMED 0x3fe
 
 void load_from_eeprom(void);
 
@@ -41,6 +44,12 @@ void update_music_enabled(void);
  * rounded to an in-game second.
  */
 time_left_t get_best_level_time(uint16_t pos);
+
+/**
+ * For currently loaded level, set best time if time left is better than previous,
+ * or if level was not previously completed. Updates data in EEPROM.
+ */
+void set_best_level_time(void);
 
 /**
  * For `size` levels starting at `pos`, set a bit in the completed levels bitset to 1
