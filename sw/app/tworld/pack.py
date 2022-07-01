@@ -36,8 +36,8 @@ with p.group("image"):
 # tileset
 with p.group("tileset"):
     with p.array("bottom", ArrayType.REGULAR):
-        bottom_map = p.tileset("tileset-bottom.png", name="bottom", width=8,
-                               tile_width=14, height=8)
+        bottom_map = p.tileset("tileset-bottom-{}.png", name=f"bottom{i}",
+                               width=8, tile_width=14, height=8, variants=2)
 
     with p.array("top", ArrayType.REGULAR):
         top_map = p.tileset("tileset-top.png", name="top", width=8, height=8,

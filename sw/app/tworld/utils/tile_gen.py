@@ -18,6 +18,8 @@ from pathlib import Path
 
 from PIL import Image
 from assets.types import DataObject, PackResult, PackError
+from assets_packer import ASSETS_DIR
+from utils import PathLike
 
 TILE_HEIGHT = 14
 TILE_WIDTH_TOP = 12
@@ -66,39 +68,45 @@ class TileObject(DataObject):
 
 
 def register_builder(packer) -> None:
-    @packer.file_builder
-    def tileset(filename: Path, *, width: int, height: int, tile_width: int, alpha: bool = False):
-        img = Image.open(filename)
-        if img.size != (width * tile_width, height * TILE_HEIGHT):
-            raise PackError("invalid tileset image size")
-        img = img.convert("LA" if alpha else "L")
-
+    @packer.builder
+    def tileset(filename: PathLike, *, width: int, height: int,
+                tile_width: int, variants: int = None, alpha: bool = False):
         # Create a data object for each tile in the tileset by cropping the image.
         # Also create a map to deduplicate the tiles. Each index in the map is a tile ID and
         # the value is the position in the generated tile objects array.
         map = {}
         map_flat = []
         pos = 0
-        for x in range(width):
-            for y in range(height):
-                tile_img = img.crop((x * tile_width, y * TILE_HEIGHT,
-                                     (x + 1) * tile_width, (y + 1) * TILE_HEIGHT))
 
-                data = tile_img.getdata()
-                check_data = data
-                if alpha:
-                    check_data = (c[1] for c in data)
-                    data = itertools.chain(*data)  # flatten, 2 bytes per pixel
-                if all(b == 0 for b in check_data):
-                    # fully black/transparent tile, treat as undefined.
-                    map_flat.append(0xff)
-                    continue
+        for i in range(1 if not variants else variants):
+            page_filename = Path(ASSETS_DIR, str(filename).replace("{}", str(i)))
+            if not page_filename.exists():
+                raise PackError(f"file '{page_filename}' doesn't exist")
+            img = Image.open(page_filename)
+            if img.size != (width * tile_width, height * TILE_HEIGHT):
+                raise PackError("invalid tileset image size")
+            img = img.convert("LA" if alpha else "L")
 
-                data = bytes(data)
-                if data not in map:
-                    map[data] = pos
-                    yield TileObject(tile_img, alpha)
-                    pos += 1
-                map_flat.append(map[data])
+            for x in range(width):
+                for y in range(height):
+                    tile_img = img.crop((x * tile_width, y * TILE_HEIGHT,
+                                         (x + 1) * tile_width, (y + 1) * TILE_HEIGHT))
+
+                    data = tile_img.getdata()
+                    check_data = data
+                    if alpha:
+                        check_data = (c[1] for c in data)
+                        data = itertools.chain(*data)  # flatten, 2 bytes per pixel
+                    if all(b == 0 for b in check_data):
+                        # fully black/transparent tile, treat as undefined.
+                        map_flat.append(0xff)
+                        continue
+
+                    data = bytes(data)
+                    if data not in map:
+                        map[data] = pos
+                        yield TileObject(tile_img, alpha)
+                        pos += 1
+                    map_flat.append(map[data])
 
         return map_flat
