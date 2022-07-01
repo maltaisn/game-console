@@ -82,7 +82,7 @@ bool callback_loop(void) {
     game_music_update_tempo();
     game.state = game_state_update(dt);
 
-    return time - last_draw_time > millis_to_ticks(1000.0 / DISPLAY_MAX_FPS);
+    return (systime_t) (time - last_draw_time) > millis_to_ticks(1000.0 / DISPLAY_MAX_FPS);
 }
 
 void callback_draw(void) {

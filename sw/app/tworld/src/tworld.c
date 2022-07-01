@@ -23,6 +23,14 @@
 
 #include <string.h>
 
+#ifdef RUNTIME_CHECKS
+#define tworld_error(...) do{trace(__VA_ARGS__); tworld.error = true;} while (0)
+#define tworld_assert(cond, ...) do{if (!(cond)) tworld_error(__VA_ARGS__);} while (0)
+#else
+#define tworld_error(...)
+#define tworld_assert(cond, ...)
+#endif //RUNTIME_CHECKS
+
 #define CHIP_REST_DIRECTION DIR_SOUTH
 // Number of game ticks before chip moves to rest position.
 #define CHIP_REST_TICKS 15
@@ -46,35 +54,9 @@ enum {
     FLAG_NO_TIME_LIMIT = 1 << 7,
 };
 
-typedef enum {
-    // Default state.
-    ACTOR_STATE_NONE = 0x0 << 5,
-
-    // Hidden state, when the actor is dead
-    // Hidden actor entries are skipped and are reused when spawning a new actor.
-    ACTOR_STATE_HIDDEN = 0x1 << 5,
-
-    // Moved state, when the actor has chosen a move during stepping (vs. not moving).
-    // This also applies when a move is forced on an actor.
-    ACTOR_STATE_MOVED = 0x2 << 5,
-
-    // Teleported state, when the actor has just been teleported.
-    ACTOR_STATE_TELEPORTED = 0x3 << 5,
-
-    // Temporary extra state used to indicate that the actor has died and it's tile
-    // Should be replaced by an animation tile. (note: STATE_DIED & 0x3 == STATE_HIDDEN)
-    ACTOR_STATE_DIED = 0x5 << 5,
-} actor_state_t;
-
-#define ACTOR_STATE_MASK (0x3 << 5)
-
-/**
- * An actor step indicates how many ticks before actor makes a move.
- * This type represents values between -3 and 12 inclusively.
- */
-typedef int8_t step_t;
-
-#define STEP_BIAS 3
+// Temporary extra state used to indicate that the actor has died and it's tile
+// Should be replaced by an animation tile. (note: STATE_DIED & 0x3 == STATE_HIDDEN)
+#define ACTOR_STATE_DIED (0x5 << 5)
 
 /**
  * Container used during step processing to store information about an actor for fast access.
@@ -97,14 +79,14 @@ static direction_mask_t THIN_WALL_DIR_FROM[] = {
         DIR_WEST_MASK,  // thin wall west
         DIR_SOUTH_MASK,  // thin wall south
         DIR_EAST_MASK,  // thin wall east
-        DIR_SOUTH_MASK | DIR_EAST_MASK,  // thin wall south east
+        DIR_SOUTHEAST_MASK,  // thin wall south east
 };
 
 static direction_mask_t ICE_WALL_DIR_FROM[] = {
-        DIR_NORTH_MASK | DIR_WEST_MASK,  // ice wall north west
-        DIR_SOUTH_MASK | DIR_WEST_MASK,  // ice wall south west
-        DIR_SOUTH_MASK | DIR_EAST_MASK,  // ice wall south east
-        DIR_NORTH_MASK | DIR_EAST_MASK,  // ice wall north east
+        DIR_NORTHWEST_MASK,  // ice wall north west
+        DIR_SOUTHWEST_MASK,  // ice wall south west
+        DIR_SOUTHEAST_MASK,  // ice wall south east
+        DIR_NORTHEAST_MASK,  // ice wall north east
 };
 
 static direction_mask_t THIN_WALL_DIR_TO[] = {
@@ -112,14 +94,14 @@ static direction_mask_t THIN_WALL_DIR_TO[] = {
         DIR_EAST_MASK,  // thin wall west
         DIR_NORTH_MASK,  // thin wall south
         DIR_WEST_MASK,  // thin wall east
-        DIR_SOUTH_MASK | DIR_EAST_MASK,  // thin wall south east
+        DIR_NORTHWEST_MASK,  // thin wall south east
 };
 
 static direction_mask_t ICE_WALL_DIR_TO[] = {
-        DIR_SOUTH_MASK | DIR_EAST_MASK,  // ice wall north west
-        DIR_NORTH_MASK | DIR_EAST_MASK,  // ice wall south west
-        DIR_NORTH_MASK | DIR_WEST_MASK,  // ice wall south east
-        DIR_SOUTH_MASK | DIR_WEST_MASK,  // ice wall north east
+        DIR_SOUTHEAST_MASK,  // ice wall north west
+        DIR_NORTHEAST_MASK,  // ice wall south west
+        DIR_NORTHWEST_MASK,  // ice wall south east
+        DIR_SOUTHWEST_MASK,  // ice wall north east
 };
 
 #define DIR_NONE 0xff
@@ -169,7 +151,7 @@ enum {
 
 // ============== Testing functions ====================
 
-#ifdef TEST
+#ifdef TESTING
 #define stepping() (tworld.stepping)
 #else
 #define stepping() 0
@@ -274,7 +256,7 @@ static bool has_slide_boots(void) {
 
 static void receive_boots(uint8_t variant) {
     // reuse direction mask lookup table instead of 1 << variant.
-    assert(variant < 4);
+    tworld_assert(variant < 4);
     tworld.boots |= direction_to_mask(variant);
 }
 
@@ -283,47 +265,27 @@ static bool position_equals(position_t a, position_t b) {
 }
 
 static active_actor_t act_actor_create(position_t pos, step_t step, actor_state_t state) {
-    assert(pos.x < GRID_WIDTH);
-    assert(pos.y < GRID_HEIGHT);
-    assert(step >= -3 && step <= 12);
-    assert((state & ~ACTOR_STATE_MASK) == 0);
+    tworld_assert(pos.x < GRID_WIDTH);
+    tworld_assert(pos.y < GRID_HEIGHT);
+    tworld_assert(step >= -3 && step <= 12);
+    tworld_assert((state & ~ACTOR_STATE_MASK) == 0);
 
     return pos.x | state | (uint16_t) (pos.y << 7) |
            (uint16_t) ((uint8_t) (step + STEP_BIAS) << 12);
-}
-
-static grid_pos_t act_actor_get_x(active_actor_t a) {
-    return a & 0x1f;
-}
-
-static grid_pos_t act_actor_get_y(active_actor_t a) {
-    return (a >> 7) & 0x1f;
-}
-
-static position_t act_actor_get_pos(active_actor_t a) {
-    return (position_t) {act_actor_get_x(a), act_actor_get_y(a)};
 }
 
 static bool act_actor_is_at_pos(active_actor_t a, position_t pos) {
     return act_actor_get_x(a) == pos.x && act_actor_get_y(a) == pos.y;
 }
 
-static step_t act_actor_get_step(active_actor_t a) {
-    return (step_t) ((step_t) (a >> 12) - STEP_BIAS);
-}
-
 static active_actor_t act_actor_set_step(active_actor_t a, step_t step) {
-    assert(step >= -3 && step <= 12);
+    tworld_assert(step >= -3 && step <= 12);
     return (a & 0x0fff) | (uint8_t) (step + STEP_BIAS) << 12;
 }
 
 static active_actor_t act_actor_set_state(active_actor_t a, actor_state_t state) {
-    assert((state & ~ACTOR_STATE_MASK) == 0);
+    tworld_assert((state & ~ACTOR_STATE_MASK) == 0);
     return (a & ~ACTOR_STATE_MASK) | state;
-}
-
-static actor_state_t act_actor_get_state(active_actor_t a) {
-    return (uint8_t) a & ACTOR_STATE_MASK;
 }
 
 /**
@@ -331,7 +293,7 @@ static actor_state_t act_actor_get_state(active_actor_t a) {
  * Any changes to this container must be persisted through `destroy_moving_actor`.
  */
 static void create_moving_actor(moving_actor_t* mact, const actor_idx_t idx) {
-    active_actor_t act = tworld.actors[idx];
+    const active_actor_t act = tworld.actors[idx];
     mact->index = idx;
     mact->pos = act_actor_get_pos(act);
     mact->step = act_actor_get_step(act);
@@ -361,7 +323,7 @@ static void destroy_moving_actor(const moving_actor_t* mact) {
  * Returns the position taken by the moving actor when moved in a direction.
  */
 static sposition_t get_new_actor_position(const moving_actor_t* mact, const direction_t dir) {
-    assert(dir >= DIR_NORTH && dir <= DIR_EAST);
+    tworld_assert(dir >= DIR_NORTH && dir <= DIR_EAST);
 
     sposition_t pos;
     pos.x = (int8_t) mact->pos.x;
@@ -423,12 +385,12 @@ static bool spawn_actor(moving_actor_t* mact) {
 
     // Can't create a new actor, list is full! Levels should be made so that this never happens.
     if (count >= MAX_ACTORS_COUNT) {
-        trace("can't spawn actor, actor list is full");
+        tworld_error("can't spawn actor, actor list is full");
         return false;
     }
 
     // Add a new actor at the end of the list.
-    tworld.actors[count] = ACTOR_STATE_HIDDEN;
+    tworld.actors[count] = act_actor_create((position_t) {0, 0}, 0, ACTOR_STATE_HIDDEN);
     tworld.actors_size = count + 1;
     create_moving_actor(mact, count);
     return true;
@@ -480,12 +442,22 @@ static void build_actor_list(void) {
                 continue;
             }
             tworld.actors[count++] = act_actor_create(pos, 0, ACTOR_STATE_NONE);
+#ifdef RUNTIME_CHECKS
+            if (count == MAX_ACTORS_COUNT) {
+                tworld_error("too many actors in level");
+                return;
+            }
+#endif //RUNTIME_CHECKS
         }
     }
     tworld.actors_size = count;
 
-    assert(chip_index != ACTOR_INDEX_NONE, "no chip tile found in level");
-    assert(count < MAX_ACTORS_COUNT, "too many actors (%d)", count);
+#ifdef RUNTIME_CHECKS
+    if (chip_index == ACTOR_INDEX_NONE) {
+        tworld_error("no chip tile found in level");
+        return;
+    }
+#endif //RUNTIME_CHECKS
 
     // If needed, swap chip with first actor on the list.
     if (chip_index > 0) {
@@ -505,7 +477,7 @@ static direction_t pick_walker_direction(const direction_t curr_dir) {
     tworld.prng_value1 = ((tworld.prng_value1 >> 1) | (tworld.prng_value2 & 0x80)) & 0xff;
     tworld.prng_value2 = ((tworld.prng_value2 << 1) | (n & 0x01)) & 0xff;
     uint8_t value = tworld.prng_value1 ^ tworld.prng_value2;
-    return (curr_dir - (value & 0x3)) % 4;
+    return (uint8_t) (curr_dir - (value & 0x3)) % 4;
 #else
     return random8() & 0x3;
 #endif //TESTING
@@ -514,8 +486,9 @@ static direction_t pick_walker_direction(const direction_t curr_dir) {
 static direction_t pick_blob_direction(void) {
 #ifdef TESTING
     // PRNG used in original Tile World, for testing.
-    tworld.prng_value0 = ((tworld.prng_value0 * 1103515245) + 12345) & 0x7fffffff;
-    return tworld.prng_value0 >> 29;
+    tworld.prng_value0 = ((tworld.prng_value0 * 1103515245UL) + 12345UL) & 0x7fffffffUL;
+    const direction_t cw[] = {DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST};
+    return cw[tworld.prng_value0 >> 29];
 #else
     return random8() & 0x3;
 #endif //TESTING
@@ -759,8 +732,8 @@ static void choose_chip_move(moving_actor_t* act) {
     direction_mask_t state = tworld.input_state | tworld.input_since_move;
     tworld.input_since_move = 0;
 
-    assert(!((state & DIR_VERTICAL_MASK) == DIR_VERTICAL_MASK ||
-             (state & DIR_HORIZONTAL_MASK) == DIR_HORIZONTAL_MASK), "bad direction mask");
+    tworld_assert(!((state & DIR_VERTICAL_MASK) == DIR_VERTICAL_MASK ||
+                    (state & DIR_HORIZONTAL_MASK) == DIR_HORIZONTAL_MASK), "bad direction mask");
 
     if (state == 0) {
         // No keys pressed
@@ -982,7 +955,7 @@ static move_result_t start_movement(moving_actor_t* act, const uint8_t flags) {
     }
 
     if (tile_from == TILE_CLONER || tile_from == TILE_TRAP) {
-        assert(flags & CM_RELEASING);
+        tworld_assert(flags & CM_RELEASING);
     }
 
     // Check if creature is currently located where chip intends to move (case 1)
@@ -1061,7 +1034,7 @@ static move_result_t start_movement(moving_actor_t* act, const uint8_t flags) {
  * delay between the move and its side effects (e.g. reaching a key, then picking it up).
  */
 static bool continue_movement(moving_actor_t* act) {
-    assert(act->step > 0);
+    tworld_assert(act->step > 0);
 
     const tile_t tile = get_bottom_tile(act->pos);
 
@@ -1138,7 +1111,12 @@ static void activate_cloner(const position_t pos) {
         return;
     }
 
-    clone = parent;
+    clone.pos = parent.pos;
+    clone.step = parent.step;
+    clone.state = parent.state;
+    clone.entity = parent.entity;
+    clone.direction = parent.direction;
+
     parent.state = ACTOR_STATE_MOVED;
     if (perform_move(&parent, CM_RELEASING) == MOVE_RESULT_SUCCESS) {
         // Parent moved successfully out of cloner, persist it.
@@ -1295,8 +1273,8 @@ static void teleport_actor(moving_actor_t* act) {
                     // a creature, but before that creature moves out of the teleporter.
                     // A bit of a hack, but it only costs 1B of RAM.
                     tworld.teleported_chip = actor;
-                    return;
                 }
+                return;
             }
         }
 
@@ -1379,16 +1357,16 @@ static void step_check(void) {
                 // Special intermediary case where this is allowed.
                 continue;
             }
-            trace("actor at (%d, %d) has no entity.", pos.x, pos.y);
+            tworld_error("actor at (%d, %d) has no entity.", pos.x, pos.y);
         }
     }
 
     if (tworld.teleported_chip == ACTOR_NONE) {
         const position_t chip_pos = tworld_get_current_position();
-        assert(actor_get_entity(get_top_tile(chip_pos)) == ENTITY_CHIP,
-               "chip is not first in actor list");
+        tworld_assert(actor_get_entity(get_top_tile(chip_pos)) == ENTITY_CHIP,
+                      "chip is not first in actor list");
     }
-#endif
+#endif //RUNTIME_CHECKS
 }
 
 /**
@@ -1523,13 +1501,16 @@ void tworld_init(void) {
     tworld.collided_with = ACTOR_INDEX_NONE;
     tworld.actor_springing_trap = ACTOR_INDEX_NONE;
 
-    build_actor_list();
-
+#ifdef RUNTIME_CHECKS
+    tworld.error = false;
+#endif //RUNTIME_CHECKS
 #ifdef TEST
     tworld.prng_value0 = time_get();
     tworld.prng_value1 = 0;
     tworld.prng_value2 = 0;
 #endif //TEST
+
+    build_actor_list();
 }
 
 void tworld_update(void) {

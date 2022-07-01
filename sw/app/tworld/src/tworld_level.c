@@ -32,6 +32,11 @@
 #define POS_INDEX_CLONER_LINKS 16
 #define POS_LAYER_DATA 18
 
+// Unlock threshold in ratio of previous level pack completed levels.
+// Format is UQ0.8 (divide by 256 to get actual value)
+// This corresponds to level 100 completed if there are 149 levels in previous pack.
+#define LEVEL_PACK_UNLOCK_THRESHOLD 172
+
 level_data_t tworld_data;
 
 static flash_t get_level_pack_addr(level_pack_idx_t pack) {
@@ -41,6 +46,7 @@ static flash_t get_level_pack_addr(level_pack_idx_t pack) {
 void level_read_packs(void) {
     uint16_t pos = 0;
     level_pack_info_t* info = tworld_packs.packs;
+    bool next_is_unlocked = true;
     for (level_pack_idx_t i = 0; i < LEVEL_PACK_COUNT; ++i) {
         flash_t addr = get_level_pack_addr(i);
 
@@ -55,13 +61,21 @@ void level_read_packs(void) {
 
         uint8_t count = header[2];
         addr += count * 2 + 3;
+        info->flags = 0;
         info->pos = pos;
         info->total_levels = count;
 
-        flash_read(addr, LEVEL_PACK_NAME_MAX_LENGTH, &info->name);
+        if (next_is_unlocked) {
+            info->flags |= LEVEL_PACK_FLAG_UNLOCKED;
+        }
 
+        flash_read(addr, LEVEL_PACK_NAME_MAX_LENGTH, &info->name);
         fill_completed_levels_array(pos, count, info);
         pos += count;
+
+        next_is_unlocked = (info->completed_levels >= (uint8_t) ((uint16_t)
+                (info->total_levels * LEVEL_PACK_UNLOCK_THRESHOLD) >> 8));
+
         ++info;
     }
 }
@@ -131,11 +145,9 @@ bool level_use_password(void) {
     // Iterate over unlocked level packs and iterate over levels in the pack to
     // find a level with a password matching the given password.
     char buf[4];
-    uint8_t mask = 1;
     for (level_pack_idx_t i = 0; i < LEVEL_PACK_COUNT; ++i) {
-        if (game.options.unlocked_packs & mask) {
-            const level_pack_info_t* info = &tworld_packs.packs[i];
-
+        const level_pack_info_t* info = &tworld_packs.packs[i];
+        if (info->flags & LEVEL_PACK_FLAG_UNLOCKED) {
             flash_t addr = get_level_pack_addr(i);
             flash_t index_addr = addr + POS_LEVEL_INDEX;
             addr += POS_PASSWORD;
@@ -156,13 +168,12 @@ bool level_use_password(void) {
                 }
             }
         }
-        mask <<= 1;
     }
 
     return false;
 }
 
-bool level_is_unlocked(const level_pack_info_t *info, level_idx_t level) {
+bool level_is_unlocked(const level_pack_info_t* info, level_idx_t level) {
     return level <= info->last_unlocked ||
            info->completed_array[level / 8] & (1 << (level % 8));
 }

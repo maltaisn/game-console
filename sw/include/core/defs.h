@@ -37,4 +37,10 @@ typedef __int24 int24_t;
 #define SHARED_DISP_BUF __attribute__((section(".shared_disp_buf")))
 #endif
 
+/**
+ * To be used on structures stored in Flash or EEPROM and that are copied to RAM.
+ * All structs are packed on 8-bit AVR, but they must be in simulator too.
+ */
+#define PACK_STRUCT __attribute__((packed))
+
 #endif //CORE_DEFS_H

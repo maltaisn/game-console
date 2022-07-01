@@ -56,7 +56,7 @@ typedef struct {
     eeprom_t eeprom_offset;
     uint16_t eeprom_size;
     flash_t address;
-} __attribute__((packed)) app_flash_t;
+} PACK_STRUCT app_flash_t;
 
 static BOOTLOADER_ONLY app_flash_t _app_index[APP_INDEX_SIZE];
 static BOOTLOADER_ONLY uint8_t _app_count;

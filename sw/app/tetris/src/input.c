@@ -26,7 +26,7 @@
 
 // mask indicating buttons which should be considered not pressed until released.
 static uint8_t input_wait_released;
-// number of game ticks that buttons has been held.
+// indicates pressed buttons for which click event has been processed.
 static uint8_t click_processed;
 // time since buttons was pressed, in game ticks.
 static uint8_t button_hold_time[BUTTONS_COUNT];

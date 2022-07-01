@@ -15,6 +15,7 @@
  */
 
 #include "tworld_actor.h"
+#include "tworld.h"
 
 #define DIRECTION_MASK 0x3
 
@@ -60,4 +61,24 @@ bool actor_is_monster_or_block(actor_t actor) {
 
 bool actor_is_on_actor_list(actor_t actor) {
     return actor >= ENTITY_BLOCK;
+}
+
+grid_pos_t act_actor_get_x(active_actor_t a) {
+    return a & 0x1f;
+}
+
+grid_pos_t act_actor_get_y(active_actor_t a) {
+    return (a >> 7) & 0x1f;
+}
+
+position_t act_actor_get_pos(active_actor_t a) {
+    return (position_t) {act_actor_get_x(a), act_actor_get_y(a)};
+}
+
+step_t act_actor_get_step(active_actor_t a) {
+    return (step_t) ((step_t) (a >> 12) - STEP_BIAS);
+}
+
+actor_state_t act_actor_get_state(active_actor_t a) {
+    return (uint8_t) a & ACTOR_STATE_MASK;
 }

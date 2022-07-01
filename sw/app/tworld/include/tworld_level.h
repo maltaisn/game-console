@@ -40,10 +40,15 @@
 typedef uint8_t level_pack_idx_t;
 typedef uint8_t level_idx_t;
 
+enum {
+    LEVEL_PACK_FLAG_UNLOCKED = 1 << 0,
+};
+
 /**
  * Data structure for a level pack.
  */
 typedef struct {
+    uint8_t flags;
     // Position in the global level list (for EEPROM).
     uint16_t pos;
     // Number of levels in the pack
@@ -77,8 +82,8 @@ typedef union {
 
 extern level_data_t tworld_data;
 
-#define tworld (tworld_data.level)
-#define tworld_packs (tworld_data.packs)
+#define tworld tworld_data.level
+#define tworld_packs tworld_data.packs
 
 /**
  * Load all the level packs.
@@ -96,7 +101,7 @@ void level_read_level(void);
  * Copy the level password from flash to a buffer.
  * A level must be loaded before using this.
  */
-void level_get_password(char password[static LEVEL_PASSWORD_LENGTH]);
+void level_get_password(char password[LEVEL_PASSWORD_LENGTH]);
 
 /**
  * Copy the level title from flash to a buffer.

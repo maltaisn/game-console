@@ -24,8 +24,6 @@
 #include <core/trace.h>
 #include <sys/display.h>
 
-#include <string.h>
-
 /**
  * Considering there's 4 bytes needed to transfer the command and address to the flash,
  * different buffer size result in the following efficiency:
@@ -58,7 +56,13 @@
 #endif
 
 void uint16_to_str_zero_pad(char buf[static 4], uint16_t n) {
-    assert(n < 1000, "invalid value");
+#ifdef RUNTIME_CHECKS
+    if (n >= 1000) {
+        trace("invalid value");
+        buf[0] = '\0';
+        return;
+    }
+#endif //RUNTIME_CHECKS
 
     buf[0] = '0';
     buf[1] = '0';
@@ -139,7 +143,12 @@ AVR_OPTIMIZE void draw_bottom_tile(const disp_x_t x, const disp_y_t y, const til
     draw_checks(x, y);
 
     const uint8_t index = ASSET_TILESET_MAP_BOTTOM[tile];
-    assert(index != 0xff, "invalid bottom tile");
+#ifdef RUNTIME_CHECKS
+    if (index == 0xff) {
+        trace("invalid bottom tile");
+        return;
+    }
+#endif
 
     flash_t addr = asset_tileset_bottom(index);
     uint8_t buf[BOTTOM_TILE_BUFFER_SIZE];
@@ -205,7 +214,12 @@ AVR_OPTIMIZE void draw_top_tile(disp_x_t x, disp_y_t y, actor_t actor) {
     x += 2;
 
     const uint8_t index = ASSET_TILESET_MAP_TOP[actor];
-    assert(index != 0xff, "invalid top tile");
+#ifdef RUNTIME_CHECKS
+    if (index == 0xff) {
+        trace("invalid top tile");
+        return;
+    }
+#endif
 
     flash_t addr = asset_tileset_top(index);
     uint8_t buf[TOP_TILE_BUFFER_SIZE];
@@ -273,7 +287,6 @@ start:
     }
 }
 
-#define FLAG_END_OF_TEXT 0x80
 #define TEXT_UTILS_WIDTH 5  // width of text drawn for utility text functions
 #define TEXT_UTILS_HEIGHT 10  // height of text drawn for text functions + line spacing
 

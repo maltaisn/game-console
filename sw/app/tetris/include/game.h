@@ -87,7 +87,7 @@ enum {
 };
 
 // note: structs are stored in eeprom in the same layout as in memory.
-// if the any of the following structs is changed, the version should be changed:
+// if the any of the following structs is changed, the EEPROM data should be migrated:
 // - game_options_t
 // - tetris_options_t
 // - game_highscore_t
@@ -97,17 +97,17 @@ typedef struct {
     uint8_t features;
     sound_volume_t volume; // 0-4
     uint8_t contrast;  // 0-10
-} game_options_t;
+} PACK_STRUCT game_options_t;
 
 typedef struct {
     uint32_t score;
     char name[HIGHSCORE_NAME_MAX_LENGTH + 1];
-} game_highscore_t;
+} PACK_STRUCT game_highscore_t;
 
 typedef struct {
     uint8_t size;
     game_highscore_t entries[LEADERBOARD_MAX_SIZE];
-} game_leaderboard_t;
+} PACK_STRUCT game_leaderboard_t;
 
 typedef struct {
     game_options_t options;

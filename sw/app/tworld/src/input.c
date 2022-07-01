@@ -98,7 +98,7 @@ static dialog_result_t handle_vertical_navigation_input(void) {
         if (game.state == GAME_STATE_LEVEL_PACKS) {
             if (game.pos_selection_y == LEVEL_PACK_COUNT) {
                 return RESULT_OPEN_PASSWORD;
-            } else if (game.options.unlocked_packs & (1 << game.pos_selection_y)) {
+            } else if (tworld_packs.packs[game.pos_selection_y].flags & LEVEL_PACK_FLAG_UNLOCKED) {
                 // pack is unlocked, select it and go to level selection.
                 game.current_pack = game.pos_selection_y;
                 return RESULT_OPEN_LEVELS;
@@ -178,7 +178,7 @@ static game_state_t start_level(void) {
 
 static game_state_t next_level(void) {
     level_read_packs();
-    const level_pack_info_t *info = &tworld_packs.packs[game.current_pack];
+    const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
 
     if ((info->completed_levels == info->total_levels) || (game.flags & FLAG_PASSWORD_USED)) {
         // All levels have been completed, or level was accessed

@@ -73,7 +73,7 @@ typedef enum {
 typedef struct {
     uint8_t features;
     uint8_t preview_pieces;
-} tetris_options_t;
+} PACK_STRUCT tetris_options_t;
 
 typedef enum {
     TETRIS_FLAG_GAME_OVER = 1 << 0,

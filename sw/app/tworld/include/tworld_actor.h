@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <core/defs.h>
+
 #define MAX_ACTORS_COUNT 128
 #define ACTOR_INDEX_NONE ((actor_idx_t) 0xff)
 
@@ -76,6 +78,47 @@ typedef uint8_t actor_idx_t;
  * - [12:15]: step, with bias of +3.
  */
 typedef uint16_t active_actor_t;
+
+/**
+ * An actor step indicates how many ticks before actor makes a move.
+ * This type represents values between -3 and 12 inclusively.
+ */
+typedef int8_t step_t;
+
+#define STEP_BIAS 3
+
+typedef enum {
+    // Default state.
+    ACTOR_STATE_NONE = 0x0 << 5,
+
+    // Hidden state, when the actor is dead
+    // Hidden actor entries are skipped and are reused when spawning a new actor.
+    ACTOR_STATE_HIDDEN = 0x1 << 5,
+
+    // Moved state, when the actor has chosen a move during stepping (vs. not moving).
+    // This also applies when a move is forced on an actor.
+    ACTOR_STATE_MOVED = 0x2 << 5,
+
+    // Teleported state, when the actor has just been teleported.
+    ACTOR_STATE_TELEPORTED = 0x3 << 5,
+} actor_state_t;
+
+#define ACTOR_STATE_MASK (0x3 << 5)
+
+/** Position on the grid (X or Y), between 0 and 31. */
+typedef uint8_t grid_pos_t;
+
+/** A position on the game grid. */
+typedef struct {
+    grid_pos_t x;
+    grid_pos_t y;
+} PACK_STRUCT position_t;
+
+/** A position or the grid, or outside of it. */
+typedef struct {
+    int8_t x;
+    int8_t y;
+} sposition_t;
 
 /**
  * Create an actor from an entity and a direction.
@@ -133,5 +176,30 @@ bool actor_is_monster_or_block(actor_t actor);
  * which is expected to be on the actor list.
  */
 bool actor_is_on_actor_list(actor_t actor);
+
+/**
+ * Returns the X position of an active actor.
+ */
+grid_pos_t act_actor_get_x(active_actor_t a);
+
+/**
+ * Returns the Y position of an active actor.
+ */
+grid_pos_t act_actor_get_y(active_actor_t a);
+
+/**
+ * Returns the position of an active actor.
+ */
+position_t act_actor_get_pos(active_actor_t a);
+
+/**
+ * Returns the step value of an active actor.
+ */
+step_t act_actor_get_step(active_actor_t a);
+
+/**
+ * Returns the state of an active actor.
+ */
+actor_state_t act_actor_get_state(active_actor_t a);
 
 #endif //TWORLD_TWORLD_ACTOR_H

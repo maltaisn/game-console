@@ -38,12 +38,26 @@
 
 static SHARED_DISP_BUF uint8_t save_buf[255];
 
+static void save_to_eeprom(void) {
+    uint8_t* buf = save_buf;
+    *buf++ = EEPROM_GUARD_BYTE;
+
+    // options
+    memcpy(buf, &game.options, sizeof game.options);
+    //buf += sizeof game.options;
+
+    eeprom_write(0, EEPROM_SAVE_SIZE, save_buf);
+
+#ifdef SIMULATION
+    sim_eeprom_save();
+#endif
+}
+
 static void set_default_options(void) {
     game.options = (game_options_t) {
             .features = GAME_FEATURE_MUSIC,
             .volume = SOUND_VOLUME_2,
             .contrast = 6,
-            .unlocked_packs = 1,  // first pack only
     };
 
     // write all level times to "not completed"
@@ -82,21 +96,6 @@ void load_from_eeprom(void) {
 
     memcpy(&game.options, buf, sizeof game.options);
     //buf += sizeof game.options;
-}
-
-void save_to_eeprom(void) {
-    uint8_t* buf = save_buf;
-    *buf++ = EEPROM_GUARD_BYTE;
-
-    // options
-    memcpy(buf, &game.options, sizeof game.options);
-    //buf += sizeof game.options;
-
-    eeprom_write(0, EEPROM_SAVE_SIZE, save_buf);
-
-#ifdef SIMULATION
-    sim_eeprom_save();
-#endif
 }
 
 void save_dialog_options(void) {
@@ -148,7 +147,7 @@ struct time_block {
     uint16_t time1 : 10;
     uint16_t time2 : 10;
     uint16_t time3 : 10;
-};
+} PACK_STRUCT;
 
 static void read_level_time_block(eeprom_t addr, uint16_t times[4]) {
     struct time_block block;
@@ -182,7 +181,8 @@ void set_best_level_time(void) {
         new_time = SAVE_TIME_UNTIMED;
     } else {
         new_time += TICKS_PER_SECOND - 1;
-        if (new_time <= get_best_level_time(pos)) {
+        const uint16_t best_time = get_best_level_time(pos);
+        if (best_time != TIME_LEFT_NONE && new_time <= best_time) {
             // New not better than old time, don't save it.
             return;
         }

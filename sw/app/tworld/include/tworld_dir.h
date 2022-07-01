@@ -28,13 +28,18 @@ typedef enum {
 } direction_t;
 
 typedef enum {
+    DIR_MASK_NONE = 0,
     DIR_NORTH_MASK = 1 << DIR_NORTH,
     DIR_WEST_MASK = 1 << DIR_WEST,
     DIR_SOUTH_MASK = 1 << DIR_SOUTH,
     DIR_EAST_MASK = 1 << DIR_EAST,
+    DIR_NORTHWEST_MASK = DIR_NORTH_MASK | DIR_WEST_MASK,
+    DIR_SOUTHWEST_MASK = DIR_SOUTH_MASK | DIR_WEST_MASK,
+    DIR_NORTHEAST_MASK = DIR_NORTH_MASK | DIR_EAST_MASK,
+    DIR_SOUTHEAST_MASK = DIR_SOUTH_MASK | DIR_EAST_MASK,
     DIR_VERTICAL_MASK = DIR_NORTH_MASK | DIR_SOUTH_MASK,
     DIR_HORIZONTAL_MASK = DIR_WEST_MASK | DIR_EAST_MASK,
-    // typedef is also used for any combination of the above.
+    // typedef is also used for any other combination of the above.
 } direction_mask_t;
 
 /** Returns the direction opposite to the given direction. */

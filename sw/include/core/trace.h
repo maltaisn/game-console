@@ -28,10 +28,8 @@
 #include <stdio.h>
 
 #define trace(str, ...) printf("GC %s:%d:(%s) " str "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
-#define assert(cond, ...) if (!(cond)) trace(__VA_ARGS__)
 #else
 #define trace(str, ...) // no-op
-#define assert(cond, ...) // no-op
 #endif //SIMULATION
 
 #endif //CORE_TRACE_H

@@ -17,12 +17,7 @@
 #include <core/dialog.h>
 #include <core/utils.h>
 #include <core/trace.h>
-
-#ifndef DIALOG_NO_TEXT
-
 #include <string.h>
-
-#endif
 
 #if defined(DIALOG_NO_CHOICE) && defined(DIALOG_NO_NUMBER)
 #define DIALOG_NO_SPINNER

@@ -242,7 +242,7 @@ static void draw_level_packs_overlay(void) {
             set_7x7_font();
             graphics_text(30, (int8_t) (y + 3), info->name);
 
-            if (game.options.unlocked_packs & (1 << index)) {
+            if (info->flags & LEVEL_PACK_FLAG_UNLOCKED) {
                 image = asset_image_pack_progress(
                         (uint16_t) info->completed_levels * 8 / info->total_levels);
             } else {

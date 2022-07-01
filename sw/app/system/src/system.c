@@ -30,6 +30,7 @@
 #include <core/data.h>
 #include <core/dialog.h>
 #include <core/time.h>
+#include <core/defs.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -96,14 +97,14 @@ typedef struct {
     uint16_t build_date;
     char name[16];
     char author[16];
-} __attribute__((packed)) flash_entry_t;
+} PACK_STRUCT flash_entry_t;
 
 // see eeprom memory layout in sys/eeprom.h
 typedef struct {
     uint8_t id;
     uint16_t : 16;
     uint16_t size;
-} __attribute__((packed)) eeprom_entry_t;
+} PACK_STRUCT eeprom_entry_t;
 
 // points the the first element of the current index (for sorting).
 static void* curr_index;

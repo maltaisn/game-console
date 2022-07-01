@@ -28,16 +28,15 @@ CXX := g++
 # the simulator will have no GUI, produce no sound, and time will be controllable.
 DEFINES += SIMULATION SIMULATION_HEADLESS BOOTLOADER TESTING
 
-CFLAGS += -Wno-unused-parameter -g3 -O0 \
+CFLAGS += -Wno-unused-parameter -g3 -O0 -fshort-enums \
           -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined -pthread
 
-CC_FLAGS += -fshort-enums -fpack-struct
 CXX_FLAGS += -std=c++17
 
 CXXSOURCES := $(TEST_SRC_DIR)/$(TEST_NAME_P).cpp
 OBJECTS += $(addprefix $(BUILD_DIR)/, $(CXXSOURCES:.cpp=.o))
 
-DEPS = $(addprefix $(BUILD_DIR)/, $(CPPSOURCES:.cpp=.d)) \
+DEPS = $(addprefix $(BUILD_DIR)/, $(CXXSOURCES:.cpp=.d)) \
 
 .PHONY: all test
 

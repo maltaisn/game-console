@@ -22,6 +22,7 @@
 #include "tworld_tile.h"
 
 #include <core/flash.h>
+#include <core/trace.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -51,6 +52,8 @@ typedef enum {
     END_CAUSE_BOMBED = 5,
     END_CAUSE_OUTOFTIME = 6,
     END_CAUSE_COMPLETE = 7,
+    // used for testing
+    END_CAUSE_ERROR = 8,
 } end_cause_t;
 
 typedef enum {
@@ -66,21 +69,6 @@ typedef uint16_t time_left_t;
 /** Convert a game time in ticks to a game time in seconds, rounding up. */
 #define time_left_to_seconds(time) \
         (uint16_t) ((uint16_t) ((time) + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND)
-
-/** Position on the grid (X or Y), between 0 and 31. */
-typedef uint8_t grid_pos_t;
-
-/** A position on the game grid. */
-typedef struct {
-    grid_pos_t x;
-    grid_pos_t y;
-} position_t;
-
-/** A position or the grid, or outside of it. */
-typedef struct {
-    int8_t x;
-    int8_t y;
-} sposition_t;
 
 /**
  * Data structure for the current level state.
@@ -133,6 +121,10 @@ typedef struct {
     // used to accumulate active input directions in-between moves.
     direction_mask_t input_since_move;
 
+#ifdef RUNTIME_CHECKS
+    bool error;
+#endif
+
 #ifdef TESTING
     // stepping value 0-7 (affects teeth only)
     uint8_t stepping;
@@ -149,7 +141,7 @@ typedef struct {
 typedef struct {
     position_t btn;
     position_t link;
-} link_t;
+} PACK_STRUCT link_t;
 
 typedef struct {
     uint8_t size;

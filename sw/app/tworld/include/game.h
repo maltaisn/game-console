@@ -109,8 +109,7 @@ typedef struct {
     uint8_t features;
     sound_volume_t volume; // 0-4
     uint8_t contrast;  // 0-10
-    uint8_t unlocked_packs;
-} game_options_t;
+} PACK_STRUCT game_options_t;
 
 typedef struct {
     // options

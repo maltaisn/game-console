@@ -18,7 +18,7 @@ LIBS += m glut pthread portaudio png
 
 DEFINES += SIMULATION BOOTLOADER
 
-CFLAGS += -Wno-unused-parameter -g3 -O0 -fshort-enums -fpack-struct \
+CFLAGS += -Wno-unused-parameter -g3 -O0 -fshort-enums \
           -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined
 CFLAGS += ${shell pkg-config --cflags glu}
 LDFLAGS += ${shell pkg-config --libs glu}

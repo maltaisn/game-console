@@ -97,7 +97,6 @@ static game_state_t prepare_level_end(void) {
 
     if (tworld.end_cause == END_CAUSE_COMPLETE) {
         set_best_level_time();
-        // TODO unlock next level pack at some point
         game.state_delay = LEVEL_FAIL_STATE_DELAY;
         game_music_start(ASSET_MUSIC_COMPLETE, MUSIC_FLAG_DELAYED);
         return GAME_STATE_LEVEL_COMPLETE;

@@ -28,8 +28,6 @@
 
 void load_from_eeprom(void);
 
-void save_to_eeprom(void);
-
 void save_dialog_options(void);
 
 void update_display_contrast(uint8_t value);
