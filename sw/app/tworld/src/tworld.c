@@ -20,6 +20,7 @@
 
 #include <core/trace.h>
 #include <core/random.h>
+#include <core/time.h>
 
 #include <string.h>
 
@@ -1500,6 +1501,8 @@ void tworld_init(void) {
     }
     tworld.collided_with = ACTOR_INDEX_NONE;
     tworld.actor_springing_trap = ACTOR_INDEX_NONE;
+
+    random_seed(time_get());
 
 #ifdef RUNTIME_CHECKS
     tworld.error = false;

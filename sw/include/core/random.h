@@ -31,11 +31,13 @@ void random_seed(uint16_t seed);
 
 /**
  * Returns a random 8-bit number.
+ * Don't forget to initialize the seed!
  */
 uint8_t random8(void);
 
 /**
  * Returns a random 16-bit number.
+ * Don't forget to initialize the seed!
  */
 uint16_t random16(void);
 

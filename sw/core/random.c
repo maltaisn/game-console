@@ -29,7 +29,7 @@ uint8_t random8() {
 
 uint16_t random16() {
     seed ^= seed << 7;
-    seed ^= seed >> 9;
+    seed ^= (uint8_t) (seed >> 8) >> 1; // seed >> 9
     seed ^= seed << 8;
     return seed;
 }
