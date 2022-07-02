@@ -129,7 +129,7 @@ void sys_power_schedule_sleep(uint8_t flags) {
         sleep_scheduled = true;
         sleep_cause = flags & 0x3;
         sleep_allow_wakeup = (flags & SYS_SLEEP_SCHEDULE_ALLOW_WAKEUP) != 0;
-        sleep_countdown = (flags & SYS_SLEEP_SCHEDULE_COUNTDOWN) != 0;
+        sleep_countdown = SYS_POWER_SLEEP_COUNTDOWN;
         trace("sleep scheduled, cause = %d, allow_wakeup = %d, countdown = %d",
               sleep_cause, sleep_allow_wakeup, sleep_countdown);
         __callback_sleep_scheduled();

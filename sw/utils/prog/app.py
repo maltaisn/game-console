@@ -354,7 +354,7 @@ class AppManager:
             print(f"  Version: v{old.app_version} -> v{new.app_version}")
             print(f"  Name: {old.name.title()} -> {new.name.title()}")
             print(f"  Author: {old.author.title()} -> {new.author.title()}")
-            print(f"  Build date: v{old.build_date.isoformat()} -> v{new.build_date.isoformat()}")
+            print(f"  Build date: {old.build_date.isoformat()} -> {new.build_date.isoformat()}")
             print(f"  Size: {readable_size(old.flash_location.size)} "
                   f"-> {readable_size(new.flash_location.size)}")
             print(f"  EEPROM size: {readable_size(old.eeprom_location.size)} "

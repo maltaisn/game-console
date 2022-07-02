@@ -25,7 +25,7 @@
 #include <boot/defs.h>
 
 BOOTLOADER_NOINLINE
-void sys_spi_transceive(uint16_t length, uint8_t data[static length]) {
+void sys_spi_transceive(uint16_t length, uint8_t data[]) {
     // SPI is triple-buffered is the transmit direction and double buffered in the receive direction.
     // Here we only use one buffer level in the transmit direction.
     // 1. Write the first byte to be transmitted.
@@ -46,7 +46,7 @@ void sys_spi_transceive(uint16_t length, uint8_t data[static length]) {
 }
 
 BOOTLOADER_NOINLINE
-void sys_spi_transmit(uint16_t length, const uint8_t data[static length]) {
+void sys_spi_transmit(uint16_t length, const uint8_t data[]) {
     // same as transceive but not receiving.
     SPI0.DATA = *data++;
     while (--length) {

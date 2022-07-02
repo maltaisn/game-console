@@ -42,7 +42,7 @@ def main():
     # keep only certain types (functions, variables, etc)
     symbols = {}
     for line in symbols_str.splitlines():
-        match = re.match(r"^([\da-f]+)\s+(\w)\s+(.*)$", line)
+        match = re.match(r"^([\da-f]+)\s+(\w)\s+(\w+)$", line)
         if match:
             symbol_type = match.group(2).lower()
             if symbol_type not in SYMBOL_TYPES:

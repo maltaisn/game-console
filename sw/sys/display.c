@@ -71,7 +71,7 @@ enum {
 #define nibble_swap(a) ((a) >> 4 | (a) << 4)
 #define nibble_copy(a) ((a) >> 4 | nibble_swap(a))
 
-__attribute__((section(".disp_buf"))) uint8_t sys_display_buffer[0];
+__attribute__((section(".disp_buf"))) uint8_t sys_display_buffer[];
 
 disp_y_t sys_display_page_height;
 disp_y_t sys_display_curr_page_height;

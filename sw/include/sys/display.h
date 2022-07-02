@@ -59,10 +59,10 @@ extern uint8_t sys_display_page_height;
 
 /**
  * The display page buffer. This buffer is assigned to a particular section and
- * its size is variable (may be different for the bootloader and the app).
+ * its size is variable (despite the size fixed here, it may be different in all apps).
  * `sys_display_buffer_at()` should always be used to access this buffer.
  */
-extern uint8_t sys_display_buffer[];
+extern uint8_t sys_display_buffer[DISPLAY_PAGE_HEIGHT * DISPLAY_NUM_COLS];
 
 extern uint8_t sys_display_state;
 extern uint8_t sys_display_contrast;

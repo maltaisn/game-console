@@ -124,7 +124,7 @@ static bool _flash_app_code(app_flash_t *app) {
     uint8_t* dst = &__APP_START_ADDRESS;
     flash_t src = app->address;
     uint16_t crc = 0xffff;
-    uint8_t code_pages = (app->code_size + CODE_PAGE_SIZE - 1) / CODE_PAGE_SIZE;
+    const uint8_t code_pages = (app->code_size + CODE_PAGE_SIZE - 1) / CODE_PAGE_SIZE;
     for (uint8_t i = code_pages; i-- > 0;) {
         // Read code page from flash and write it to flash directly.
         // Note that the last page is written completely even if partial and that's fine.
@@ -136,7 +136,14 @@ static bool _flash_app_code(app_flash_t *app) {
         src += CODE_PAGE_SIZE;
 
         // update the CRC
-        uint8_t page_size = (i == 0 ? app->code_size % CODE_PAGE_SIZE : CODE_PAGE_SIZE);
+        uint8_t page_size = 0;
+        if (i == 0) {
+            page_size = app->code_size % CODE_PAGE_SIZE;
+        }
+        if (page_size == 0) {
+            // either on last page, or last page is a full page.
+            page_size = CODE_PAGE_SIZE;
+        }
         for (uint8_t j = 0; j < page_size; ++j) {
             crc = _crc_ccitt_update(crc, *dst++);
         }
@@ -160,7 +167,7 @@ void _load_app(uint8_t index) {
             // keep the LED on for a while to indicate the error
 #ifndef SIMULATION
             led_set();
-            _delay_ms(500);
+            _delay_ms(250);
             led_clear();
 #endif
             return;
