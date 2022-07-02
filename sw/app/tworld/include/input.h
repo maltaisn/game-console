@@ -43,9 +43,4 @@ game_state_t game_handle_input_dialog(void);
  */
 game_state_t game_handle_input_tworld(void);
 
-/**
- * Ignore currently pressed buttons until they are released.
- */
-void game_ignore_current_input(void);
-
 #endif //TETRIS_INPUT_H

@@ -27,24 +27,31 @@
 
 #include <string.h>
 
-// mask indicating buttons which should be considered not pressed until released.
+// Repeat delay between actions, in game ticks.
+#define VERTICAL_NAVIGATION_REPEAT_DELAY 1
+// Repeat initial delay before activation, in game ticks.
+#define VERTICAL_NAVIGATION_REPEAT_START 10
+
+// Mask indicating buttons which should be considered not pressed until released.
 static uint8_t input_wait_released;
-// indicates pressed buttons for which click event has been processed.
+// Indicates pressed buttons for which click event has been processed.
 static uint8_t click_processed;
-// time since buttons was pressed, in game ticks.
+// Time since buttons was pressed, in game ticks.
 static uint8_t button_hold_time[BUTTONS_COUNT];
+// In vertical navigation input, delay before next repeat.
+static uint8_t button_repeat_delay;
 
 static uint8_t preprocess_input_state() {
     uint8_t state = input_get_state();
-    // if any button was released, update wait mask.
+    // If any button was released, update wait mask.
     input_wait_released &= state;
-    // consider any buttons on wait mask as not pressed.
+    // Consider any buttons on wait mask as not pressed.
     state &= ~input_wait_released;
     return state;
 }
 
 static void apply_options_dialog_changes(void) {
-    // this will have to be undone if options dialog is cancelled.
+    // This will have to be undone if options dialog is cancelled.
     update_sound_volume(dialog.items[0].number.value);
     update_display_contrast(dialog.items[2].number.value);
     if (dialog.items[1].choice.selection == 0) {
@@ -55,66 +62,122 @@ static void apply_options_dialog_changes(void) {
     update_music_enabled();
 }
 
+static void reset_input_state() {
+    input_wait_released |= input_get_state();
+    click_processed = 0;
+    button_repeat_delay = 0;
+    memset(button_hold_time, 0, sizeof button_hold_time);
+}
+
+static void handle_vertical_navigation_up(void) {
+    if (game.pos_selection_y > 0) {
+        --game.pos_selection_y;
+        if (game.pos_first_y > game.pos_selection_y) {
+            // scroll up
+            --game.pos_first_y;
+        }
+    }
+}
+
+static void handle_vertical_navigation_down(void) {
+    if (game.pos_selection_y < game.pos_max_y) {
+        ++game.pos_selection_y;
+        if ((uint8_t) (game.pos_selection_y - game.pos_first_y) >= game.pos_shown_y) {
+            // scroll down
+            ++game.pos_first_y;
+        }
+        if (game.pos_selection_y == game.pos_max_y && game.pos_selection_x > game.pos_last_x) {
+            // the last grid row may be incomplete, restrict the maximum X position.
+            game.pos_selection_x = game.pos_last_x;
+        }
+    }
+}
+
+static void handle_vertical_navigation_left(void) {
+    if (game.pos_selection_x > 0) {
+        --game.pos_selection_x;
+    } else if (game.pos_selection_y > 0) {
+        game.pos_selection_x = game.pos_max_x;
+        handle_vertical_navigation_up();
+    }
+}
+
+static void handle_vertical_navigation_right(void) {
+    if (game.pos_selection_x < game.pos_max_x) {
+        ++game.pos_selection_x;
+        if (game.pos_selection_y == game.pos_max_y && game.pos_selection_x > game.pos_last_x) {
+            // the last grid row may be incomplete, restrict the maximum X position.
+            game.pos_selection_x = game.pos_last_x;
+        }
+    } else if (game.pos_selection_y < game.pos_max_y) {
+        game.pos_selection_x = 0;
+        handle_vertical_navigation_down();
+    }
+}
+
+static dialog_result_t handle_vertical_navigation_enter(void) {
+    // select level or level pack.
+    if (game.state == GAME_STATE_LEVEL_PACKS) {
+        if (game.pos_selection_y == LEVEL_PACK_COUNT) {
+            return RESULT_OPEN_PASSWORD;
+        } else if (tworld_packs.packs[game.pos_selection_y].flags & LEVEL_PACK_FLAG_UNLOCKED) {
+            // pack is unlocked, select it and go to level selection.
+            game.current_pack = game.pos_selection_y;
+            return RESULT_OPEN_LEVELS;
+        }
+
+    } else if (game.state == GAME_STATE_LEVELS) {
+        // only start level if unlocked or previously completed.
+        const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
+        level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
+        if (level_is_unlocked(info, level)) {
+            game.current_level = level;
+            game.current_level_pos = info->pos + level;
+            game.flags &= ~FLAG_PASSWORD_USED;
+            return RESULT_LEVEL_INFO;
+        }
+    } // else game.state == GAME_STATE_HINT
+
+    return DIALOG_RESULT_NONE;
+}
+
 static dialog_result_t handle_vertical_navigation_input(void) {
     uint8_t clicked = input_get_clicked();
+
+    // Update button hold time for repeating action.
+    uint8_t state = input_get_state();
+    uint8_t mask = BUTTON0;
+    for (uint8_t i = 0; i < BUTTONS_COUNT; ++i) {
+        if (state & mask) {
+            if (button_hold_time[i] != UINT8_MAX) {
+                ++button_hold_time[i];
+            }
+            if (button_hold_time[i] >= VERTICAL_NAVIGATION_REPEAT_START
+                && button_repeat_delay == 0) {
+                // Button has been held long enough, start repeat action.
+                clicked |= mask;
+                button_repeat_delay = VERTICAL_NAVIGATION_REPEAT_DELAY;
+            }
+        } else {
+            button_hold_time[i] = 0;
+        }
+        mask <<= 1;
+    }
+
+    if (button_repeat_delay > 0) {
+        --button_repeat_delay;
+    }
+
     if (clicked & BUTTON_LEFT) {
-        if (game.pos_selection_x > 0) {
-            --game.pos_selection_x;
-        }
-
+        handle_vertical_navigation_left();
     } else if (clicked & BUTTON_RIGHT) {
-        if (game.pos_selection_x < game.pos_max_x) {
-            ++game.pos_selection_x;
-            if (game.pos_selection_y == game.pos_max_y && game.pos_selection_x > game.pos_last_x) {
-                // the last grid row may be incomplete, restrict the maximum X position.
-                game.pos_selection_x = game.pos_last_x;
-            }
-        }
-
+        handle_vertical_navigation_right();
     } else if (clicked & BUTTON_UP) {
-        if (game.pos_selection_y > 0) {
-            --game.pos_selection_y;
-            if (game.pos_first_y > game.pos_selection_y) {
-                // scroll up
-                --game.pos_first_y;
-            }
-        }
-
+        handle_vertical_navigation_up();
     } else if (clicked & BUTTON_DOWN) {
-        if (game.pos_selection_y < game.pos_max_y) {
-            ++game.pos_selection_y;
-            if ((uint8_t) (game.pos_selection_y - game.pos_first_y) >= game.pos_shown_y) {
-                // scroll down
-                ++game.pos_first_y;
-            }
-            if (game.pos_selection_y == game.pos_max_y && game.pos_selection_x > game.pos_last_x) {
-                // the last grid row may be incomplete, restrict the maximum X position.
-                game.pos_selection_x = game.pos_last_x;
-            }
-        }
-
+        handle_vertical_navigation_down();
     } else if (clicked & DIALOG_BUTTON_ENTER) {
-        // select level or level pack.
-        if (game.state == GAME_STATE_LEVEL_PACKS) {
-            if (game.pos_selection_y == LEVEL_PACK_COUNT) {
-                return RESULT_OPEN_PASSWORD;
-            } else if (tworld_packs.packs[game.pos_selection_y].flags & LEVEL_PACK_FLAG_UNLOCKED) {
-                // pack is unlocked, select it and go to level selection.
-                game.current_pack = game.pos_selection_y;
-                return RESULT_OPEN_LEVELS;
-            }
-
-        } else if (game.state == GAME_STATE_LEVELS) {
-            // only start level if unlocked or previously completed.
-            const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
-            level_idx_t level = game.pos_selection_y * LEVELS_PER_SCREEN_H + game.pos_selection_x;
-            if (level_is_unlocked(info, level)) {
-                game.current_level = level;
-                game.current_level_pos = info->pos + level;
-                game.flags &= ~FLAG_PASSWORD_USED;
-                return RESULT_LEVEL_INFO;
-            }
-        } // else game.state == GAME_STATE_HINT
+        return handle_vertical_navigation_enter();
     }
 
     return DIALOG_RESULT_NONE;
@@ -127,6 +190,7 @@ static void setup_level_packs_selection(void) {
     game.pos_max_x = 0;
     game.pos_max_y = LEVEL_PACK_COUNT;
     game.pos_shown_y = LEVEL_PACKS_PER_SCREEN;
+    reset_input_state();
 }
 
 static void setup_level_selection(const level_idx_t selection) {
@@ -144,6 +208,8 @@ static void setup_level_selection(const level_idx_t selection) {
     if (game.pos_first_y > max_first_y) {
         game.pos_first_y = max_first_y;
     }
+
+    reset_input_state();
 }
 
 static bool show_hint_if_needed(void) {
@@ -160,14 +226,17 @@ static bool show_hint_if_needed(void) {
     game.pos_max_x = 0;
     game.pos_max_y = lines > HINT_LINES_PER_SCREEN ? lines - HINT_LINES_PER_SCREEN : 0;
     game.pos_shown_y = 1;
+
+    reset_input_state();
     return true;
 }
 
 static game_state_t start_level(void) {
     level_read_level();
 
+    reset_input_state();
+
     // don't immediately start updating the game state, wait for first input.
-    game_ignore_current_input();
     game.flags &= ~FLAG_GAME_STARTED;
 
     // start music (will do nothing if already started)
@@ -225,7 +294,7 @@ game_state_t game_handle_input_dialog(void) {
         return next_level();
 
     } else if (res == RESULT_RESUME) {
-        game_ignore_current_input();
+        reset_input_state();
         return GAME_STATE_PLAY;
 
     } else if (res == RESULT_PAUSE) {
@@ -388,7 +457,6 @@ static game_state_t handle_misc_input(const uint8_t curr_state) {
         } else if ((clicked & BUTTON_INVENTORY) == BUTTON_INVENTORY) {
             click_processed |= BUTTON_INVENTORY;
             game.flags ^= FLAG_INVENTORY_SHOWN;
-            tworld.end_cause = END_CAUSE_COMPLETE;
         }
     }
 
@@ -405,8 +473,4 @@ game_state_t game_handle_input_tworld(void) {
     }
 
     return handle_misc_input(curr_state);
-}
-
-void game_ignore_current_input(void) {
-    input_wait_released = input_get_state();
 }

@@ -110,6 +110,7 @@ static game_state_t prepare_level_end(void) {
 void callback_sleep_scheduled(void) {
     if (game.state == GAME_STATE_PLAY) {
         game.state = GAME_STATE_PAUSE;
+        game.flags &= ~FLAG_INVENTORY_SHOWN;
     }
 }
 
