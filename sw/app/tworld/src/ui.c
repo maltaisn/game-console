@@ -33,7 +33,7 @@ void open_main_menu_dialog(void) {
     }
 
     dialog_add_item_button("PLAY", RESULT_OPEN_LEVEL_PACKS);
-    dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_CONTROLS);
+    dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_HELP);
     dialog_add_item_button("OPTIONS", RESULT_OPEN_OPTIONS);
     dialog_add_item_button("EXIT", RESULT_TERMINATE);
 
@@ -83,7 +83,7 @@ void open_pause_dialog(void) {
 
     dialog_add_item_button("RESUME", RESULT_RESUME);
     dialog_add_item_button("RESTART", RESULT_RESTART_LEVEL);
-    dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_CONTROLS_PLAY);
+    dialog_add_item_button("HOW TO PLAY", RESULT_OPEN_HELP_PLAY);
     dialog_add_item_button("OPTIONS", RESULT_OPEN_OPTIONS_PLAY);
     dialog_add_item_button("MAIN MENU", RESULT_OPEN_MAIN_MENU);
 }
@@ -115,7 +115,7 @@ void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
 }
 
 void open_controls_dialog(uint8_t result) {
-    dialog_init_hcentered(12, 108, 100);
+    dialog_init_hcentered(8, 108, 107);
     dialog.title = "HOW TO PLAY";
     dialog.pos_btn = "OK";
     dialog.pos_result = result;

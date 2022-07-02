@@ -145,7 +145,7 @@ AVR_OPTIMIZE void draw_bottom_tile(const disp_x_t x, const disp_y_t y, const til
     draw_checks(x, y);
 
     // Bottom tiles can be animated by cycling through 2 variants, changing every 4 ticks.
-    const uint8_t time_offset = (tworld.current_time & 0x4) * 16;
+    const uint8_t time_offset = (game.anim_state & 0x4) * 16;
     const uint8_t index = ASSET_TILESET_MAP_BOTTOM[(uint8_t) (tile + time_offset)];
 #ifdef RUNTIME_CHECKS
     if (index == 0xff) {

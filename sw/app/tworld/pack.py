@@ -1,10 +1,13 @@
 import dat_convert
 import tile_gen
+import tile_help_gen
 from assets_packer import Packer, ArrayType, Location
+from tworld import Tile, Entity, Direction, Actor
 
 p = Packer(cover_image="cover.png")
 dat_convert.register_builder(p)
 tile_gen.register_builder(p)
+tile_help_gen.register_builder(p)
 
 # music
 tempo = 80
@@ -60,6 +63,73 @@ with p.array("end_cause", ArrayType.INDEXED_ABS):
     ]
     for i, message in enumerate(messages):
         p.string(message, name=f"{i}")
+
+# tile help (separated by page)
+help_map = {
+    Actor(Entity.CHIP, Direction.SOUTH): "Chip",
+    Actor(Entity.BUG, Direction.EAST): "Bug",
+    Actor(Entity.PARAMECIUM, Direction.EAST): "Paramecium",
+    Actor(Entity.GLIDER, Direction.EAST): "Glider",
+    # ----
+    Actor(Entity.FIREBALL, Direction.NORTH): "Fireball",
+    Actor(Entity.BALL, Direction.NORTH): "Ball",
+    Actor(Entity.BLOB, Direction.NORTH): "Blob",
+    Actor(Entity.TANK, Direction.EAST): "Tank",
+    # ----
+    Actor(Entity.WALKER, Direction.EAST): "Walker",
+    Actor(Entity.TEETH, Direction.EAST): "Teeth",
+    Actor(Entity.BLOCK, Direction.NORTH): "Block",
+    Tile.FLOOR: "Floor",
+    # ----
+    Tile.ICE: "Ice",
+    Tile.WATER: "Water",
+    Tile.FIRE: "Fire",
+    Tile.BOMB: "Bomb",
+    # ----
+    Tile.WALL: "Wall",
+    Tile.RECESSED_WALL: "Recessed wall",
+    Tile.WALL_BLUE_REAL: "Blue wall",
+    Tile.LOCK_BLUE: "Lock",
+    # ----
+    Tile.KEY_YELLOW: "Yellow key",
+    Tile.KEY_BLUE: "Blue key",
+    Tile.KEY_RED: "Red key",
+    Tile.KEY_GREEN: "Green key",
+    # ----
+    Tile.BOOTS_WATER: "Flippers",
+    Tile.BOOTS_FIRE: "Fire boots",
+    Tile.BOOTS_ICE: "Skates",
+    Tile.BOOTS_FORCE_FLOOR: "Suction boots",
+    # ----
+    Tile.BUTTON_GREEN: "Toggle button",
+    Tile.BUTTON_RED: "Cloner button",
+    Tile.BUTTON_BROWN: "Trap button",
+    Tile.BUTTON_BLUE: "Tank button",
+    # ----
+    Tile.THIN_WALL_SE: "Thin wall",
+    Tile.ICE_CORNER_NW: "Ice corner",
+    Tile.TOGGLE_WALL: "Toggle wall",
+    Tile.TOGGLE_FLOOR: "Toggle floor",
+    # ----
+    Tile.DIRT: "Dirt",
+    Tile.GRAVEL: "Gravel",
+    Tile.FORCE_FLOOR_E: "Force floor",
+    Tile.FORCE_FLOOR_RANDOM: "Random floor",
+    # ----
+    Tile.HINT: "Hint",
+    Tile.CHIP: "Computer chip",
+    Tile.SOCKET: "Socket",
+    Tile.EXIT: "Exit",
+    # ----
+    Tile.THIEF: "Thief",
+    Tile.TRAP: "Trap",
+    Tile.CLONER: "Clone machine",
+    Tile.TELEPORTER: "Teleporter",
+}
+with p.array("help", ArrayType.INDEXED_ABS_FLASH):
+    for i, entry in enumerate(help_map.items()):
+        tile, name = entry
+        p.tile_help(tile, name, name=f"{i}")
 
 # levels
 with p.array("level_packs", ArrayType.INDEXED_ABS):

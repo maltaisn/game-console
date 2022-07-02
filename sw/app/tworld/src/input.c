@@ -212,6 +212,17 @@ static void setup_level_selection(const level_idx_t selection) {
     reset_input_state();
 }
 
+static void setup_help_selection(void) {
+    game.pos_selection_x = 0;
+    game.pos_selection_y = 0;
+    game.pos_max_x = 0;
+    game.pos_max_y = (ASSET_HELP_SIZE + HELP_TILE_PER_SCREEN - 1) / HELP_TILE_PER_SCREEN;
+    game.pos_shown_y = 1;
+    game.pos_first_y = 0;
+
+    reset_input_state();
+}
+
 static bool show_hint_if_needed(void) {
     const position_t pos = tworld_get_current_position();
     if (tworld_get_bottom_tile(pos) != TILE_HINT) {
@@ -262,6 +273,7 @@ static game_state_t next_level(void) {
 
     // Start next level.
     ++game.current_level;
+    ++game.current_level_pos;
     return start_level();
 }
 
@@ -332,11 +344,13 @@ game_state_t game_handle_input_dialog(void) {
         game.old_features = game.options.features;
         return GAME_STATE_OPTIONS_PLAY;
 
-    } else if (res == RESULT_OPEN_CONTROLS) {
-        return GAME_STATE_CONTROLS;
+    } else if (res == RESULT_OPEN_HELP) {
+        setup_help_selection();
+        return GAME_STATE_HELP;
 
-    } else if (res == RESULT_OPEN_CONTROLS_PLAY) {
-        return GAME_STATE_CONTROLS_PLAY;
+    } else if (res == RESULT_OPEN_HELP_PLAY) {
+        setup_help_selection();
+        return GAME_STATE_HELP_PLAY;
 
     } else if (res == RESULT_SAVE_OPTIONS) {
         save_dialog_options();
@@ -444,19 +458,19 @@ static game_state_t handle_misc_input(const uint8_t curr_state) {
         // create a two buttons combination. After that delay, treat as single button click.
         if ((clicked & BUTTON_PAUSE) == BUTTON_PAUSE) {
             click_processed |= BUTTON_PAUSE;
-            game.flags &= ~FLAG_INVENTORY_SHOWN;
+            game_hide_inventory();
             return GAME_STATE_PAUSE;
 
         } else if ((clicked & BUTTON_ACTION) == BUTTON_ACTION) {
             click_processed |= BUTTON_ACTION;
             if (show_hint_if_needed()) {
-                game.flags &= ~FLAG_INVENTORY_SHOWN;
+                game_hide_inventory();
                 return GAME_STATE_HINT;
             }
 
         } else if ((clicked & BUTTON_INVENTORY) == BUTTON_INVENTORY) {
             click_processed |= BUTTON_INVENTORY;
-            game.flags ^= FLAG_INVENTORY_SHOWN;
+            game.flags ^= FLAG_INVENTORY_SHOWN;  // toggle inventory
         }
     }
 

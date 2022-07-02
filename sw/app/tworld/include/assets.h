@@ -4,6 +4,7 @@
 
 #include <core/data.h>
 #include <core/defs.h>
+#include <core/flash.h>
 
 #define ASSET_MUSIC_TEMPO 80
 
@@ -46,6 +47,11 @@ extern const uint8_t ASSET_TILESET_MAP_TOP[];
 #define ASSET_END_CAUSE_SIZE 6
 extern const uint16_t ASSET_END_CAUSE[];
 #define asset_end_cause(n) (ASSET_END_CAUSE[n])
+
+#define ASSET_HELP_SIZE 48
+#define ASSET_HELP_INDEX 0x4a247L
+#define ASSET_HELP_ADDR_SIZE 2
+#define asset_help(n) (({uint16_t _a; flash_read(ASSET_HELP_INDEX + (n) * ASSET_HELP_ADDR_SIZE, 2, &_a); _a;}))
 
 #define ASSET_LEVEL_PACKS_SIZE 4
 extern const uint24_t ASSET_LEVEL_PACKS[];

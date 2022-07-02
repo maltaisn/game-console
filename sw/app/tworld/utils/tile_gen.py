@@ -74,7 +74,7 @@ def register_builder(packer) -> None:
         # Create a data object for each tile in the tileset by cropping the image.
         # Also create a map to deduplicate the tiles. Each index in the map is a tile ID and
         # the value is the position in the generated tile objects array.
-        map = {}
+        img_map = {}
         map_flat = []
         pos = 0
 
@@ -103,10 +103,10 @@ def register_builder(packer) -> None:
                         continue
 
                     data = bytes(data)
-                    if data not in map:
-                        map[data] = pos
+                    if data not in img_map:
+                        img_map[data] = pos
                         yield TileObject(tile_img, alpha)
                         pos += 1
-                    map_flat.append(map[data])
+                    map_flat.append(img_map[data])
 
         return map_flat

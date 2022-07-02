@@ -41,7 +41,7 @@
 
 typedef enum {
     GAME_STATE_MAIN_MENU = 0,
-    GAME_STATE_CONTROLS = 1,
+    GAME_STATE_HELP = 1,
     GAME_STATE_OPTIONS = 2,
     GAME_SSEP_COVER_BG,
     GAME_STATE_PASSWORD,
@@ -58,7 +58,7 @@ typedef enum {
     GAME_STATE_LEVEL_FAIL,
     GAME_STATE_LEVEL_COMPLETE,
     GAME_STATE_OPTIONS_PLAY,
-    GAME_STATE_CONTROLS_PLAY,
+    GAME_STATE_HELP_PLAY,
     GAME_STATE_PAUSE,
 } game_state_t;
 
@@ -78,8 +78,8 @@ enum {
     RESULT_OPEN_PASSWORD,
     RESULT_OPEN_OPTIONS,
     RESULT_OPEN_OPTIONS_PLAY,
-    RESULT_OPEN_CONTROLS,
-    RESULT_OPEN_CONTROLS_PLAY,
+    RESULT_OPEN_HELP,
+    RESULT_OPEN_HELP_PLAY,
     RESULT_OPEN_MAIN_MENU,
     RESULT_SAVE_OPTIONS,
     RESULT_SAVE_OPTIONS_PLAY,
@@ -102,7 +102,7 @@ enum {
     /** Set when game has been started (timer is counting). */
     FLAG_GAME_STARTED = 1 << 3,
     /** Set if current level was unlocked with a password. */
-    FLAG_PASSWORD_USED = 1 << 4,
+    FLAG_PASSWORD_USED = 1 << 5,
 };
 
 typedef struct {
@@ -131,12 +131,20 @@ typedef struct {
     uint8_t pos_shown_y;
     uint8_t pos_last_x;
 
-    // game-related
+    // current level information
     level_pack_idx_t current_pack;
     level_idx_t current_level;
     uint16_t current_level_pos;
+
+    // misc
+    uint8_t anim_state;
 } game_t;
 
 extern game_t game;
+
+/**
+ * Hide the inventory overlay if currently shown.
+ */
+void game_hide_inventory(void);
 
 #endif //TWORLD_GAME_H

@@ -157,6 +157,12 @@ static void draw_game(void) {
         y += 14;
     }
 
+    const uint8_t old_anim_state = game.anim_state;
+    if (game.state != GAME_STATE_PLAY || !(game.flags & FLAG_GAME_STARTED)) {
+        // Game paused or game hasn't started, don't animate tiles (force tile variant to 0).
+        game.anim_state = 0;
+    }
+
     for (grid_pos_t py = ystart; py < yend; ++py) {
         y += GAME_TILE_SIZE;  // at this point Y is the start coordinate of *next* tile.
         if (y < sys_display_page_ystart) {
@@ -191,6 +197,8 @@ static void draw_game(void) {
 
         y += GAME_TILE_SIZE;
     }
+
+    game.anim_state = old_anim_state;
 
     if (inventory_shown) {
         draw_inventory_overlay();
@@ -404,31 +412,65 @@ static void draw_hint_overlay(void) {
 }
 
 /**
- * Draw the content for the controls dialog.
+ * Draw the content for the "How to play" dialog (controls and tiles).
  */
-static void draw_controls_overlay(void) {
-    set_5x7_font();
-    disp_y_t y = 28;
-    for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
-        // control name text
-        graphics_set_color(DISPLAY_COLOR_WHITE);
-        graphics_text(30, (int8_t) y, CONTROL_NAMES[i]);
+static void draw_help_overlay(void) {
+    draw_vertical_navigation_arrows(22, 98);
 
-        // illustrate the 6 buttons with the one used by the control highlighted.
-        uint8_t buttons = CONTROL_BUTTONS[i];
-        uint8_t mask = BUTTON0;
-        disp_x_t button_x = 15;
-        for (uint8_t j = 0; j < 3; ++j) {
-            disp_y_t button_y = y;
-            for (uint8_t k = 0; k < 2; ++k) {
-                graphics_set_color(buttons & mask ? DISPLAY_COLOR_WHITE : 6);
-                graphics_fill_rect(button_x, button_y, 3, 3);
-                button_y += 4;
-                mask <<= 1;
+    set_5x7_font();
+
+    if (game.pos_selection_y == 0) {
+        // Show game controls on first page
+        disp_y_t y = 28;
+        for (uint8_t i = 0; i < CONTROLS_COUNT; ++i) {
+            // control name text
+            graphics_set_color(DISPLAY_COLOR_WHITE);
+            graphics_text(30, (int8_t) y, CONTROL_NAMES[i]);
+
+            // illustrate the 6 buttons with the one used by the control highlighted.
+            uint8_t buttons = CONTROL_BUTTONS[i];
+            uint8_t mask = BUTTON0;
+            disp_x_t button_x = 15;
+            for (uint8_t j = 0; j < 3; ++j) {
+                disp_y_t button_y = y;
+                for (uint8_t k = 0; k < 2; ++k) {
+                    graphics_set_color(buttons & mask ? DISPLAY_COLOR_WHITE : 6);
+                    graphics_fill_rect(button_x, button_y, 3, 3);
+                    button_y += 4;
+                    mask <<= 1;
+                }
+                button_x += 4;
             }
-            button_x += 4;
+            y += 10;
         }
-        y += 10;
+
+    } else {
+        // Show info on tiles and actors on subsequent pages.
+        disp_y_t y = 29;
+        flash_t addr = asset_help((game.pos_selection_y - 1) * HELP_TILE_PER_SCREEN);
+        for (uint8_t i = 0; i < HELP_TILE_PER_SCREEN; ++i) {
+            char buf[1 + HELP_TILE_NAME_MAX_LENGTH];
+            flash_read(addr, sizeof buf, buf);
+            addr += strlen(buf + 1) + 2;
+
+            if (y > sys_display_page_yend) {
+                break;
+            }
+
+            if ((uint8_t) (y + GAME_TILE_SIZE) > sys_display_page_ystart) {
+                const uint8_t value = buf[0];
+                if (value & 0x80) {
+                    draw_bottom_tile(14, y, TILE_FLOOR);
+                    draw_top_tile(14, y, value & ~0x80);
+                } else {
+                    draw_bottom_tile(14, y, value);
+                }
+            }
+
+            graphics_set_color(DISPLAY_COLOR_WHITE);
+            graphics_text(34, (int8_t) (y + 3), buf + 1);
+            y += 17;
+        }
     }
 }
 
@@ -464,8 +506,8 @@ void draw(void) {
             draw_level_complete_overlay();
         } else if (s == GAME_STATE_HINT) {
             draw_hint_overlay();
-        } else if (s == GAME_STATE_CONTROLS || s == GAME_STATE_CONTROLS_PLAY) {
-            draw_controls_overlay();
+        } else if (s == GAME_STATE_HELP || s == GAME_STATE_HELP_PLAY) {
+            draw_help_overlay();
         }
         if (!(s >= GAME_SSEP_NO_BAT_START && s <= GAME_SSEP_NO_BAT_END)) {
             sysui_battery_overlay();

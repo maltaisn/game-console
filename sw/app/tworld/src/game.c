@@ -93,7 +93,7 @@ void callback_draw(void) {
 }
 
 static game_state_t prepare_level_end(void) {
-    game.flags &= ~FLAG_INVENTORY_SHOWN;
+    game_hide_inventory();
 
     if (tworld.end_cause == END_CAUSE_COMPLETE) {
         set_best_level_time();
@@ -110,13 +110,17 @@ static game_state_t prepare_level_end(void) {
 void callback_sleep_scheduled(void) {
     if (game.state == GAME_STATE_PLAY) {
         game.state = GAME_STATE_PAUSE;
-        game.flags &= ~FLAG_INVENTORY_SHOWN;
+        game_hide_inventory();
     }
 }
 
 void callback_wakeup(void) {
     // last tick has probably happened very long ago, reset last tick time.
     last_tick_time = time_get();
+}
+
+void game_hide_inventory(void) {
+    game.flags &= ~FLAG_INVENTORY_SHOWN;
 }
 
 static game_state_t update_tworld_state(uint8_t dt) {
@@ -153,6 +157,9 @@ static game_state_t game_state_update(uint8_t dt) {
         return s;
     }
 
+    // Update animation counter for all tiles, except if waiting for user to start level.
+    game.anim_state += dt;
+
     if (s == GAME_STATE_PLAY) {
         return update_tworld_state(dt);
     } else if (!(game.flags & FLAG_DIALOG_SHOWN)) {
@@ -179,9 +186,9 @@ static game_state_t game_state_update(uint8_t dt) {
             open_options_dialog(RESULT_SAVE_OPTIONS, RESULT_CANCEL_OPTIONS);
         } else if (s == GAME_STATE_OPTIONS_PLAY) {
             open_options_dialog(RESULT_SAVE_OPTIONS_PLAY, RESULT_CANCEL_OPTIONS_PLAY);
-        } else if (s == GAME_STATE_CONTROLS) {
+        } else if (s == GAME_STATE_HELP) {
             open_controls_dialog(RESULT_OPEN_MAIN_MENU);
-        } else if (s == GAME_STATE_CONTROLS_PLAY) {
+        } else if (s == GAME_STATE_HELP_PLAY) {
             open_controls_dialog(RESULT_PAUSE);
         }
         game.flags |= FLAG_DIALOG_SHOWN;
