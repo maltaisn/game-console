@@ -214,7 +214,7 @@ void set_best_level_time(void) {
 #endif
 }
 
-void fill_completed_levels_array(uint16_t pos, uint8_t size, level_pack_info_t *info) {
+void fill_completed_levels_array(uint16_t pos, level_pack_info_t *info) {
     info->last_unlocked = 0;
     uint8_t *arr = info->completed_array - 1;
     eeprom_t addr = save_time_block_address(pos);
@@ -225,7 +225,7 @@ void fill_completed_levels_array(uint16_t pos, uint8_t size, level_pack_info_t *
     uint8_t completed = 0;
     level_idx_t i = 0;
     goto start;
-    for (; i < size; ++i) {
+    for (; i < info->total_levels; ++i) {
         if (block_pos == 0) {
 start:
             read_level_time_block(addr, times);
@@ -238,6 +238,9 @@ start:
         if (times[block_pos] != SAVE_TIME_UNKNOWN) {
             *arr |= mask;
             ++completed;
+            if (i >= info->first_secret_level) {
+                info->flags |= LEVEL_PACK_FLAG_SECRET_UNLOCKED;
+            }
         } else if (i == completed) {
             // first level not completed since start, this level is unlocked.
             info->last_unlocked = i;
@@ -246,5 +249,10 @@ start:
         bit = (bit + 1) % 8;
         mask <<= 1;
     }
+
     info->completed_levels = completed;
+    if (info->last_unlocked >= info->first_secret_level) {
+        // Secret levels can't be unlocked simply by completing the previous level.
+        info->last_unlocked = info->first_secret_level - 1;
+    }
 }

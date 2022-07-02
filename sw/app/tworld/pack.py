@@ -24,6 +24,7 @@ with p.group("font"):
 with p.group("image"):
     p.image("arrow-up.png")
     p.image("arrow-down.png")
+    p.image("secret-level.png")
 
     p.image("menu.png")
 

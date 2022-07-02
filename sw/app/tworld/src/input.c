@@ -180,9 +180,10 @@ static game_state_t next_level(void) {
     level_read_packs();
     const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
 
-    if ((info->completed_levels == info->total_levels) || (game.flags & FLAG_PASSWORD_USED)) {
-        // All levels have been completed, or level was accessed
-        // via a password, go back to level selection.
+    if ((info->completed_levels == info->total_levels) || (game.flags & FLAG_PASSWORD_USED) ||
+        (level_is_secret_locked(info, game.current_level + 1))) {
+        // All levels have been completed, or level was accessed via a password, or level
+        // is secret and not unlocked, go back to level selection.
         setup_level_selection(game.current_level);
         return GAME_STATE_LEVELS;
     }
@@ -387,6 +388,7 @@ static game_state_t handle_misc_input(const uint8_t curr_state) {
         } else if ((clicked & BUTTON_INVENTORY) == BUTTON_INVENTORY) {
             click_processed |= BUTTON_INVENTORY;
             game.flags ^= FLAG_INVENTORY_SHOWN;
+            tworld.end_cause = END_CAUSE_COMPLETE;
         }
     }
 

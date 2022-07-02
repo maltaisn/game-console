@@ -20,31 +20,32 @@ from assets.types import PackResult, DataObject, PackError
 #
 # - [0..1]: signature, 0x5754 ('TW')
 # - [2]: number of levels (=N)
-# - [3..(N*2)]: level index, with each entry being offset from previous level position.
+# - [3]: index of first secret level.
+# - [4..(N*2)+1]: level index, with each entry being offset from previous level position.
 #     the first offset is from the start of level pack data
 # - level pack name: zero terminated string (max size 12 including terminator).
 # - level data:
-# - [0..1]: time limit in seconds. 0 for unlimited duration (max 999)
-# - [2..3]: required number of chips
-# - [4..5]: layer data size in bytes
-# - [6..9]: 4 letters password (only A-Z allowed)
-# - [10..17]: index from the start position of level data to various chunks, in order:
-#     - [10..11]: title
-#     - [12..13]: hint (0 if none)
-#     - [14..15]: trap-button linkage
-#     - [16..17]: cloner-button linkage
-# - [18..]: LZSS-compressed layer data. Uncompressed layout is:
-#     - [0..767]: bottom layer, 6-bit per tile
-#     - [768..1535]: top layer, 6-bit per tile
-# - title: zero terminated string, max 40 chars
-# - hint: zero terminated string, max 128 chars
-# - linkage (trap & cloner):
-#     - [0]: number of links (max 32)
-#     - [1..]: a list of chunks with the following format:
-#         - [0]: button x
-#         - [1]: button y
-#         - [2]: trap/cloner x
-#         - [3]: trap/cloner y
+#     - [0..1]: time limit in seconds. 0 for unlimited duration (max 999)
+#     - [2..3]: required number of chips
+#     - [4..5]: layer data size in bytes
+#     - [6..9]: 4 letters password (only A-Z allowed)
+#     - [10..17]: index from the start position of level data to various chunks, in order:
+#         - [10..11]: title
+#         - [12..13]: hint (0 if none)
+#         - [14..15]: trap-button linkage
+#         - [16..17]: cloner-button linkage
+#     - [18..]: LZSS-compressed layer data. Uncompressed layout is:
+#         - [0..767]: bottom layer, 6-bit per tile
+#         - [768..1535]: top layer, 6-bit per tile
+#     - title: zero terminated string, max 40 chars
+#     - hint: zero terminated string, max 128 chars
+#     - linkage (trap & cloner):
+#         - [0]: number of links (max 32)
+#         - [1..]: a list of chunks with the following format:
+#             - [0]: button x
+#             - [1]: button y
+#             - [2]: trap/cloner x
+#             - [3]: trap/cloner y
 
 # All tiles are re-encoded in tworld from MS DAT IDs.
 # Not all tiles can appear on bottom and top layers.
@@ -341,6 +342,7 @@ class DatFileWriter:
     levels_written: int
     warnings_count: int
     _last_level_start: int
+    _index_pos: int
 
     def __init__(self, name: str, level_count: int):
         self.data = bytearray()
@@ -352,9 +354,17 @@ class DatFileWriter:
             raise EncodeError(f"there must be between 1 and 256 levels (got {level_count})")
         self._write(level_count, 1)
 
+        if level_count == 149:
+            # "classic" level pack, first secret level is 145 (index 144).
+            self._write(144, 1)
+        else:
+            # no secret levels
+            self._write(level_count, 1)
+
         # index
         self.levels_written = 0
         self._last_level_start = 0
+        self._index_pos = len(self.data)
         for i in range(level_count):
             self._write(0, 2)
 
@@ -687,7 +697,8 @@ class DatFileWriter:
     def write_level(self, level: MsLevelData) -> None:
         # write index entry
         start_pos = len(self.data)
-        self._write(start_pos - self._last_level_start, 2, at=(self.levels_written * 2) + 3)
+        self._write(start_pos - self._last_level_start, 2,
+                    at=(self.levels_written * 2) + self._index_pos)
         self._last_level_start = start_pos
 
         self._write(level.time_limit, 2)

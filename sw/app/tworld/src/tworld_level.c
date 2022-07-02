@@ -24,7 +24,12 @@
 
 #include <string.h>
 
-#define POS_LEVEL_INDEX 3
+// Field positions in level pack data.
+#define POS_LEVEL_COUNT 2
+#define POS_FIRST_SECRET_LEVEL 3
+#define POS_LEVEL_INDEX 4
+
+// Field positions in level data.
 #define POS_PASSWORD 6
 #define POS_INDEX_TITLE 10
 #define POS_INDEX_HINT 12
@@ -50,17 +55,18 @@ void level_read_packs(void) {
     for (level_pack_idx_t i = 0; i < LEVEL_PACK_COUNT; ++i) {
         flash_t addr = get_level_pack_addr(i);
 
-        uint8_t header[3];
+        uint8_t header[4];
         flash_read(addr, sizeof header, header);
         if (header[0] != 0x54 || header[1] != 0x57) {
-            // invalid signature
+            // invalid signature, should not happen.
             info->total_levels = 0;
             info->completed_levels = 0;
+            info->flags = 0;
             return;
         }
 
-        uint8_t count = header[2];
-        addr += count * 2 + 3;
+        uint8_t count = header[POS_LEVEL_COUNT];
+        info->first_secret_level = header[POS_FIRST_SECRET_LEVEL];
         info->flags = 0;
         info->pos = pos;
         info->total_levels = count;
@@ -69,8 +75,9 @@ void level_read_packs(void) {
             info->flags |= LEVEL_PACK_FLAG_UNLOCKED;
         }
 
+        addr += count * 2 + POS_LEVEL_INDEX;
         flash_read(addr, LEVEL_PACK_NAME_MAX_LENGTH, &info->name);
-        fill_completed_levels_array(pos, count, info);
+        fill_completed_levels_array(pos, info);
         pos += count;
 
         next_is_unlocked = (info->completed_levels >= (uint8_t) ((uint16_t)
@@ -173,7 +180,15 @@ bool level_use_password(void) {
     return false;
 }
 
+bool level_is_completed(const level_pack_info_t* info, level_idx_t level) {
+    return info->completed_array[level / 8] & (1 << (level % 8));
+}
+
 bool level_is_unlocked(const level_pack_info_t* info, level_idx_t level) {
-    return level <= info->last_unlocked ||
-           info->completed_array[level / 8] & (1 << (level % 8));
+    return level <= info->last_unlocked || level_is_completed(info, level) ||
+           ((info->flags & LEVEL_PACK_FLAG_SECRET_UNLOCKED) && level >= info->first_secret_level);
+}
+
+bool level_is_secret_locked(const level_pack_info_t *info, level_idx_t level) {
+    return level >= info->first_secret_level && !(info->flags & LEVEL_PACK_FLAG_SECRET_UNLOCKED);
 }

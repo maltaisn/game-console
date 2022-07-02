@@ -42,6 +42,7 @@ typedef uint8_t level_idx_t;
 
 enum {
     LEVEL_PACK_FLAG_UNLOCKED = 1 << 0,
+    LEVEL_PACK_FLAG_SECRET_UNLOCKED = 1 << 1,
 };
 
 /**
@@ -57,6 +58,8 @@ typedef struct {
     uint8_t completed_levels;
     // Index of the last unlocked level
     level_idx_t last_unlocked;
+    // Index of first secret level
+    level_idx_t first_secret_level;
     // Bitset indicating which levels have been completed, little-endian.
     uint8_t completed_array[(LEVEL_PACK_MAX_LEVELS + 7) / 8];
     // Nul terminated pack name.
@@ -129,8 +132,19 @@ void level_get_links(void);
 bool level_use_password(void);
 
 /**
+ * Returns true if specified level is completed.
+ */
+bool level_is_completed(const level_pack_info_t* info, level_idx_t level);
+
+/**
  * Returns true if specified level in pack is unlocked.
+ * All completed levels are unlocked.
  */
 bool level_is_unlocked(const level_pack_info_t *info, level_idx_t level);
+
+/**
+ * Returns true if specified level is a secret level and secret levels are still locked.
+ */
+bool level_is_secret_locked(const level_pack_info_t *info, level_idx_t level);
 
 #endif //TWORLD_TWORLD_LEVEL_H

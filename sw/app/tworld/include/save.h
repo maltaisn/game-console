@@ -50,10 +50,10 @@ time_left_t get_best_level_time(uint16_t pos);
 void set_best_level_time(void);
 
 /**
- * For `size` levels starting at `pos`, set a bit in the completed levels bitset to 1
+ * For `info->total_levels` levels starting at `pos`, set a bit in the completed levels bitset to 1
  * when the level is completed. Sets the number of levels completed and the last unlocked
  * level in the info struct.
  */
-void fill_completed_levels_array(uint16_t pos, uint8_t size, level_pack_info_t *info);
+void fill_completed_levels_array(uint16_t pos, level_pack_info_t *info);
 
 #endif //TWORLD_SAVE_H

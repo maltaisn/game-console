@@ -268,25 +268,12 @@ static void draw_levels_overlay(void) {
     set_7x7_font();
 
     const level_pack_info_t* info = &tworld_packs.packs[game.current_pack];
-    level_idx_t number = game.pos_first_y * LEVELS_PER_SCREEN_H;
+    level_idx_t curr_level = game.pos_first_y * LEVELS_PER_SCREEN_H;
 
     // draw level pack title
     uint8_t name_len = strlen(info->name);
     graphics_set_color(12);
     graphics_text((int8_t) (64 - name_len * 4), 16, info->name);
-
-    // advance in completed levels bitset until position of first shown level.
-    uint8_t byte = 0;
-    uint8_t bits = 0;
-    const uint8_t* completed = info->completed_array;
-    uint8_t curr_level = 0;
-    for (; curr_level < number; ++curr_level) {
-        if (bits == 0) {
-            byte = *completed++;
-        }
-        byte >>= 1;
-        bits = (bits + 1) % 8;
-    }
 
     // draw the level grid
     disp_y_t y = 31;
@@ -295,18 +282,20 @@ static void draw_levels_overlay(void) {
         disp_x_t x = 5;
         for (uint8_t j = 0; j < LEVELS_PER_SCREEN_H; ++j) {
             // determine the level box color
-            if (bits == 0) {
-                byte = *completed++;
-            }
             uint8_t color;
-            if (byte & 1) {
+            bool is_secret = false;
+            if (level_is_completed(info, curr_level)) {
                 // level completed
                 color = 11;
-            } else if (curr_level == info->last_unlocked) {
+            } else if (level_is_unlocked(info, curr_level)) {
                 // level unlocked
                 color = 15;
+            } else if (level_is_secret_locked(info, curr_level)) {
+                // locked secret level
+                color = 4;
+                is_secret = true;
             } else {
-                // level locked
+                // level locked but not secret
                 color = 6;
             }
             graphics_set_color(color);
@@ -317,20 +306,24 @@ static void draw_levels_overlay(void) {
                 graphics_rect(x - 1, y - 1, 30, 30);
             }
 
-            // draw the level text
             ++curr_level;
-            char buf[4];
-            char* ptr = uint8_to_str(buf, curr_level);
-            int8_t px = (int8_t) (x + (ptr - buf) * 4 + 3);
-            graphics_text(px, (int8_t) (y + 10), ptr);
+
+            if (is_secret) {
+                // locked secret level, draw special icon
+                graphics_image_1bit_mixed(ASSET_IMAGE_SECRET_LEVEL, x + 9, y + 6);
+            } else {
+                // draw the level text
+                char buf[4];
+                char* ptr = uint8_to_str(buf, curr_level);
+                int8_t px = (int8_t) (x + (ptr - buf) * 4 + 3);
+                graphics_text(px, (int8_t) (y + 10), ptr);
+            }
 
             if (curr_level == info->total_levels) {
                 return;
             }
 
             x += 30;
-            byte >>= 1;
-            bits = (bits + 1) % 8;
         }
         y += 30;
     }
