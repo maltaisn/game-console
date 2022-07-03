@@ -93,3 +93,7 @@ tile_t tile_make_key(key_type_t variant) {
 tile_t tile_make_boots(boot_type_t variant) {
     return TILE_BOOTS_WATER | variant;
 }
+
+tile_t tile_make_swimming_chip(actor_t chip) {
+    return chip + (uint8_t) (TILE_CHIP_SWIMMING_N - ENTITY_CHIP);
+}

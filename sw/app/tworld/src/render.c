@@ -180,18 +180,10 @@ static void draw_game(void) {
         for (grid_pos_t px = xstart; px < xend; ++px) {
             const position_t pos = {px, py};
             const tile_t tile = tworld_get_bottom_tile(pos);
-            const actor_t actor = tworld_get_top_tile(pos);
-            if (!actor_is_block(actor)) {
-                // don't draw a bottom tile if actor is a block (fully opaque image).
-                draw_bottom_tile(x, y, tile);
-            }
-            if (tworld_has_collided() && curr_pos.x == px && curr_pos.y == py) {
-                // draw actor on top of chip or chip on top of actor in case of collision.
-                draw_top_tile(x, y, tworld.collided_actor);
-            }
-            if (actor_get_entity(actor) != ENTITY_NONE) {
-                draw_top_tile(x, y, actor);
-            }
+            const actor_t actor0 = tworld_has_collided() && curr_pos.x == px && curr_pos.y == py
+                                   ? tworld.collided_actor : ACTOR_NONE;
+            const actor_t actor1 = tworld_get_top_tile(pos);
+            draw_game_tile(x, y, tile, actor0, actor1);
             x += GAME_TILE_SIZE;
         }
 

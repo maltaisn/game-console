@@ -41,13 +41,14 @@ with p.group("image"):
 with p.group("tileset"):
     with p.array("bottom", ArrayType.REGULAR):
         bottom_map = p.tileset("tileset-bottom-{}.png", name=f"bottom{i}",
-                               width=8, tile_width=14, height=8, variants=2)
+                               width=9, height=8, tile_width=14, variants=2)
 
     with p.array("top", ArrayType.REGULAR):
         top_map = p.tileset("tileset-top.png", name="top", width=8, height=8,
                             tile_width=12, alpha=True)
 
     with p.group("map", Location.INTERNAL):
+        p.define("bottom_size", len(bottom_map))
         p.raw(bottom_map, name="bottom")
         p.raw(top_map, name="top")
 
@@ -78,7 +79,7 @@ help_map = {
     # ----
     Actor(Entity.WALKER, Direction.EAST): "Walker",
     Actor(Entity.TEETH, Direction.EAST): "Teeth",
-    Actor(Entity.BLOCK, Direction.NORTH): "Block",
+    Tile.BLOCK: "Block",
     Tile.FLOOR: "Floor",
     # ----
     Tile.ICE: "Ice",

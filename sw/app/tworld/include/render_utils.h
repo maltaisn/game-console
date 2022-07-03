@@ -58,6 +58,13 @@ void draw_bottom_tile(disp_x_t x, disp_y_t y, tile_t tile);
 void draw_top_tile(disp_x_t x, disp_y_t y, actor_t tile);
 
 /**
+ * Draw a tile composed of a bottom and up to 2 top tiles for the given tile and actor.
+ * Y position must be greater or equal to display page start and less than display page end.
+ * X position must be even. This handles special cases like block, swimming chip, etc.
+ */
+void draw_game_tile(disp_x_t x, disp_y_t y, tile_t tile, actor_t actor0, actor_t actor1);
+
+/**
  * Draw text in a box at top left coordinates and with specified dimensions,
  * wrapping text at the end of lines. The text can be left aligned or centered.
  * The text is drawn in the 5x7 font with current color.

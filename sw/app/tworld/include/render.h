@@ -29,8 +29,14 @@
 #define HINT_LINES_PER_SCREEN 5
 #define HINT_TEXT_WIDTH 112
 
+// Number of tiles shown in width and height on map.
 #define GAME_MAP_SIZE 9
+// The displayed size of a game tile in pixels.
 #define GAME_TILE_SIZE 14
+// The animation delay between variants (a power of two).
+#define BOTTOM_ANIMATION_DELAY 0x4
+// Number of tile variants
+#define BOTTOM_TILE_VARIANTS 2
 
 // low timer overlay will be shown if time left is less than this value.
 #define LOW_TIMER_THRESHOLD (20 * TICKS_PER_SECOND)

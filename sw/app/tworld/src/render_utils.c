@@ -145,7 +145,9 @@ AVR_OPTIMIZE void draw_bottom_tile(const disp_x_t x, const disp_y_t y, const til
     draw_checks(x, y);
 
     // Bottom tiles can be animated by cycling through 2 variants, changing every 4 ticks.
-    const uint8_t time_offset = (game.anim_state & 0x4) * 16;
+    const uint8_t time_offset = (game.anim_state & BOTTOM_ANIMATION_DELAY) *
+                                (ASSET_TILESET_MAP_BOTTOM_SIZE / BOTTOM_TILE_VARIANTS /
+                                 BOTTOM_ANIMATION_DELAY);
     const uint8_t index = ASSET_TILESET_MAP_BOTTOM[(uint8_t) (tile + time_offset)];
 #ifdef RUNTIME_CHECKS
     if (index == 0xff) {
@@ -209,13 +211,6 @@ start:
 __attribute__((noinline))
 AVR_OPTIMIZE void draw_top_tile(disp_x_t x, disp_y_t y, actor_t actor) {
     draw_checks(x, y);
-
-    if (actor_is_block(actor)) {
-        // block is a special case, the tile image is 14x14 and fully opaque,
-        // in contrary to other actors which are 12x14 and partially transparent.
-        draw_bottom_tile(x, y, TILE_BLOCK);
-        return;
-    }
 
     x += 2;
 
@@ -290,6 +285,36 @@ start:
         }
 
         disp_buf += DISPLAY_NUM_COLS - TOP_TILE_COLS;
+    }
+}
+
+AVR_OPTIMIZE void draw_game_tile(const disp_x_t x, const disp_y_t y, const tile_t tile,
+                                 const actor_t actor0, const actor_t actor1) {
+    tile_t bottom = tile;
+    actor_t top = actor1;
+
+    if (actor_is_block(actor1)) {
+        bottom = TILE_BLOCK;
+        top = ACTOR_NONE;
+    } else if (actor_get_entity(actor1) == ENTITY_CHIP) {
+        if (tworld.end_cause == END_CAUSE_DROWNED) {
+            bottom = TILE_CHIP_DROWNED;
+            top = ACTOR_NONE;
+        } else if (tworld.end_cause == END_CAUSE_BURNED) {
+            bottom = TILE_CHIP_BURNED;
+            top = ACTOR_NONE;
+        } else if (bottom == TILE_WATER) {
+            bottom = tile_make_swimming_chip(actor1);
+            top = ACTOR_NONE;
+        }
+    }
+
+    draw_bottom_tile(x, y, bottom);
+    if (actor0 != ACTOR_NONE) {
+        draw_top_tile(x, y, actor0);
+    }
+    if (actor_get_entity(top) != ACTOR_NONE) {
+        draw_top_tile(x, y, top);
     }
 }
 

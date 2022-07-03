@@ -18,6 +18,8 @@
 #ifndef TWORLD_TWORLD_TILE_H
 #define TWORLD_TWORLD_TILE_H
 
+#include "tworld_actor.h"
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -84,11 +86,18 @@ typedef enum {
     TILE_STATIC_CLONER = 0x39,
     TILE_STATIC_TRAP = 0x3a,
     // special
-    TILE_BLOCK = 0x3b,  // only used for drawing
     TILE_TELEPORTER = 0x3c,
     TILE_WATER = 0x3d,
     TILE_FIRE = 0x3e,
     TILE_BOMB = 0x3f,
+    // internal use only, not encodable
+    TILE_BLOCK = 0x40,
+    TILE_CHIP_BURNED = 0x41,
+    TILE_CHIP_DROWNED = 0x42,
+    TILE_CHIP_SWIMMING_N = 0x44,
+    TILE_CHIP_SWIMMING_W = 0x45,
+    TILE_CHIP_SWIMMING_S = 0x46,
+    TILE_CHIP_SWIMMING_E = 0x47,
 } tile_t;
 
 typedef enum {
@@ -161,5 +170,8 @@ tile_t tile_make_key(key_type_t variant);
 
 /** Returns a boot tile of a particular variant. */
 tile_t tile_make_boots(boot_type_t variant);
+
+/** Returns a swimming chip tile for a chip actor. */
+tile_t tile_make_swimming_chip(actor_t chip);
 
 #endif //TWORLD_TWORLD_TILE_H
