@@ -39,6 +39,20 @@
 #define ACTOR_STATIC_BALL actor_create(ENTITY_STATIC, 2)
 #define ACTOR_STATIC_BLOB actor_create(ENTITY_STATIC, 3)
 
+/** Cause of death for an actor, also used to indicate level outcome. */
+typedef enum {
+    END_CAUSE_NONE = 0,
+    END_CAUSE_DROWNED = 1,
+    END_CAUSE_BURNED = 2,
+    END_CAUSE_BOMBED = 3,
+    END_CAUSE_COLLIDED_MONSTER = 4,
+    END_CAUSE_COLLIDED_BLOCK = 5,
+    END_CAUSE_OUTOFTIME = 6,
+    END_CAUSE_COMPLETE = 7,
+    // used for testing
+    END_CAUSE_ERROR = 8,
+} end_cause_t;
+
 typedef enum {
     ENTITY_NONE = 0x00,
     ENTITY_CHIP = 0x04,

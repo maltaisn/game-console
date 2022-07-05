@@ -289,19 +289,17 @@ start:
 }
 
 AVR_OPTIMIZE void draw_game_tile(const disp_x_t x, const disp_y_t y, const tile_t tile,
-                                 const actor_t actor0, const actor_t actor1) {
+                                 actor_t actor0, const actor_t actor1) {
     tile_t bottom = tile;
     actor_t top = actor1;
 
     if (actor_is_block(actor1)) {
         bottom = TILE_BLOCK;
         top = ACTOR_NONE;
+        actor0 = ACTOR_NONE;  // hidden by block
     } else if (actor_get_entity(actor1) == ENTITY_CHIP) {
-        if (tworld.end_cause == END_CAUSE_DROWNED) {
-            bottom = TILE_CHIP_DROWNED;
-            top = ACTOR_NONE;
-        } else if (tworld.end_cause == END_CAUSE_BURNED) {
-            bottom = TILE_CHIP_BURNED;
+        if (tworld.end_cause != END_CAUSE_NONE && tworld.end_cause <= END_CAUSE_BOMBED) {
+            bottom = tile_make_dead_chip(tworld.end_cause);
             top = ACTOR_NONE;
         } else if (bottom == TILE_WATER) {
             bottom = tile_make_swimming_chip(actor1);

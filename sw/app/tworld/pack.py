@@ -55,11 +55,11 @@ with p.group("tileset"):
 # death messages
 with p.array("end_cause", ArrayType.INDEXED_ABS):
     messages = [
+        "Ooops! Chip can't swim without flippers!",
         "Ooops! Don't step in the fire without fire boots!",
+        "Ooops! Don't touch the bombs!",
         "Ooops! Look out for creatures!",
         "Ooops! Watch out for moving blocks!",
-        "Ooops! Chip can't swim without flippers!",
-        "Ooops! Don't touch the bombs!",
         "Ooops!\nOut of time!",
     ]
     for i, message in enumerate(messages):

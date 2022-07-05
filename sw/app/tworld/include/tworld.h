@@ -42,20 +42,6 @@
 
 #define TIME_LEFT_NONE 0xffff
 
-/** Cause of death for an actor, also used to indicate level outcome. */
-typedef enum {
-    END_CAUSE_NONE = 0,
-    END_CAUSE_BURNED = 1,
-    END_CAUSE_COLLIDED_MONSTER = 2,
-    END_CAUSE_COLLIDED_BLOCK = 3,
-    END_CAUSE_DROWNED = 4,
-    END_CAUSE_BOMBED = 5,
-    END_CAUSE_OUTOFTIME = 6,
-    END_CAUSE_COMPLETE = 7,
-    // used for testing
-    END_CAUSE_ERROR = 8,
-} end_cause_t;
-
 typedef enum {
     BOOT_MASK_WATER = 1 << BOOT_WATER,
     BOOT_MASK_FIRE = 1 << BOOT_FIRE,

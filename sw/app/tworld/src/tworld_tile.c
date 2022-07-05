@@ -94,6 +94,10 @@ tile_t tile_make_boots(boot_type_t variant) {
     return TILE_BOOTS_WATER | variant;
 }
 
+tile_t tile_make_dead_chip(end_cause_t end_cause) {
+    return end_cause + 0x40;
+}
+
 tile_t tile_make_swimming_chip(actor_t chip) {
     return chip + (uint8_t) (TILE_CHIP_SWIMMING_N - ENTITY_CHIP);
 }

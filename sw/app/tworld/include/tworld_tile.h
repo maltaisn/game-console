@@ -92,8 +92,9 @@ typedef enum {
     TILE_BOMB = 0x3f,
     // internal use only, not encodable
     TILE_BLOCK = 0x40,
-    TILE_CHIP_BURNED = 0x41,
-    TILE_CHIP_DROWNED = 0x42,
+    TILE_CHIP_DROWNED = 0x41,
+    TILE_CHIP_BURNED = 0x42,
+    TILE_CHIP_BOMBED = 0x43,
     TILE_CHIP_SWIMMING_N = 0x44,
     TILE_CHIP_SWIMMING_W = 0x45,
     TILE_CHIP_SWIMMING_S = 0x46,
@@ -170,6 +171,9 @@ tile_t tile_make_key(key_type_t variant);
 
 /** Returns a boot tile of a particular variant. */
 tile_t tile_make_boots(boot_type_t variant);
+
+/** Returns the internal tile used for a chip death (burned, bombed or drowned). */
+tile_t tile_make_dead_chip(end_cause_t end_cause);
 
 /** Returns a swimming chip tile for a chip actor. */
 tile_t tile_make_swimming_chip(actor_t chip);

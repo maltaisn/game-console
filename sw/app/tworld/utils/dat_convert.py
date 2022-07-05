@@ -5,7 +5,7 @@ import sys
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import List, Optional, Union, Dict, Tuple, Iterable
+from typing import List, Optional, Union, Dict, Tuple, Iterable, Set
 
 import numpy
 
@@ -385,7 +385,8 @@ class DatFileWriter:
         else:
             self.data += data
 
-    def _convert_tile(self, bottom: int, top: int, x: int, y: int) -> Tuple[Tile, Actor]:
+    def _convert_tile(self, bottom: int, top: int, x: int, y: int,
+                      cloner_links: Set[Position]) -> Tuple[Tile, Actor]:
         bottom_remap = TILE_REMAP_BOTTOM.get(bottom, None)
         top_remap = TILE_REMAP_TOP.get(top, None)
 
@@ -405,7 +406,12 @@ class DatFileWriter:
         if bottom in TILE_REMAP_BOTTOM and bottom in TILE_REMAP_TOP:
             return TILE_REMAP_BOTTOM[bottom], TILE_REMAP_TOP[bottom]
         elif top in TILE_REMAP_BOTTOM and top in TILE_REMAP_TOP:
-            return TILE_REMAP_BOTTOM[top], TILE_REMAP_TOP[top]
+            bottom_map = TILE_REMAP_BOTTOM[top]
+            if bottom_map == Tile.CLONER and (x, y) not in cloner_links:
+                # special case for unlinked block cloner, do not ignore tile on bottom layer.
+                # unlinked block cloner becomes a block with the original bottom tile.
+                bottom_map = TILE_REMAP_BOTTOM[bottom]
+            return bottom_map, TILE_REMAP_TOP[top]
 
         if top in [0x33, 0x34, 0x35] or bottom in [0x33, 0x34, 0x35]:
             # burned and drowned chip becomes wall since they are wall-acting
@@ -436,12 +442,12 @@ class DatFileWriter:
         top_layer = []
         bottom_layer = []
         i = 0
-        for y in range(Level.GRID_HEIGHT):
-            for x in range(Level.GRID_WIDTH):
-                bottom, top = self._convert_tile(level.bottom_layer[i], level.top_layer[i], x, y)
-                bottom_layer.append(bottom)
-                top_layer.append(top)
-                i += 1
+        links = {(link.linked_x, link.linked_y) for link in level.cloner_linkage}
+        for x, y in TileWorld.iterate_grid():
+            bottom, top = self._convert_tile(level.bottom_layer[i], level.top_layer[i], x, y, links)
+            bottom_layer.append(bottom)
+            top_layer.append(top)
+            i += 1
         return bottom_layer, top_layer
 
     @staticmethod

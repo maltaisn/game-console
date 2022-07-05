@@ -384,9 +384,10 @@ static bool spawn_actor(moving_actor_t* mact) {
         }
     }
 
-    // Can't create a new actor, list is full! Levels should be made so that this never happens.
+    // Can't create a new actor, list is full! Levels should be made so that this never happens,
+    // or so that the level can be completed normally despite this limitation.
     if (count >= MAX_ACTORS_COUNT) {
-        tworld_error("can't spawn actor, actor list is full");
+        trace("can't spawn actor, actor list is full");
         return false;
     }
 
@@ -1428,10 +1429,10 @@ static void choose_all_moves(void) {
             continue;
         }
 
+        tworld.actors[i] = act_actor_set_state(actor, ACTOR_STATE_NONE);
         if (step <= 0) {
             moving_actor_t mact;
             create_moving_actor(&mact, i);
-            mact.state = ACTOR_STATE_NONE;
             choose_move(&mact, state == ACTOR_STATE_TELEPORTED);
             destroy_moving_actor(&mact);
         }

@@ -35,13 +35,13 @@ extern const uint8_t ASSET_TILESET_MAP_TOP[];
 #define ASSET_IMAGE_PACK_PROGRESS_OFFSET 103
 #define asset_image_pack_progress(n) data_flash(ASSET_IMAGE_PACK_PROGRESS_ADDR + (n) * ASSET_IMAGE_PACK_PROGRESS_OFFSET)
 
-#define ASSET_TILESET_BOTTOM_SIZE 71
+#define ASSET_TILESET_BOTTOM_SIZE 72
 #define ASSET_TILESET_BOTTOM_ADDR 0x2e5d
 #define ASSET_TILESET_BOTTOM_OFFSET 112
 #define asset_tileset_bottom(n) (ASSET_TILESET_BOTTOM_ADDR + (n) * ASSET_TILESET_BOTTOM_OFFSET)
 
 #define ASSET_TILESET_TOP_SIZE 24
-#define ASSET_TILESET_TOP_ADDR 0x4d6d
+#define ASSET_TILESET_TOP_ADDR 0x4ddd
 #define ASSET_TILESET_TOP_OFFSET 112
 #define asset_tileset_top(n) (ASSET_TILESET_TOP_ADDR + (n) * ASSET_TILESET_TOP_OFFSET)
 
@@ -50,7 +50,7 @@ extern const uint16_t ASSET_END_CAUSE[];
 #define asset_end_cause(n) (ASSET_END_CAUSE[n])
 
 #define ASSET_HELP_SIZE 48
-#define ASSET_HELP_INDEX 0x4a6a7L
+#define ASSET_HELP_INDEX 0x4a6b5L
 #define ASSET_HELP_ADDR_SIZE 2
 #define asset_help(n) (({uint16_t _a; flash_read(ASSET_HELP_INDEX + (n) * ASSET_HELP_ADDR_SIZE, 2, &_a); _a;}))
 
