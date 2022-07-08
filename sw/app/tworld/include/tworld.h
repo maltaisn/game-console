@@ -88,7 +88,9 @@ typedef struct {
     uint8_t boots;
     // Position after chip moved (cached).
     sposition_t chip_new_pos;
-    // Index of actor that collided with chip, or INDEX_NONE if none.
+    // Last direction assumed by Chip.
+    direction_t chip_last_dir;
+    // Index of actor that collided with Chip, or INDEX_NONE if none.
     actor_idx_t collided_with;
     // Actor that collision occured with.
     actor_t collided_actor;

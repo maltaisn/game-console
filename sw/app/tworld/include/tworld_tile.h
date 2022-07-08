@@ -83,8 +83,8 @@ typedef enum {
     TILE_FAKE_EXIT = 0x37,
     TILE_CLONER = 0x38,
     // static
-    TILE_STATIC_CLONER = 0x39,
-    TILE_STATIC_TRAP = 0x3a,
+    TILE_STATIC_CLONER = 0x3a,
+    TILE_STATIC_TRAP = 0x3b,
     // special
     TILE_TELEPORTER = 0x3c,
     TILE_WATER = 0x3d,
@@ -161,7 +161,7 @@ bool tile_is_static(tile_t tile);
 bool tile_is_toggle_tile(tile_t tile);
 
 /** Returns a toggle tile in another state. */
-tile_t tile_with_toggle_state(tile_t tile, uint8_t state);
+tile_t tile_with_toggle_state(tile_t tile, bool state);
 
 /** Returns a toggle tile in the opposite state. */
 tile_t tile_toggle_state(tile_t tile);

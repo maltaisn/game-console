@@ -16,8 +16,13 @@
 
 #include "tworld_tile.h"
 
+#define VARIANT2_MASK 0x1
+#define VARIANT4_MASK 0x3
+#define TYPE2_MASK (~VARIANT2_MASK)
+#define TYPE4_MASK (~VARIANT4_MASK)
+
 uint8_t tile_get_variant(tile_t tile) {
-    return tile & 0x3;
+    return tile & VARIANT4_MASK;
 }
 
 bool tile_is_key(tile_t tile) {
@@ -25,65 +30,63 @@ bool tile_is_key(tile_t tile) {
 }
 
 bool tile_is_lock(tile_t tile) {
-    return tile >= 0x24 && tile <= 0x27;
+    return (tile & TYPE4_MASK) == TILE_LOCK_BLUE;
 }
 
 bool tile_is_boots(tile_t tile) {
-    return tile >= 0x20 && tile <= 0x23;
+    return (tile & TYPE4_MASK) == TILE_BOOTS_WATER;
 }
 
 bool tile_is_button(tile_t tile) {
-    return tile >= 0x04 && tile <= 0x07;
+    return (tile & TYPE4_MASK) == TILE_BUTTON_GREEN;
 }
 
 bool tile_is_thin_wall(tile_t tile) {
-    return tile >= 0x0c && tile <= 0x10;
+    return tile >= TILE_THIN_WALL_N && tile <= TILE_THIN_WALL_SE;
 }
 
 bool tile_is_ice(tile_t tile) {
-    return tile >= 0x13 && tile <= 0x17;
+    return tile >= TILE_ICE && tile <= TILE_ICE_CORNER_NE;
 }
 
 bool tile_is_ice_wall(tile_t tile) {
-    return tile >= 0x14 && tile <= 0x17;
+    return (tile & TYPE4_MASK) == TILE_ICE_CORNER_NW;
 }
 
 bool tile_is_slide(tile_t tile) {
-    return tile >= 0x18 && tile <= 0x1c;
+    return tile >= TILE_FORCE_FLOOR_N && tile <= TILE_FORCE_FLOOR_RANDOM;
 }
 
 bool tile_is_monster_acting_wall(tile_t tile) {
-    return tile >= 0x1e && tile <= 0x39;
+    return tile >= 0x1e && tile <= 0x3a;
 }
 
 bool tile_is_block_acting_wall(tile_t tile) {
-    return tile >= 0x1f && tile <= 0x39;
+    return tile >= 0x1f && tile <= 0x3a;
 }
 
 bool tile_is_chip_acting_wall(tile_t tile) {
-    return tile >= 0x33 && tile <= 0x39;
+    return tile >= 0x33 && tile <= 0x3a;
 }
 
 bool tile_is_revealable_wall(tile_t tile) {
-// wall hidden & wall blue real
-    return (tile & ~0x1) == 0x34;
+    return (tile & TYPE2_MASK) == 0x34;
 }
 
 bool tile_is_static(tile_t tile) {
-    return tile >= 0x39 && tile <= 0x3b;
+    return (tile & TYPE2_MASK) == 0x3a;
 }
 
 bool tile_is_toggle_tile(tile_t tile) {
-    return (tile & ~0x1) == 0x2;
+    return (tile & TYPE2_MASK) == 0x02;
 }
 
-tile_t tile_with_toggle_state(tile_t tile, uint8_t state) {
-    // toggle state only if `state` has bit 0 set
-    return tile ^ (state & 0x1);
+tile_t tile_with_toggle_state(tile_t tile, bool state) {
+    return tile ^ state;
 }
 
 tile_t tile_toggle_state(tile_t tile) {
-    return tile ^ 0x1;
+    return tile_with_toggle_state(tile, true);
 }
 
 tile_t tile_make_key(key_type_t variant) {

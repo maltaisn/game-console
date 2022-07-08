@@ -31,7 +31,7 @@ extern "C" {
 }
 
 // Whether to export a list of actors state for each time to a file for failing tests.
-constexpr bool EXPORT_ACTORS_FILE = false;
+constexpr bool EXPORT_ACTORS_FILE = true;
 constexpr const char* EXPORT_ACTORS_DIR = "test/dev/";
 
 // Path of TWS files for level packs declared in pack.py, in the same order.

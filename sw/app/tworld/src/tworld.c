@@ -33,7 +33,7 @@
 #endif //RUNTIME_CHECKS
 
 #define CHIP_REST_DIRECTION DIR_SOUTH
-// Number of game ticks before chip moves to rest position.
+// Number of game ticks before Chip moves to rest position.
 #define CHIP_REST_TICKS 15
 
 enum {
@@ -41,13 +41,13 @@ enum {
     FLAG_TOGGLE_STATE = 1 << 0,
     // Indicates that there may be "reverse tanks" on the grid.
     FLAG_TURN_TANKS = 1 << 1,
-    // Indicates that chip has moved by himself.
+    // Indicates that Chip has moved by himself.
     FLAG_CHIP_SELF_MOVED = 1 << 2,
-    // Indicates that chip move has been forced.
+    // Indicates that Chip move has been forced.
     FLAG_CHIP_FORCE_MOVED = 1 << 3,
-    // Indicates that chip can override force floor direction.
+    // Indicates that Chip can override force floor direction.
     FLAG_CHIP_CAN_UNSLIDE = 1 << 4,
-    // Indicates that chip is stuck on a teleporter.
+    // Indicates that Chip is stuck on a teleporter.
     FLAG_CHIP_STUCK = 1 << 5,
     // Indicates that inventory is currently shown.
     FLAG_INVENTORY_SHOWN = 1 << 6,
@@ -428,7 +428,7 @@ static direction_t get_slide_direction(const tile_t tile, const bool advance) {
 
 /**
  * Build actor list in reading order (monster list is not used).
- * Exclude all actors on static tiles, but don't exchange chip with the first actor
+ * Exclude all actors on static tiles, but don't exchange Chip with the first actor
  * if the first actor was made static by the conversion process.
  */
 static void build_actor_list(void) {
@@ -461,7 +461,7 @@ static void build_actor_list(void) {
     }
 #endif //RUNTIME_CHECKS
 
-    // If needed, swap chip with first actor on the list.
+    // If needed, swap Chip with first actor on the list.
     if (chip_index > 0) {
         const uint16_t temp = chip_actor();
         chip_actor() = tworld.actors[chip_index];
@@ -590,7 +590,7 @@ static bool can_move(const moving_actor_t* act, const direction_t direction,
     }
 
     if (tile_is_toggle_tile(tile_to) &&
-        tile_with_toggle_state(tile_to, tworld.flags) == TILE_TOGGLE_WALL) {
+        tile_with_toggle_state(tile_to, tworld.flags & FLAG_TOGGLE_STATE) == TILE_TOGGLE_WALL) {
         // Since toggle state can change multiple time per step, only a flag is changed
         // instead of the whole grid for consistent execution time.
         return false;
@@ -634,7 +634,7 @@ static bool can_move(const moving_actor_t* act, const direction_t direction,
         if (lookup_actor(&other, pos, true)) {
             if (other.state == ACTOR_STATE_HIDDEN) {
                 if (other.step > 0) {
-                    // "animated" actors block chip
+                    // "animated" actors block Chip
                     return false;
                 }
             } else if (actor_is_block(other.entity)) {
@@ -728,7 +728,7 @@ static void apply_forced_move(moving_actor_t* act, const bool teleported) {
 }
 
 /**
- * Choose a move for chip given the current input state.
+ * Choose a move for Chip given the current input state.
  */
 static void choose_chip_move(moving_actor_t* act) {
     direction_mask_t state = tworld.input_state | tworld.input_since_move;
@@ -747,19 +747,17 @@ static void choose_chip_move(moving_actor_t* act) {
         return;
     }
 
-    const direction_t curr_dir = act->direction;
     if ((state & DIR_VERTICAL_MASK) != 0 && (state & DIR_HORIZONTAL_MASK) != 0) {
-        // direction is diagonal
-        const direction_mask_t curr_dir_mask = direction_to_mask(curr_dir);
-        if (state & curr_dir_mask) {
+        // Direction is diagonal
+        const direction_t last_dir = tworld.last_chip_dir;
+        const direction_mask_t last_dir_mask = direction_to_mask(last_dir);
+        if (state & last_dir_mask) {
             // One of the direction is the current one: continue in current direction, and
             // change direction only if current direction is blocked and other is not.
-            const direction_t other_dir = direction_from_mask((curr_dir_mask ^ state));
-            const bool can_move_curr = can_move(act, curr_dir, CM_PUSH_BLOCKS);
+            const direction_t other_dir = direction_from_mask(last_dir_mask ^ state);
+            const bool can_move_curr = can_move(act, last_dir, CM_PUSH_BLOCKS);
             const bool can_move_other = can_move(act, other_dir, CM_PUSH_BLOCKS);
-            if (!can_move_curr && can_move_other) {
-                act->direction = other_dir;
-            }
+            act->direction = (!can_move_curr && can_move_other) ? other_dir : last_dir;
         } else {
             // Neither direction is the current direction: prioritize horizontal movement first.
             if (can_move(act, direction_from_mask(state & DIR_HORIZONTAL_MASK), CM_PUSH_BLOCKS)) {
@@ -770,9 +768,9 @@ static void choose_chip_move(moving_actor_t* act) {
             act->direction = direction_from_mask(state);
         }
     } else {
-        // single direction, apply it.
+        // Single direction, apply it.
         act->direction = direction_from_mask(state);
-        // make unused check since it can have side effects (pushing blocks)
+        // Make unused check since it can have side effects (pushing blocks)
         can_move(act, act->direction, CM_PUSH_BLOCKS);
     }
 
@@ -798,7 +796,7 @@ static void choose_monster_move(moving_actor_t* act) {
 
     const direction_t forward = act->direction;
     if (act->entity == ENTITY_TEETH) {
-        // Go towards chip
+        // Go towards Chip
         if ((tworld.current_time + stepping()) & 0x4) {
             // Teeth only move at half speed, don't move this time
             return;
@@ -883,7 +881,7 @@ static void choose_monster_move(moving_actor_t* act) {
     }
 
     if (act->entity == ENTITY_TEETH) {
-        // Move failed, but still make teeth face chip
+        // Move failed, but still make teeth face Chip
         act->direction = choices[0];
     }
 }
@@ -899,12 +897,15 @@ static void choose_move(moving_actor_t* act, const bool teleported) {
     if (act->entity == ENTITY_CHIP) {
         choose_chip_move(act);
 
-        // Save new position for chip, used later for collision checking.
+        // Last direction assumed by Chip is used to resolve diagonal input correctly.
+        tworld.chip_last_dir = act->direction;
+
+        // Save new position for Chip, used later for collision checking.
         tworld.collided_with = ACTOR_INDEX_NONE;
         if (act->state == ACTOR_STATE_MOVED) {
             tworld.ticks_since_move = 0;
             if (!(tworld.flags & FLAG_CHIP_FORCE_MOVED)) {
-                // Note: collision case 1 doesn't apply if chip is subject to a forced move.
+                // Note: collision case 1 doesn't apply if Chip is subject to a forced move.
                 tworld.chip_new_pos = get_new_actor_position(act, act->direction);
             }
         } else {
@@ -960,11 +961,11 @@ static move_result_t start_movement(moving_actor_t* act, const uint8_t flags) {
         tworld_assert(flags & CM_RELEASING);
     }
 
-    // Check if creature is currently located where chip intends to move (case 1)
+    // Check if creature is currently located where Chip intends to move (case 1)
     bool chip_collided = false;
     if (actor_is_monster(act->entity) && (int8_t) act->pos.x == tworld.chip_new_pos.x &&
         (int8_t) act->pos.y == tworld.chip_new_pos.y) {
-        // collision may occur: chip has moved where a monster was.
+        // Collision may occur: Chip has moved where a monster was.
         tworld.collided_with = act->index;
         tworld.collided_actor = actor_create(act->entity, act->direction);
 
@@ -979,7 +980,7 @@ static move_result_t start_movement(moving_actor_t* act, const uint8_t flags) {
         }
     }
 
-    // Check if chip is moving on a monster (case 2)
+    // Check if Chip is moving on a monster (case 2)
     const sposition_t spos = get_new_actor_position(act, act->direction);
     const position_t pos = {spos.x, spos.y};  // conversion is always valid at this point
     if (act->entity == ENTITY_CHIP) {
@@ -999,16 +1000,16 @@ static move_result_t start_movement(moving_actor_t* act, const uint8_t flags) {
     // The new tile in top layer is set later. This is because direction is stored in top layer
     // and direction may be changed without execution reaching this point (e.g. ice wall turn).
 
-    // Check if creature has moved on chip (case 3)
+    // Check if creature has moved on Chip (case 3)
     if (act->entity != ENTITY_CHIP) {
         const active_actor_t chip = chip_actor();
         const position_t chip_pos = act_actor_get_pos(chip);
         if (position_equals(chip_pos, pos)) {
             chip_collided = true;
             tworld.collided_actor = get_top_tile(chip_pos);
-            // If chip has moved, ignore it. This is important because if death occurs, the
-            // rest of the tick is processed as usual, but now the actor that has moved on chip
-            // took its place and may attempt to move again when chip turn comes.
+            // If Chip has moved, ignore it. This is important because if death occurs, the
+            // rest of the tick is processed as usual, but now the actor that has moved on Chip
+            // took its place and may attempt to move again when Chip turn comes.
             // STATE_HIDDEN cannot be used because we want this actor to be shown in collision.
             chip_actor() = act_actor_set_state(chip, ACTOR_STATE_NONE);
         }
@@ -1245,7 +1246,7 @@ static void teleport_actor(moving_actor_t* act) {
         act->entity = actor_get_entity(tworld.teleported_chip);
         act->direction = actor_get_direction(tworld.teleported_chip);
     } else {
-        // If chip tile was destroyed then there's two actors on the same position, don't erase
+        // If Chip tile was destroyed then there's two actors on the same position, don't erase
         // the tile because we'll lose information about the other actor.
         // Otherwise erase the tile to unclaim it, since actor is most likely going to move.
         // This is needed so that the current teleporter appears unclaimed later.
@@ -1269,9 +1270,9 @@ static void teleport_actor(moving_actor_t* act) {
 
                 const actor_t actor = get_top_tile(pos);
                 if (actor_get_entity(actor) == ENTITY_CHIP) {
-                    // Oops, teleporting on chip (this is legal in TW, not a collision)
+                    // Oops, teleporting on Chip (this is legal in TW, not a collision)
                     // Chip tile will be lost after destruction, save it temporarily.
-                    // This happens when chip goes in teleporter at the same time or after
+                    // This happens when Chip goes in teleporter at the same time or after
                     // a creature, but before that creature moves out of the teleporter.
                     // A bit of a hack, but it only costs 1B of RAM.
                     tworld.teleported_chip = actor;
@@ -1302,8 +1303,8 @@ static move_result_t perform_move(moving_actor_t* act, const uint8_t flags) {
     if (act->step <= 0) {
         direction_t dir_before;
         if (flags & CM_RELEASING) {
-            // If releasing chip from trap, ignore the new direction chosen, use last
-            // movement direction. This ensures chip cannot turn while trap is forcing the move.
+            // If releasing Chip from trap, ignore the new direction chosen, use last
+            // movement direction. This ensures Chip cannot turn while trap is forcing the move.
             if (is_chip) {
                 dir_before = act->direction;
                 act->direction = tworld.last_chip_dir;
@@ -1319,7 +1320,7 @@ static move_result_t perform_move(moving_actor_t* act, const uint8_t flags) {
             // as a result of collision, which ends the game, and we also want to actor tile to
             // be kept to show collision.
             if ((flags & CM_RELEASING) && is_chip) {
-                // Restore chip chosen direction before releasing from trap
+                // Restore Chip chosen direction before releasing from trap
                 act->direction = dir_before;
                 tworld.last_chip_dir = dir_before;
             }
@@ -1452,7 +1453,7 @@ static void perform_all_moves(void) {
         bool persist = true;
         if (result != MOVE_RESULT_DIED && mact.step <= 0 &&
             get_bottom_tile(mact.pos) == TILE_BUTTON_BROWN) {
-            // If a block is on a trap button and chip pushes it off while springing the trap,
+            // If a block is on a trap button and Chip pushes it off while springing the trap,
             // the block will be pushed and persisted then. Do not persist it in that case,
             // since the instance of moving_actor_t we have here has an outdated position.
             // Make sure of this by saving the index of the current block and checking it
@@ -1470,7 +1471,7 @@ static void perform_all_moves(void) {
 
 static void teleport_all(void) {
     if (tworld_is_game_over()) {
-        // If collision occured with chip on teleporter tile, don't teleport monster that caused it.
+        // If collision occured with Chip on teleporter tile, don't teleport monster that caused it.
         return;
     }
 
