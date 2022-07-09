@@ -1,0 +1,11 @@
+# Development files
+dev/
+make_tileset.py
+
+# Build files
+out/
+build/
+__pycache__/
+
+# Jetbrains
+.idea/
