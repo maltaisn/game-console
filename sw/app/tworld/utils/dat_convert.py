@@ -195,6 +195,7 @@ class MsLevelData:
     bottom_layer: List[int]
 
     title: str
+    author: str
     password: str
     hint: Optional[str]
     monsters: List[Position]
@@ -204,6 +205,7 @@ class MsLevelData:
     TIME_LIMIT_NONE = 0
 
     METADATA_TITLE = 3
+    METADATA_AUTHOR = 9
     METADATA_TRAPS = 4
     METADATA_CLONERS = 5
     METADATA_PASSWORD = 6
@@ -258,7 +260,8 @@ class DatFileReader:
         length = self._read(1)
         data = self.data[self.pos:self.pos + length]
         self.pos += length
-        if chunk_id == MsLevelData.METADATA_TITLE or chunk_id == MsLevelData.METADATA_HINT:
+        if chunk_id == MsLevelData.METADATA_TITLE or chunk_id == MsLevelData.METADATA_HINT or \
+                chunk_id == MsLevelData.METADATA_AUTHOR:
             return chunk_id, data[:-1].decode("ascii")
         elif chunk_id == MsLevelData.METADATA_PASSWORD:
             decrypted = bytes((b ^ 0x99 for b in data[:-1]))
@@ -312,6 +315,7 @@ class DatFileReader:
 
         title = self._get_metadata(all_metadata, MsLevelData.METADATA_TITLE,
                                    f"level {number} has no title")
+        author = self._get_metadata(all_metadata, MsLevelData.METADATA_AUTHOR)
         password = self._get_metadata(all_metadata, MsLevelData.METADATA_PASSWORD,
                                       f"level {number} has no password")
         hint = self._get_metadata(all_metadata, MsLevelData.METADATA_HINT)
@@ -320,7 +324,7 @@ class DatFileReader:
         cloner_linkage = self._get_metadata(all_metadata, MsLevelData.METADATA_CLONERS, default=[])
 
         return MsLevelData(self.file, number, time_limit, required_chips, top_layer, bottom_layer,
-                           title, password, hint, monsters, trap_linkage, cloner_linkage)
+                           title, author, password, hint, monsters, trap_linkage, cloner_linkage)
 
     def read_levels(self) -> List[MsLevelData]:
         magic = self._read(4)
@@ -540,52 +544,63 @@ class DatFileWriter:
                 tile = bottom_layer[i]
                 if tile.is_slide() or tile.is_ice() or tile.is_button() or tile == Tile.CLONER:
                     # block on sliding floor may slide at start so we can't consider it static.
-                    # blocks on cloner is probably a static cloner anyway.
+                    # blocks on buttons or cloners can obviously also have side effects.
                     continue
 
-                x, y = i % Level.GRID_WIDTH, i // Level.GRID_WIDTH
                 static = False
-                for forward_dir in range(4):
-                    right_dir = Direction.left(forward_dir)
+                if tile in [Tile.WALL, Tile.WALL_INVISIBLE, Tile.FAKE_EXIT,
+                            Tile.STATIC_CLONER, Tile.STATIC_TRAP]:
+                    # simple case: block is on chip acting wall, with the notable exception of
+                    # revealable walls (that can be block slapped from!) and cloners.
+                    # Blocks on static trap must be static because they are not handled in the code
+                    # otherwise. They need to a wall underneath them.
+                    static = True
+                else:
+                    x, y = i % Level.GRID_WIDTH, i // Level.GRID_WIDTH
+                    for forward_dir in range(4):
+                        right_dir = Direction.left(forward_dir)
 
-                    pos_forward = TileWorld.get_pos_in_direction(x, y, forward_dir)
-                    pos_right = TileWorld.get_pos_in_direction(x, y, right_dir)
-                    pos_diag = TileWorld.get_pos_in_direction(*pos_forward, right_dir)
-                    all_pos = [pos_forward, pos_right, pos_diag]
+                        pos_forward = TileWorld.get_pos_in_direction(x, y, forward_dir)
+                        pos_right = TileWorld.get_pos_in_direction(x, y, right_dir)
+                        pos_diag = TileWorld.get_pos_in_direction(*pos_forward, right_dir)
+                        all_pos = [pos_forward, pos_right, pos_diag]
 
-                    tiles = []
-                    actors = []
-                    for px, py in all_pos:
-                        j = py * Level.GRID_WIDTH + px
-                        if 0 <= px < Level.GRID_WIDTH and 0 <= py < Level.GRID_HEIGHT:
-                            tiles.append(bottom_layer[j])
-                            actors.append(top_layer[j])
-                        else:
-                            tiles.append(Tile.WALL)  # map border
-                            actors.append(Actor.NONE)
+                        tiles = []
+                        actors = []
+                        for px, py in all_pos:
+                            j = py * Level.GRID_WIDTH + px
+                            if 0 <= px < Level.GRID_WIDTH and 0 <= py < Level.GRID_HEIGHT:
+                                tiles.append(bottom_layer[j])
+                                actors.append(top_layer[j])
+                            else:
+                                tiles.append(Tile.WALL)  # map border
+                                actors.append(Actor.NONE)
 
-                    for pattern in PATTERNS:
-                        if all(p == ANY or p == BLOCK and actors[j].entity() == Entity.BLOCK or
-                               p == WALL and (tiles[j].is_chip_acting_wall() or
-                                              tiles[j] == Tile.EXIT or tiles[j] == Tile.STATIC_TRAP
-                                              and actors[j].entity() != Entity.NONE)
-                               for j, p in enumerate(pattern)):
-                            top_layer[i] = Actor.STATIC_BLOCK
-                            bottom_layer[i] = Tile.WALL  # there's no point leaving whatever it was
-                            static_blocks += 1
-                            static = True
+                        for pattern in PATTERNS:
+                            if all(p == ANY or p == BLOCK and actors[j].entity() == Entity.BLOCK or
+                                   p == WALL and (tiles[j].is_chip_acting_wall() or
+                                                  tiles[j] == Tile.EXIT or
+                                                  tiles[j] == Tile.STATIC_TRAP
+                                                  and actors[j].entity() != Entity.NONE)
+                                   for j, p in enumerate(pattern)):
+                                static = True
 
-                            # invalidate neighbor in each direction
-                            # we need to do this since a static block becomes an acting wall
-                            # and thus may create other static blocks
-                            for neighbor_dir in range(4):
-                                nx, ny = TileWorld.get_pos_in_direction(x, y, neighbor_dir)
-                                if 0 <= nx < Level.GRID_WIDTH and 0 <= ny < Level.GRID_HEIGHT:
-                                    invalidated[ny * Level.GRID_WIDTH + nx] = True
+                                # invalidate neighbor in each direction
+                                # we need to do this since a static block becomes an acting wall
+                                # and thus may create other static blocks
+                                for neighbor_dir in range(4):
+                                    nx, ny = TileWorld.get_pos_in_direction(x, y, neighbor_dir)
+                                    if 0 <= nx < Level.GRID_WIDTH and 0 <= ny < Level.GRID_HEIGHT:
+                                        invalidated[ny * Level.GRID_WIDTH + nx] = True
+                                break
+
+                        if static:
                             break
 
-                    if static:
-                        break
+                if static:
+                    top_layer[i] = Actor.STATIC_BLOCK
+                    bottom_layer[i] = Tile.WALL  # there's no point leaving whatever it was
+                    static_blocks += 1
 
         if static_blocks:
             print(f"  added {static_blocks} static blocks")
@@ -599,13 +614,15 @@ class DatFileWriter:
         links = {(link.linked_y * Level.GRID_WIDTH + link.linked_x)
                  for link in (level.trap_linkage + level.cloner_linkage)}
         for i in range(Level.GRID_SIZE):
+            if i in links:
+                continue
             if bottom_layer[i] == Tile.CLONER:
-                if i not in links:
-                    bottom_layer[i] = Tile.STATIC_CLONER
-                    static_cloners += 1
-            elif bottom_layer[i] == Tile.TRAP and i not in links:
-                bottom_layer[i] = Tile.WALL if top_layer[i].entity() == Entity.BLOCK \
-                    else Tile.STATIC_TRAP
+                bottom_layer[i] = Tile.STATIC_CLONER
+                static_cloners += 1
+            elif bottom_layer[i] == Tile.TRAP:
+                # note: it's important that the bottom tile be a chip acting wall for a block
+                # on a static trap. This is handled in the static block step.
+                bottom_layer[i] = Tile.STATIC_TRAP
                 static_traps += 1
 
         if static_cloners:
@@ -616,13 +633,14 @@ class DatFileWriter:
     @staticmethod
     def _preprocess_layers_ghost_blocks(bottom_layer: List[Tile],
                                         top_layer: List[Actor]) -> None:
+        """Replace initially unmoving blocks without side effects with ghost blocks."""
         ghost_blocks = 0
         for i in range(Level.GRID_SIZE):
             tile = bottom_layer[i]
             actor = top_layer[i]
             if actor.entity() == Entity.BLOCK and not tile.is_button() and \
-                    not tile.is_ice() and not tile.is_slide() and not tile == Tile.TRAP and \
-                    not tile == Tile.CLONER:
+                    not tile.is_ice() and not tile.is_slide() and \
+                    tile not in [Tile.CLONER, Tile.STATIC_CLONER, Tile.TRAP, Tile.STATIC_TRAP]:
                 # block that won't immediately move and has no side effects: put a ghost block.
                 top_layer[i] = actor.with_entity(Entity.BLOCK_GHOST)
                 ghost_blocks += 1
@@ -635,7 +653,12 @@ class DatFileWriter:
         DatFileWriter._preprocess_layers_unlinked(level, bottom_layer, top_layer)
         DatFileWriter._preprocess_layers_static_blocks(bottom_layer, top_layer)
         DatFileWriter._preprocess_layers_static_monsters(bottom_layer, top_layer)
-        # DatFileWriter._preprocess_layers_ghost_blocks(bottom_layer, top_layer)
+
+        if level.author and "[GB]" in level.author:
+            # This step replaces nearly all blocks with ghost blocks, causing major changes to the
+            # actor list which makes a lot of the original solutions fail.
+            # A special switch is used to enable it, adding "[GB]" to the author field.
+            DatFileWriter._preprocess_layers_ghost_blocks(bottom_layer, top_layer)
 
         # count non-static actors
         actor_count = 0

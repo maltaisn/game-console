@@ -56,8 +56,14 @@ enum {
 };
 
 // Temporary extra state used to indicate that the actor has died and it's tile
-// Should be replaced by an animation tile. (note: STATE_DIED & 0x3 == STATE_HIDDEN)
-#define ACTOR_STATE_DIED (0x5 << 5)
+// Should be replaced by an animation tile.
+// Note: (ACTOR_STATE_DIED & ACTOR_STATE_MASK) == ACTOR_STATE_HIDDEN
+#define ACTOR_STATE_DIED ((actor_state_t) (ACTOR_STATE_HIDDEN + 1))
+
+// Temporary extra state used to indicate a ghost block to be removed from the actor list.
+// unlike STATE_DIED, the actor is not replaced by an animation.
+// Note: (ACTOR_STATE_GHOST & ACTOR_STATE_MASK) == ACTOR_STATE_HIDDEN
+#define ACTOR_STATE_GHOST ((actor_state_t) (ACTOR_STATE_HIDDEN + 2))
 
 /**
  * Container used during step processing to store information about an actor for fast access.
@@ -308,6 +314,7 @@ static void create_moving_actor(moving_actor_t* mact, const actor_idx_t idx) {
  * Persist any changes to a moving actor container to the actor list and the top layer.
  */
 static void destroy_moving_actor(const moving_actor_t* mact) {
+    // ACTOR_STATE_DIED and ACTOR_STATE_GHOST become ACTOR_STATE_HIDDEN after masking.
     tworld.actors[mact->index] = act_actor_create(
             mact->pos, mact->step, mact->state & ACTOR_STATE_MASK);
 
@@ -631,7 +638,23 @@ static bool can_move(const moving_actor_t* act, const direction_t direction,
 
         // Check if there's another actor on destination tile
         moving_actor_t other;
-        if (lookup_actor(&other, pos, true)) {
+        bool is_other = lookup_actor(&other, pos, true);
+
+        if (!is_other && actor_get_entity(get_top_tile(pos)) == ENTITY_BLOCK_GHOST) {
+            // No actor there but there is a ghost block. Add it to the actor list if possible.
+            // Levels should be made so that a ghost block can always be created, otherwise
+            // it won't be spawned and won't be moved!
+            moving_actor_t new_block;
+            if (spawn_actor(&new_block)) {
+                new_block.entity = ENTITY_BLOCK_GHOST;
+                new_block.pos = pos;
+                new_block.state = ACTOR_STATE_NONE;
+                other = new_block;
+                is_other = true;
+            }
+        }
+
+        if (is_other) {
             if (other.state == ACTOR_STATE_HIDDEN) {
                 if (other.step > 0) {
                     // "animated" actors block Chip
@@ -639,6 +662,11 @@ static bool can_move(const moving_actor_t* act, const direction_t direction,
                 }
             } else if (actor_is_block(other.entity)) {
                 if (!can_push_block(&other, direction, flags & ~CM_RELEASING)) {
+                    if (other.entity == ENTITY_BLOCK_GHOST) {
+                        // Ghost block just created can't be moved: hide it immediately.
+                        tworld.actors[other.index] = act_actor_set_state(
+                                tworld.actors[other.index], ACTOR_STATE_HIDDEN);
+                    }
                     return false;
                 }
             }
@@ -920,7 +948,18 @@ static void choose_move(moving_actor_t* act, const bool teleported) {
     } else if (!actor_is_block(act->entity)) {
         // Choose monster move.
         choose_monster_move(act);
+
+    } else if (act->entity == ENTITY_BLOCK_GHOST) {
+        if (act->state == ACTOR_STATE_NONE) {
+            // Ghost block hasn't moved, remove it from actor list without removing the tile.
+            // Don't touch ghost blocks that have side effect though.
+            const tile_t tile = get_bottom_tile(act->pos);
+            if (!tile_is_button(tile) && tile != TILE_TRAP) {
+                act->state = ACTOR_STATE_GHOST;
+            }
+        }
     }
+
     // (blocks never move by themselves)
 }
 
@@ -1219,7 +1258,6 @@ static end_cause_t end_movement(moving_actor_t* act) {
 
 /**
  * Release actor from trap controlled by the button at the given position.
- * Returns true if actor is not on button, false otherwise.
  */
 static void spring_trap(const position_t pos) {
     const link_t* link = find_link_to(pos, &trap_links);

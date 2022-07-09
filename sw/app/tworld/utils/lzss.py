@@ -1,8 +1,5 @@
 from collections import deque
 
-# TODO https://michaeldipperstein.github.io/lzss.html
-#  - optimize dictionnary search
-
 # Simple LZSS implementation
 # - Token type is indicated by a byte, with a 0 bit indicating a raw byte and a 1 bit indicating
 #   a back reference. The first token of the stream is always a token type byte.

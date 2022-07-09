@@ -101,23 +101,25 @@ typedef int8_t step_t;
 
 #define STEP_BIAS 3
 
+#define ACTOR_STATE_SHIFT 5
+
 typedef enum {
     // Default state.
-    ACTOR_STATE_NONE = 0x0 << 5,
+    ACTOR_STATE_NONE = 0x0 << ACTOR_STATE_SHIFT,
 
     // Hidden state, when the actor is dead
     // Hidden actor entries are skipped and are reused when spawning a new actor.
-    ACTOR_STATE_HIDDEN = 0x1 << 5,
+    ACTOR_STATE_HIDDEN = 0x1 << ACTOR_STATE_SHIFT,
 
     // Moved state, when the actor has chosen a move during stepping (vs. not moving).
     // This also applies when a move is forced on an actor.
-    ACTOR_STATE_MOVED = 0x2 << 5,
+    ACTOR_STATE_MOVED = 0x2 << ACTOR_STATE_SHIFT,
 
     // Teleported state, when the actor has just been teleported.
-    ACTOR_STATE_TELEPORTED = 0x3 << 5,
+    ACTOR_STATE_TELEPORTED = 0x3 << ACTOR_STATE_SHIFT,
 } actor_state_t;
 
-#define ACTOR_STATE_MASK (0x3 << 5)
+#define ACTOR_STATE_MASK (0x3 << ACTOR_STATE_SHIFT)
 
 /** Position on the grid (X or Y), between 0 and 31. */
 typedef uint8_t grid_pos_t;
