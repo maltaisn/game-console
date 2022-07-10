@@ -53,7 +53,7 @@ static uint8_t preprocess_input_state() {
 static void apply_options_dialog_changes(void) {
     // This will have to be undone if options dialog is cancelled.
     update_sound_volume(dialog.items[0].number.value);
-    update_display_contrast(dialog.items[2].number.value);
+    update_display_contrast(dialog.items[3].number.value);
     if (dialog.items[1].choice.selection == 0) {
         game.options.features &= ~GAME_FEATURE_MUSIC;
     } else {

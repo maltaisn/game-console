@@ -194,7 +194,7 @@ static void draw_game(void) {
 
     if (inventory_shown) {
         draw_inventory_overlay();
-    } else if (tworld.time_left <= LOW_TIMER_THRESHOLD) {
+    } else if (tworld.time_left <= LOW_TIMER_THRESHOLD && game.state == GAME_STATE_PLAY) {
         draw_low_timer_overlay();
     }
 }

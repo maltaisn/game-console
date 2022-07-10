@@ -22,6 +22,7 @@
 #include "input.h"
 #include "save.h"
 #include "music.h"
+#include "sound.h"
 
 #include <core/callback.h>
 #include <core/graphics.h>
@@ -49,12 +50,14 @@ void callback_setup(void) {
 
     dialog_set_font(ASSET_FONT_7X7, ASSET_FONT_5X7, ASSET_FONT_3X5_BUILTIN);
     sound_set_tempo(encode_bpm_tempo(ASSET_MUSIC_TEMPO));
+    sound_set_channel_volume(2, SOUND_CHANNEL2_VOLUME1);
 
     // load saved (or default) settings and apply them.
     load_from_eeprom();
     update_sound_volume(game.options.volume);
     update_display_contrast(game.options.contrast);
     update_music_enabled();
+    sound_start(SOUND_TRACKS_STARTED);
 }
 
 bool callback_loop(void) {
@@ -144,6 +147,22 @@ static game_state_t update_tworld_state(uint8_t dt) {
             }
         }
     }
+
+    if (tworld.events & EVENT_KEY_TAKEN) {
+        // A key has been picked up since last checked.
+        game_sound_play(ASSET_SOUND_KEY);
+
+    } else if (tworld.events & EVENT_CHIP_TAKEN) {
+        game_sound_play(ASSET_SOUND_CHIP);
+
+    } else if (tworld.time_left <= LOW_TIMER_THRESHOLD &&
+        (uint8_t) (tworld.time_left % TICKS_PER_SECOND) == 0) {
+        // Low timer and last second just ended
+        game_sound_play(ASSET_SOUND_TIMER);
+    }
+
+    // Clear all sounds.
+    tworld.events = 0;
 
     return GAME_STATE_PLAY;
 }

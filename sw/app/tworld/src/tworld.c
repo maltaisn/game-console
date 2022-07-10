@@ -51,8 +51,6 @@ enum {
     FLAG_CHIP_STUCK = 1 << 5,
     // Indicates that inventory is currently shown.
     FLAG_INVENTORY_SHOWN = 1 << 6,
-    // Indicates that the level is untimed.
-    FLAG_NO_TIME_LIMIT = 1 << 7,
 };
 
 // Temporary extra state used to indicate that the actor has died and it's tile
@@ -1206,6 +1204,7 @@ static end_cause_t end_movement(moving_actor_t* act) {
         } else if (tile_is_key(tile)) {
             if (tworld.keys[variant] < 255) {
                 ++tworld.keys[variant];
+                tworld.events |= EVENT_KEY_TAKEN;
             }
             new_tile = TILE_FLOOR;
         } else if (tile_is_boots(tile)) {
@@ -1216,6 +1215,7 @@ static end_cause_t end_movement(moving_actor_t* act) {
         } else if (tile == TILE_CHIP) {
             if (tworld.chips_left > 0) {
                 --tworld.chips_left;
+                tworld.events |= EVENT_CHIP_TAKEN;
             }
             new_tile = TILE_FLOOR;
         } else if (tile == TILE_EXIT) {
@@ -1536,9 +1536,6 @@ void tworld_init(void) {
     memset(&tworld.zero_init_start, 0,
            sizeof tworld - (tworld.zero_init_start - (uint8_t*) &tworld));
 
-    if (tworld.time_left == TIME_LEFT_NONE) {
-        tworld.flags = FLAG_NO_TIME_LIMIT;
-    }
     tworld.collided_with = ACTOR_INDEX_NONE;
     tworld.actor_springing_trap = ACTOR_INDEX_NONE;
 
@@ -1569,7 +1566,7 @@ void tworld_update(void) {
     teleport_all();
 
     ++tworld.current_time;
-    if (!(tworld.flags & FLAG_NO_TIME_LIMIT)) {
+    if (tworld.time_left != TIME_LEFT_NONE) {
         --tworld.time_left;
     }
 }

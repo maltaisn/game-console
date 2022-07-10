@@ -98,7 +98,7 @@ void open_hint_dialog(void) {
 
 void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
     // dialog is centered if in game, and at the same position of main menu dialog if in menu.
-    dialog_init_hcentered(result_pos == RESULT_SAVE_OPTIONS ? 48 : 30, 108, 67);
+    dialog_init_hcentered(result_pos == RESULT_SAVE_OPTIONS ? 35 : 17, 108, 80);
     dialog.title = "GAME OPTIONS";
     dialog.pos_btn = "OK";
     dialog.neg_btn = "Cancel";
@@ -108,9 +108,11 @@ void open_options_dialog(uint8_t result_pos, uint8_t result_neg) {
     dialog.selection = 0;
 
     const bool music_enabled = (game.options.features & GAME_FEATURE_MUSIC) != 0;
+    const bool sound_enabled = (game.options.features & GAME_FEATURE_SOUND_EFFECTS) != 0;
 
     dialog_add_item_number("SOUND VOLUME", 0, 4, 1, game.options.volume);
     dialog_add_item_choice("GAME MUSIC", music_enabled, 2, CHOICES_ON_OFF);
+    dialog_add_item_choice("SOUND EFFECTS", sound_enabled, 2, CHOICES_ON_OFF);
     dialog_add_item_number("DISPLAY CONTRAST", 0, 10, 10, game.options.contrast);
 }
 

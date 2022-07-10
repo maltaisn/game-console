@@ -18,6 +18,12 @@ with p.group("music"):
                 channels={0, 1}, merge_midi_tracks=True)
     p.define("tempo", tempo)
 
+# sound
+with p.group("sound"):
+    all_sound = ["timer", "key", "chip"]
+    for sound in all_sound:
+        p.sound(f"sound-{sound}.mid", name=sound, tempo=tempo, channels={2})
+
 # fonts
 with p.group("font"):
     p.font("font5x7.png", name="5x7", glyph_width=5, glyph_height=7)

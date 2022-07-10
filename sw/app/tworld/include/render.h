@@ -38,9 +38,6 @@
 // Number of tile variants
 #define BOTTOM_TILE_VARIANTS 2
 
-// low timer overlay will be shown if time left is less than this value.
-#define LOW_TIMER_THRESHOLD (20 * TICKS_PER_SECOND)
-
 void draw(void);
 
 #endif //TWORLD_RENDER_H

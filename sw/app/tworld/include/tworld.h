@@ -56,6 +56,11 @@ typedef uint16_t time_left_t;
 #define time_left_to_seconds(time) \
         (uint16_t) ((uint16_t) ((time) + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND)
 
+enum {
+    EVENT_KEY_TAKEN = 1 << 0,
+    EVENT_CHIP_TAKEN = 1 << 1,
+};
+
 /**
  * Data structure for the current level state.
  */
@@ -80,8 +85,10 @@ typedef struct {
     uint8_t actors_size;
     // Last byte of current time, used with stepping.
     uint24_t current_time;
-    // Game flags (FLAG_* constants below).
+    // Game flags (FLAG_* constants in tworld.c).
     uint8_t flags;
+    // Game events bitfield (EVENT_* constants).
+    uint8_t events;
     // Number of keys held (in order: blue, red, green, yellow).
     uint8_t keys[LEVEL_KEY_COUNT];
     // Boots held (bitfield on bits 0 to 3).
@@ -155,6 +162,11 @@ void tworld_update(void);
  * Returns true if game is over (failed or completed).
  */
 bool tworld_is_game_over(void);
+
+/**
+ * Returns true if a key was picked up and consumes the event.
+ */
+bool tworld_read_key_pickup(void);
 
 /**
  * Returns the current position of Chip.

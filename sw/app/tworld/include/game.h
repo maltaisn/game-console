@@ -39,6 +39,9 @@
 #define LEVEL_FAIL_STATE_DELAY 16  // 1000 ms
 #define LEVEL_COMPLETE_STATE_DELAY 8  // 500 ms
 
+// low timer overlay will be shown if time left is less than this value.
+#define LOW_TIMER_THRESHOLD (20 * TICKS_PER_SECOND)
+
 typedef enum {
     GAME_STATE_MAIN_MENU = 0,
     GAME_STATE_HELP = 1,
@@ -90,6 +93,7 @@ enum {
 
 enum {
     GAME_FEATURE_MUSIC = 1 << 0,
+    GAME_FEATURE_SOUND_EFFECTS = 1 << 1,
 };
 
 enum {

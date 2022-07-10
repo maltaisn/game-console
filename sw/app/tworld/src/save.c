@@ -55,7 +55,7 @@ static void save_to_eeprom(void) {
 
 static void set_default_options(void) {
     game.options = (game_options_t) {
-            .features = GAME_FEATURE_MUSIC,
+            .features = GAME_FEATURE_MUSIC | GAME_FEATURE_SOUND_EFFECTS,
             .volume = SOUND_VOLUME_2,
             .contrast = 6,
     };
@@ -103,9 +103,12 @@ void save_dialog_options(void) {
     if (dialog.items[1].choice.selection) {
         features |= GAME_FEATURE_MUSIC;
     }
+    if (dialog.items[2].choice.selection) {
+        features |= GAME_FEATURE_SOUND_EFFECTS;
+    }
 
     uint8_t volume = dialog.items[0].number.value;
-    uint8_t contrast = dialog.items[2].number.value;
+    uint8_t contrast = dialog.items[3].number.value;
 
     game.options.features = features;
     game.options.volume = volume;
