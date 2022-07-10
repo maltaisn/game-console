@@ -13,39 +13,39 @@
 
 #define ASSET_MUSIC_THEME0 data_flash(0x0d07)
 #define ASSET_MUSIC_THEME1 data_flash(0x0e7e)
-#define ASSET_MUSIC_MENU data_flash(0x1116)
-#define ASSET_MUSIC_FAIL data_flash(0x11d9)
-#define ASSET_MUSIC_COMPLETE data_flash(0x1209)
+#define ASSET_MUSIC_MENU data_flash(0x112f)
+#define ASSET_MUSIC_FAIL data_flash(0x11f2)
+#define ASSET_MUSIC_COMPLETE data_flash(0x1222)
 
-#define ASSET_SOUND_TIMER data_flash(0x125d)
-#define ASSET_SOUND_KEY data_flash(0x1266)
-#define ASSET_SOUND_CHIP data_flash(0x1271)
+#define ASSET_SOUND_TIMER data_flash(0x1276)
+#define ASSET_SOUND_KEY data_flash(0x127f)
+#define ASSET_SOUND_CHIP data_flash(0x128a)
 
-#define ASSET_FONT_5X7 data_flash(0x127a)
-#define ASSET_FONT_7X7 data_flash(0x1442)
+#define ASSET_FONT_5X7 data_flash(0x1293)
+#define ASSET_FONT_7X7 data_flash(0x145b)
 
-#define ASSET_IMAGE_ARROW_UP data_flash(0x15de)
-#define ASSET_IMAGE_ARROW_DOWN data_flash(0x15e5)
-#define ASSET_IMAGE_SECRET_LEVEL data_flash(0x15ec)
-#define ASSET_IMAGE_MENU data_flash(0x1604)
-#define ASSET_IMAGE_PACK_PASSWORD data_flash(0x29e2)
-#define ASSET_IMAGE_PACK_LOCKED data_flash(0x2a59)
+#define ASSET_IMAGE_ARROW_UP data_flash(0x15f7)
+#define ASSET_IMAGE_ARROW_DOWN data_flash(0x15fe)
+#define ASSET_IMAGE_SECRET_LEVEL data_flash(0x1605)
+#define ASSET_IMAGE_MENU data_flash(0x161d)
+#define ASSET_IMAGE_PACK_PASSWORD data_flash(0x29fb)
+#define ASSET_IMAGE_PACK_LOCKED data_flash(0x2a72)
 
 extern const uint8_t ASSET_TILESET_MAP_BOTTOM[];
 extern const uint8_t ASSET_TILESET_MAP_TOP[];
 
 #define ASSET_IMAGE_PACK_PROGRESS_SIZE 9
-#define ASSET_IMAGE_PACK_PROGRESS_ADDR 0x2adb
+#define ASSET_IMAGE_PACK_PROGRESS_ADDR 0x2af4
 #define ASSET_IMAGE_PACK_PROGRESS_OFFSET 103
 #define asset_image_pack_progress(n) data_flash(ASSET_IMAGE_PACK_PROGRESS_ADDR + (n) * ASSET_IMAGE_PACK_PROGRESS_OFFSET)
 
 #define ASSET_TILESET_BOTTOM_SIZE 72
-#define ASSET_TILESET_BOTTOM_ADDR 0x2e7a
+#define ASSET_TILESET_BOTTOM_ADDR 0x2e93
 #define ASSET_TILESET_BOTTOM_OFFSET 112
 #define asset_tileset_bottom(n) (ASSET_TILESET_BOTTOM_ADDR + (n) * ASSET_TILESET_BOTTOM_OFFSET)
 
 #define ASSET_TILESET_TOP_SIZE 24
-#define ASSET_TILESET_TOP_ADDR 0x4dfa
+#define ASSET_TILESET_TOP_ADDR 0x4e13
 #define ASSET_TILESET_TOP_OFFSET 112
 #define asset_tileset_top(n) (ASSET_TILESET_TOP_ADDR + (n) * ASSET_TILESET_TOP_OFFSET)
 
@@ -54,7 +54,7 @@ extern const uint16_t ASSET_END_CAUSE[];
 #define asset_end_cause(n) (ASSET_END_CAUSE[n])
 
 #define ASSET_HELP_SIZE 48
-#define ASSET_HELP_INDEX 0x4a61eL
+#define ASSET_HELP_INDEX 0x4a637L
 #define ASSET_HELP_ADDR_SIZE 2
 #define asset_help(n) (({uint16_t _a; flash_read(ASSET_HELP_INDEX + (n) * ASSET_HELP_ADDR_SIZE, 2, &_a); _a;}))
 
