@@ -59,7 +59,13 @@ performance, all symbols are present during debugging, screenshots can be taken 
 Moreover, the project doesn't depend on Microchip proprietary debugging tools
 and the simulator has helped tremendously with debugging in this regard.
 
-<img src="../docs/simulator-tetris.png" width="45%"/> <img src="../docs/simulator-system.png" width="45%"/>
+<img src="../docs/tetris-menu.png" width="45%"/> <img src="../docs/system-flash.png" width="45%"/>
+
+Notable simulation pitfalls:
+
+- `uint24_t` is defined as a `uint32_t` which may hide some bugs.
+- `SHARED_DISP_BUF` has no effect and memory is allocated separatedly.
+- Some code is written for a little-endian machine and will not work otherwise.
 
 ## Programming
 
