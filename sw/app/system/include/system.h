@@ -61,18 +61,18 @@ typedef struct {
     uint16_t eeprom_size;
     uint16_t build_date;
     uint8_t index;
-} app_flash_t;
+} PACK_STRUCT app_flash_t;
 
 typedef struct {
     uint8_t id;
     uint24_t size;
-} app_eeprom_t;
+} PACK_STRUCT app_eeprom_t;
 
 typedef struct {
     uint8_t size;
     uint24_t total;
     uint8_t index[APP_INDEX_SIZE];
-} mem_usage_t;
+} PACK_STRUCT mem_usage_t;
 
 typedef struct {
     // general
