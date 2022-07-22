@@ -26,10 +26,11 @@ static const char* const CHOICES_ON_OFF[] = {"OFF", "ON"};
 
 void open_main_menu_dialog(void) {
     dialog_init_hcentered(54, 96, 56);
-    dialog.selection = 0;
-    if (game.last_state <= 2) {
+    if (game.last_state < GAME_SSEP_COVER_BG) {
         // restore previous dialog selection (controls, options).
         dialog.selection = (uint8_t) game.last_state;
+    } else {
+        dialog.selection = 0;
     }
 
     dialog_add_item_button("PLAY", RESULT_OPEN_LEVEL_PACKS);
@@ -79,7 +80,12 @@ void open_pause_dialog(void) {
     dialog.title = "GAME PAUSED";
     dialog.dismiss_result = RESULT_RESUME;
     dialog.flags = DIALOG_FLAG_DISMISSABLE;
-    dialog.selection = 0;
+    if (game.last_state == GAME_STATE_HELP_PLAY || game.last_state == GAME_STATE_OPTIONS_PLAY) {
+        // restore previous dialog selection (controls, options).
+        dialog.selection = (uint8_t) (game.last_state - GAME_STATE_HELP_PLAY) + 2;
+    } else {
+        dialog.selection = 0;
+    }
 
     dialog_add_item_button("RESUME", RESULT_RESUME);
     dialog_add_item_button("RESTART", RESULT_RESTART_LEVEL);
