@@ -32,8 +32,12 @@
 #define MUSIC_TRACKS_STARTED (TRACK0_STARTED | TRACK1_STARTED)
 
 enum {
+    // Indicates that music will loop when started.
     MUSIC_FLAG_LOOP = 1 << 0,
+    // Indicates that music will start with a delay.
     MUSIC_FLAG_DELAYED = 1 << 1,
+    // Indicates that music should be considered a sound effect as well.
+    MUSIC_FLAG_SOUND_EFFECT = 1 << 2,
 };
 
 /**

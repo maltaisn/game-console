@@ -1211,12 +1211,13 @@ static end_cause_t end_movement(moving_actor_t* act) {
         } else if (tile_is_boots(tile)) {
             receive_boots(variant);
             new_tile = TILE_FLOOR;
+            tworld.events |= EVENT_BOOT_TAKEN;
         } else if (tile == TILE_THIEF) {
             tworld.boots = 0;
         } else if (tile == TILE_CHIP) {
             if (tworld.chips_left > 0) {
                 --tworld.chips_left;
-                tworld.events |= EVENT_CHIP_TAKEN;
+                tworld.events |= tworld.chips_left == 0 ? EVENT_LAST_CHIP_TAKEN : EVENT_CHIP_TAKEN;
             }
             new_tile = TILE_FLOOR;
         } else if (tile == TILE_EXIT) {

@@ -20,7 +20,7 @@ with p.group("music"):
 
 # sound
 with p.group("sound"):
-    all_sound = ["timer", "key", "chip"]
+    all_sound = ["timer", "key", "boot", "chip", "lastchip"]
     for sound in all_sound:
         p.sound(f"sound-{sound}.mid", name=sound, tempo=tempo, channels={2})
 

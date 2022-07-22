@@ -101,11 +101,11 @@ static game_state_t prepare_level_end(void) {
     if (tworld.end_cause == END_CAUSE_COMPLETE) {
         set_best_level_time();
         game.state_delay = LEVEL_COMPLETE_STATE_DELAY;
-        game_music_start(ASSET_MUSIC_COMPLETE, MUSIC_FLAG_DELAYED);
+        game_music_start(ASSET_MUSIC_COMPLETE, MUSIC_FLAG_DELAYED | MUSIC_FLAG_SOUND_EFFECT);
         return GAME_STATE_LEVEL_COMPLETE;
     } else {
         game.state_delay = LEVEL_FAIL_STATE_DELAY;
-        game_music_start(ASSET_MUSIC_FAIL, MUSIC_FLAG_DELAYED);
+        game_music_start(ASSET_MUSIC_FAIL, MUSIC_FLAG_DELAYED | MUSIC_FLAG_SOUND_EFFECT);
         return GAME_STATE_LEVEL_FAIL;
     }
 }
@@ -152,8 +152,15 @@ static game_state_t update_tworld_state(uint8_t dt) {
         // A key has been picked up since last checked.
         game_sound_play(ASSET_SOUND_KEY);
 
+    } else if (tworld.events & EVENT_BOOT_TAKEN) {
+        // A key has been picked up since last checked.
+        game_sound_play(ASSET_SOUND_BOOT);
+
     } else if (tworld.events & EVENT_CHIP_TAKEN) {
         game_sound_play(ASSET_SOUND_CHIP);
+
+    } else if (tworld.events & EVENT_LAST_CHIP_TAKEN) {
+        game_sound_play(ASSET_SOUND_LASTCHIP);
 
     } else if (tworld.time_left <= LOW_TIMER_THRESHOLD &&
         (uint8_t) (tworld.time_left % TICKS_PER_SECOND) == 0) {

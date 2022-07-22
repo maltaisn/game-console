@@ -58,7 +58,9 @@ typedef uint16_t time_left_t;
 
 enum {
     EVENT_KEY_TAKEN = 1 << 0,
-    EVENT_CHIP_TAKEN = 1 << 1,
+    EVENT_BOOT_TAKEN = 1 << 1,
+    EVENT_CHIP_TAKEN = 1 << 2,
+    EVENT_LAST_CHIP_TAKEN = 1 << 3,
 };
 
 /**

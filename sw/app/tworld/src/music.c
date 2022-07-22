@@ -31,7 +31,9 @@ void game_music_start_level_music(uint8_t flags) {
 }
 
 void game_music_start(sound_t music, uint8_t flags) {
-    if (current_music != music && (game.options.features & GAME_FEATURE_MUSIC)) {
+    if (current_music != music && ((game.options.features & GAME_FEATURE_MUSIC) ||
+                                   ((flags & MUSIC_FLAG_SOUND_EFFECT) &&
+                                    (game.options.features & GAME_FEATURE_SOUND_EFFECTS)))) {
         current_music = music;
         // if not delayed, still put a delay of 1
         music_start_delay = flags & MUSIC_FLAG_DELAYED ? MUSIC_START_DELAY : 1;
