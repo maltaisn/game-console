@@ -271,11 +271,6 @@ std::vector<LevelTestParam> create_test_cases() {
 
         const level_pack_info_t& info = tworld_packs.packs[i];
         for (level_idx_t j = 0; j < info.total_levels; ++j) {
-            if (std::find(std::begin(TEST_BLACKLIST), std::end(TEST_BLACKLIST),
-                          std::make_tuple(i, j)) != std::end(TEST_BLACKLIST)) {
-                // This test is in blacklist, don't use it.
-                continue;
-            }
             Solution solution = loader.read_solution(j);
             params.emplace_back(i, j, info.name, std::move(solution));
         }
@@ -331,7 +326,7 @@ constexpr const char* DIRECTION_NAMES[] = {
 class LevelTest : public testing::TestWithParam<LevelTestParam> {
 };
 
-template <class T>
+template<class T>
 static void do_state_update(std::optional<T>& out, direction_mask_t input) {
     if (tworld.error) {
         // assertion failed or other error.
@@ -360,9 +355,9 @@ static void do_state_update(std::optional<T>& out, direction_mask_t input) {
             }
 
             stream << "[" << (int) i << "] (" << (int) pos.x << "," << (int) pos.y << ") "
-                 << ENTITY_NAMES[entity >> 2] << " (" << DIRECTION_NAMES[direction] << "), "
-                 << (step > 0 && state == ACTOR_STATE_HIDDEN ? "anim" : "alive")
-                 << ", step=" << (int) step << std::endl;
+                   << ENTITY_NAMES[entity >> 2] << " (" << DIRECTION_NAMES[direction] << "), "
+                   << (step > 0 && state == ACTOR_STATE_HIDDEN ? "anim" : "alive")
+                   << ", step=" << (int) step << std::endl;
         }
         stream << std::endl;
     }
@@ -371,6 +366,13 @@ static void do_state_update(std::optional<T>& out, direction_mask_t input) {
 TEST_P(LevelTest, level_test) {
     game.current_pack = GetParam().pack;
     game.current_level = GetParam().level;
+
+    if (std::find(std::begin(TEST_BLACKLIST), std::end(TEST_BLACKLIST), std::make_tuple(
+            game.current_pack, game.current_level)) != std::end(TEST_BLACKLIST)) {
+        // This test is in blacklist, don't use it.
+        GTEST_SKIP();
+    }
+
     level_read_level();
     level_get_links();
 

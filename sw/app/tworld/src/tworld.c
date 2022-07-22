@@ -720,56 +720,56 @@ static bool can_move(const moving_actor_t* act, const direction_t direction,
  * If an actor is forced to move in a direction, apply that direction.
  * The actor state field must not have been reset since last move when this is called!
  * The teleported flag indicates that the actor was teleported on the previous step.
+ * Returns true if the move should be discarded if actor is Chip.
  */
-static void apply_forced_move(moving_actor_t* act, const bool teleported) {
+static bool apply_forced_move(moving_actor_t* act, const bool teleported) {
     if (tworld.current_time == 0) {
-        return;
+        return false;
     }
 
     const tile_t tile = get_bottom_tile(act->pos);
     const bool is_chip = (act->entity == ENTITY_CHIP);
+
+    bool discard = true;
     if (tile_is_ice(tile)) {
         if (is_chip && has_ice_boots()) {
-            return;
+            return false;
         }
         // Continue in same direction
 
     } else if (tile_is_slide(tile)) {
         if (is_chip && has_slide_boots()) {
-            return;
+            return false;
         }
         // Take direction of force floor
         act->direction = get_slide_direction(tile, true);
+        discard = !(tworld.flags & FLAG_CHIP_CAN_UNSLIDE);
 
     } else if (!teleported) {
         // If teleported, continue in same direction
         // In other cases, move is not forced.
-        return;
+        return false;
     }
 
     if (is_chip) {
         tworld.flags |= FLAG_CHIP_FORCE_MOVED;
     }
     act->state = ACTOR_STATE_MOVED;
+    return discard;
 }
 
 /**
  * Choose a move for Chip given the current input state.
  */
-static void choose_chip_move(moving_actor_t* act) {
+static void choose_chip_move(moving_actor_t* act, bool discard) {
     direction_mask_t state = tworld.input_state | tworld.input_since_move;
     tworld.input_since_move = 0;
 
     tworld_assert(!((state & DIR_VERTICAL_MASK) == DIR_VERTICAL_MASK ||
                     (state & DIR_HORIZONTAL_MASK) == DIR_HORIZONTAL_MASK), "bad direction mask");
 
-    if (state == 0) {
-        // No keys pressed
-        return;
-    }
-
-    if ((tworld.flags & FLAG_CHIP_FORCE_MOVED) && !(tworld.flags & FLAG_CHIP_CAN_UNSLIDE)) {
-        // Chip was forced moved and is not allowed to "unslide", skip free choice.
+    if (state == 0 || discard) {
+        // No keys pressed or move should be discarded (when forced)
         return;
     }
 
@@ -801,6 +801,7 @@ static void choose_chip_move(moving_actor_t* act) {
     }
 
     tworld.flags |= FLAG_CHIP_SELF_MOVED;
+    tworld.flags &= ~FLAG_CHIP_FORCE_MOVED;  // in case force move has been overriden
     act->state = ACTOR_STATE_MOVED;
 }
 
@@ -918,10 +919,10 @@ static void choose_monster_move(moving_actor_t* act) {
  */
 static void choose_move(moving_actor_t* act, const bool teleported) {
     // This will set actor state to MOVED if force move applied.
-    apply_forced_move(act, teleported);
+    const bool discard = apply_forced_move(act, teleported);
 
     if (act->entity == ENTITY_CHIP) {
-        choose_chip_move(act);
+        choose_chip_move(act, discard);
 
         // Last direction assumed by Chip is used to resolve diagonal input correctly.
         tworld.chip_last_dir = act->direction;

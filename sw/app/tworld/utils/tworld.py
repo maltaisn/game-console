@@ -993,10 +993,10 @@ class TileWorld:
         """Choose a move for an actor. The move is stored by changing the actor's direction.
         The teleported flag indicates that the actor was teleported on the previous step."""
         # this will set actor state to MOVED if force move applied.
-        self._apply_forced_move(act, teleported)
+        discard = self._apply_forced_move(act, teleported)
 
         if act.entity == Entity.CHIP:
-            self._choose_chip_move(act)
+            self._choose_chip_move(act, discard)
             self.chip_last_direction = act.direction
 
             # save new position for chip, used later for collision checking.
@@ -1027,46 +1027,44 @@ class TileWorld:
 
         # (blocks never move by themselves)
 
-    def _apply_forced_move(self, act: MovingActor, teleported: bool) -> None:
+    def _apply_forced_move(self, act: MovingActor, teleported: bool) -> bool:
         """If an actor is forced to move in a direction, apply that direction.
         The actor state field must not have been reset since last move when this is called!
         The teleported flag indicates that the actor was teleported on the previous step."""
         if self.current_time == 0:
-            return
+            return False
 
         tile = self.get_bottom_tile(act.x, act.y)
 
+        discard = True
         if tile.is_ice():
             if act.entity == Entity.CHIP and self.has_ice_boots():
-                return
+                return False
             # continue in same direction
         elif tile.is_slide():
             if act.entity == Entity.CHIP and self.has_slide_boots():
-                return
+                return False
             # take direction of force floor
             act.direction = self._get_slide_dir(tile, True)
+            discard = not self.flags & TileWorld.FLAG_CHIP_CAN_UNSLIDE
         elif not teleported:
             # if teleported, continue in same direction
             # in other cases, move is not forced.
-            return
+            return False
 
         if act.entity == Entity.CHIP:
             self.flags |= TileWorld.FLAG_CHIP_FORCE_MOVED
         act.state = ActiveActor.STATE_MOVED
+        return discard
 
-    def _choose_chip_move(self, act: MovingActor) -> None:
+    def _choose_chip_move(self, act: MovingActor, discard: bool) -> None:
         """Choose a move for chip given the current input state."""
         state = self.input_state
         assert (state & Direction.VERTICAL_MASK) != Direction.VERTICAL_MASK
         assert (state & Direction.HORIZONTAL_MASK) != Direction.HORIZONTAL_MASK
 
-        if state == 0:
-            # no keys pressed
-            return
-
-        if self.flags & TileWorld.FLAG_CHIP_FORCE_MOVED and \
-                not self.flags & TileWorld.FLAG_CHIP_CAN_UNSLIDE:
-            # chip was forced moved and is not allowed to "unslide", skip free choice.
+        if state == 0 or discard:
+            # no keys pressed or move discarded (when force moved).
             return
 
         if (state & Direction.VERTICAL_MASK) != 0 and (state & Direction.HORIZONTAL_MASK) != 0:
@@ -1098,6 +1096,7 @@ class TileWorld:
             self._can_move(act, act.direction, TileWorld.CMM_PUSH_BLOCKS)
 
         self.flags |= TileWorld.FLAG_CHIP_SELF_MOVED
+        self.flags &= ~TileWorld.FLAG_CHIP_FORCE_MOVED  # in case force move has been overriden
         act.state = ActiveActor.STATE_MOVED
 
     def _choose_monster_move(self, act: MovingActor) -> None:
