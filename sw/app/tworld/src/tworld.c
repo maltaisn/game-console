@@ -738,12 +738,14 @@ static bool apply_forced_move(moving_actor_t* act, const bool teleported) {
         // Continue in same direction
 
     } else if (tile_is_slide(tile)) {
-        if (is_chip && has_slide_boots()) {
-            return false;
+        if (is_chip) {
+            if (has_slide_boots()) {
+                return false;
+            }
+            discard = !(tworld.flags & FLAG_CHIP_CAN_UNSLIDE);
         }
         // Take direction of force floor
         act->direction = get_slide_direction(tile, true);
-        discard = !(tworld.flags & FLAG_CHIP_CAN_UNSLIDE);
 
     } else if (!teleported) {
         // If teleported, continue in same direction
@@ -809,13 +811,9 @@ static void choose_chip_move(moving_actor_t* act, bool discard) {
  * Choose a direction for a monster actor.
  */
 static void choose_monster_move(moving_actor_t* act) {
-    if (act->state == ACTOR_STATE_MOVED) {
-        // Monster was force moved, do not override;
-        return;
-    }
-
     const tile_t tile = get_bottom_tile(act->pos);
     if (tile == TILE_CLONER || tile == TILE_TRAP) {
+        act->state = ACTOR_STATE_NONE;
         return;
     }
 
@@ -946,7 +944,9 @@ static void choose_move(moving_actor_t* act, const bool teleported) {
 
     } else if (!actor_is_block(act->entity)) {
         // Choose monster move.
-        choose_monster_move(act);
+        if (!discard) {
+            choose_monster_move(act);
+        }
 
     } else if (act->entity == ENTITY_BLOCK_GHOST) {
         if (act->state == ACTOR_STATE_NONE) {
@@ -1158,9 +1158,12 @@ static void activate_cloner(const position_t pos) {
     clone.entity = parent.entity;
     clone.direction = parent.direction;
 
-    parent.state = ACTOR_STATE_MOVED;
-    if (perform_move(&parent, CM_RELEASING) == MOVE_RESULT_SUCCESS) {
+    parent.state = ACTOR_STATE_MOVED;   // to ensure move is performed, reset afterwards.
+    if (perform_move(&parent, CM_RELEASING) == MOVE_RESULT_SUCCESS || tworld_is_game_over()) {
         // Parent moved successfully out of cloner, persist it.
+        // Or, if game is over after trying to perform move, parent is on top of Chip and
+        // thus should be persisted to be shown after end of game.
+        parent.state = ACTOR_STATE_NONE;
         destroy_moving_actor(&parent);
         // Clone takes the place of the parent in cloner, persist it.
         destroy_moving_actor(&clone);

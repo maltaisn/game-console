@@ -1015,7 +1015,8 @@ class TileWorld:
 
         elif not act.entity.is_block():
             # choose monster move
-            self._choose_monster_move(act)
+            if not discard:
+                self._choose_monster_move(act)
 
         elif act.entity == Entity.BLOCK_GHOST:
             if act.state == ActiveActor.STATE_NONE:
@@ -1042,11 +1043,12 @@ class TileWorld:
                 return False
             # continue in same direction
         elif tile.is_slide():
-            if act.entity == Entity.CHIP and self.has_slide_boots():
-                return False
+            if act.entity == Entity.CHIP:
+                if self.has_slide_boots():
+                    return False
+                discard = not self.flags & TileWorld.FLAG_CHIP_CAN_UNSLIDE
             # take direction of force floor
             act.direction = self._get_slide_dir(tile, True)
-            discard = not self.flags & TileWorld.FLAG_CHIP_CAN_UNSLIDE
         elif not teleported:
             # if teleported, continue in same direction
             # in other cases, move is not forced.
@@ -1101,12 +1103,9 @@ class TileWorld:
 
     def _choose_monster_move(self, act: MovingActor) -> None:
         """Choose a direction for a monster actor."""
-        if act.state == ActiveActor.STATE_MOVED:
-            # monster was force moved, do not override
-            return
-
         tile = self.get_bottom_tile(act.x, act.y)
         if tile == Tile.CLONER or tile == tile.TRAP:
+            act.state = ActiveActor.STATE_NONE
             return
 
         # walker and blob turn is lazy evaluated to avoid changing PRNG state
@@ -1455,8 +1454,12 @@ class TileWorld:
             parent.x, parent.y, parent.step, parent.entity, parent.direction, parent.state
 
         parent.state = ActiveActor.STATE_MOVED
-        if self._perform_move(parent, TileWorld.CMM_RELEASING) == TileWorld.RESULT_SUCCESS:
+        if self._perform_move(parent, TileWorld.CMM_RELEASING) == TileWorld.RESULT_SUCCESS \
+                or self.is_game_over():
             # parent moved successfully out of cloner, persist it.
+            # Or, if game is over after trying to perform move, parent is on top of Chip and
+            # thus should be persisted to be shown after end of game.
+            parent.state = ActiveActor.STATE_NONE
             self._destroy_moving_actor(parent)
             # clone takes the place of the parent in cloner, persist it.
             self._destroy_moving_actor(clone)

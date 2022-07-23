@@ -71,6 +71,7 @@ void game_music_update(uint8_t dt) {
     } else if (!sound_check_tracks(TRACKS_PLAYING_ALL)) {
         // music finished playing, restart it if any.
         if (loop_music == MUSIC_NONE) {
+            current_music = MUSIC_NONE;
             return;
         }
         current_music = loop_music;
