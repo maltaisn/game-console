@@ -2,8 +2,7 @@
 
 ## PCB
 
-<img src="../docs/pcb-view-actual.jpg" width="35%"/>
-<img src="../docs/pcb-view.png" width="40%"/>
+<img src="../docs/pcb-view-actual.jpg" width="35%"/> <img src="../docs/pcb-view.png" width="40%"/>
 
 The PCB was designed in KiCAD 6.
 Two revisions were made, but only the first revision was manufactured

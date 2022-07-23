@@ -29,6 +29,12 @@ typedef enum {
 } sys_display_gpio_t;
 
 /**
+ * Initialize display for the first time.
+ * Should only be called on power up.
+ */
+void sys_display_preinit(void);
+
+/**
  * Initialize display. This resets the display and sets all registers through SPI commands.
  * The display RAM is initialized to zero but the buffer is NOT cleared.
  * The display is initially turned OFF and not inverted.
@@ -48,6 +54,7 @@ void sys_display_set_enabled(bool enabled);
 
 /**
  * Dim or undim the display, updating the effective contrast.
+ * Note that dimmed status isn't restored upon wakeup from sleep.
  */
 void sys_display_set_dimmed(bool dimmed);
 

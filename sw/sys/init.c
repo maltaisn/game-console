@@ -143,6 +143,7 @@ void sys_init(void) {
     RSTCTRL.RSTFR = reset_flags;
 
     sys_init_registers();
+    sys_display_preinit();
     sys_init_wakeup();
 }
 

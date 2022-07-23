@@ -40,12 +40,14 @@ typedef uint8_t disp_color_t;
 
 /**
  * Set whether the display is inverted or not.
+ * Note that inversion is lost after wakeup from sleep and must be restored manually.
  */
 void display_set_inverted(bool inverted);
 
 /**
  * Set the display contrast. The default is DISPLAY_DEFAULT_CONTRAST.
  * Nothing is done if contrast is already at set value.
+ * Contrast is restored after wakeup from sleep.
  */
 void display_set_contrast(uint8_t contrast);
 

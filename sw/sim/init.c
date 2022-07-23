@@ -38,6 +38,7 @@ void sys_init(void) {
     sim_eeprom_init();
     sim_flash_init();
 
+    sys_display_preinit();
     sys_init_wakeup();
 }
 

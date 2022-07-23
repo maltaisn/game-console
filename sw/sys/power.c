@@ -51,8 +51,6 @@
 
 // number of seconds between each battery percent updates.
 #define BATTERY_PERCENT_UPDATE_PERIOD 10
-// battery percentage granularity when returned from `sys_power_get_battery_percent`.
-#define BATTERY_PERCENT_GRANULARITY 5
 
 typedef enum {
     STATE_DONE,
@@ -93,8 +91,10 @@ static uint8_t _battery_percent_buf[BATTERY_BUFFER_SIZE];
 // the head is the index in the buffer where the next value will be written.
 static uint8_t _battery_percent_buf_head;
 static volatile uint8_t _battery_percent_buf_size;
-static uint8_t _battery_percent;
-static uint8_t _battery_percent_update;
+// current averaged battery level, 0-255.
+static uint8_t _battery_level;
+// battery level update timer counter.
+static uint8_t _battery_level_update;
 
 volatile uint8_t sys_power_state;
 volatile battery_status_t sys_power_battery_status;  // UNKNOWN at startup
@@ -117,9 +117,9 @@ static battery_status_t find_battery_status(uint8_t res) {
 }
 
 static void reset_battery_state(void) {
-    _battery_percent = 0;
+    _battery_level = 0;
     _battery_percent_buf_size = 0;
-    _battery_percent_update = 0;
+    _battery_level_update = 0;
     _sampler_state = STATE_DONE;
 }
 
@@ -281,11 +281,11 @@ static void push_new_battery_percent(uint8_t percent) {
         percent_sum += _battery_percent_buf[head];
         head = (uint8_t) (head - 1) % BATTERY_BUFFER_SIZE;
     }
-    _battery_percent = percent_sum / size;
+    _battery_level = percent_sum / size;
 }
 
 static void schedule_sleep_if_low_battery(uint8_t flags) {
-    if (sys_power_battery_status == BATTERY_DISCHARGING && _battery_percent == 0) {
+    if (sys_power_battery_status == BATTERY_DISCHARGING && _battery_level == 0) {
         sys_power_schedule_sleep(SLEEP_CAUSE_LOW_POWER | flags);
         // prevent the screen from being dimmed in the meantime.
         sys_input_reset_inactivity();
@@ -306,11 +306,11 @@ void sys_power_update_battery_level(uint8_t flags) {
     }
 
     // limit update frequency.
-    if (_battery_percent_update > 0) {
-        --_battery_percent_update;
+    if (_battery_level_update > 0) {
+        --_battery_level_update;
         return;
     }
-    _battery_percent_update = BATTERY_PERCENT_UPDATE_PERIOD - 1;
+    _battery_level_update = BATTERY_PERCENT_UPDATE_PERIOD - 1;
 
     uint8_t load = estimate_load();
     uint8_t level = estimate_battery_level(load);
@@ -408,11 +408,10 @@ void sys_power_enable_sleep(void) {
 
 BOOTLOADER_NOINLINE
 uint8_t sys_power_get_battery_percent(void) {
-    return (((uint16_t) _battery_percent *
-             (100 / BATTERY_PERCENT_GRANULARITY)) & 0xff00) /
-           (255 / BATTERY_PERCENT_GRANULARITY);
+    // percent = ceil(level / 255 * 20) * 5 = ((level * 20 + 255) >> 8) * 5
+    uint16_t level0 = ((uint16_t) _battery_level * (100 / BATTERY_PERCENT_GRANULARITY) + 255);
+    return (uint8_t) (level0 >> 8) * BATTERY_PERCENT_GRANULARITY;
 }
-
 
 #endif //BOOTLOADER
 

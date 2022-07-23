@@ -81,17 +81,15 @@ battery_status_t sys_power_get_battery_status(void) {
     return battery_status;
 }
 
-uint16_t sys_power_get_battery_level_average(void) {
-    return sys_power_get_battery_last_reading();
-}
-
 uint16_t sys_power_get_battery_last_reading(void) {
     return VBAT_MIN_ADC + (VBAT_MAX_ADC - VBAT_MIN_ADC) * battery_percent / 100;
 }
 
 uint8_t sys_power_get_battery_percent(void) {
     if (battery_status == BATTERY_DISCHARGING) {
-        return battery_percent;
+        // round to a multiple of granularity.
+        return ((battery_percent + BATTERY_PERCENT_GRANULARITY - 1)
+                / BATTERY_PERCENT_GRANULARITY) * BATTERY_PERCENT_GRANULARITY;
     } else {
         return BATTERY_PERCENT_UNKNOWN;
     }

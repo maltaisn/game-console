@@ -27,6 +27,9 @@
 #define SYS_POWER_INACTIVE_COUNTDOWN_SLEEP 90
 #define SYS_POWER_INACTIVE_COUNTDOWN_DIM 60
 
+// battery percentage granularity when returned from `sys_power_get_battery_percent`.
+#define BATTERY_PERCENT_GRANULARITY 5
+
 extern volatile uint8_t sys_power_state;
 extern volatile battery_status_t sys_power_battery_status;
 extern volatile sleep_cause_t sys_power_sleep_cause;

@@ -84,10 +84,4 @@ bool sys_uart_available(void);
  */
 void sys_uart_flush(void);
 
-/**
- * Callback called when the RX buffer is almost full.
- * Note that this is called from an interrupt.
- */
-void sys_uart_rx_full_callback(void);
-
 #endif //SYS_UART_H

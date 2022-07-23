@@ -61,13 +61,16 @@ static struct {
     sys_display_gpio_t gpio_mode;
 } display;
 
+void sys_display_preinit(void) {
+    display.contrast = DISPLAY_DEFAULT_CONTRAST;
+}
+
 void sys_display_init(void) {
     display.data_ptr = 0;
     display.internal_vdd_enabled = true;
     display.enabled = false;
     display.inverted = false;
     display.dimmed = false;
-    display.contrast = DISPLAY_DEFAULT_CONTRAST;
 
 #ifndef SIMULATION_HEADLESS
     pthread_mutex_init(&display_mutex, 0);

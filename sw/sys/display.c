@@ -108,7 +108,7 @@ static const uint8_t _INIT_SEQUENCE[] = {
         DISPLAY_SET_PRECHARGE_PERIOD, 0x0d,
         DISPLAY_SET_PRECHARGE_VOLTAGE, 0x03,
         DISPLAY_SET_VCOM, 0x07,
-        DISPLAY_SET_CONTRAST, DISPLAY_DEFAULT_CONTRAST,
+//      DISPLAY_SET_CONTRAST, DISPLAY_DEFAULT_CONTRAST,
         DISPLAY_SET_GRAYSCALE, 0, 1, 2, 3, 4, 5, 7, 9, 11, 13, 15, 17, 20, 23, 26, 30,
 //      DISPLAY_GPIO, 0x02,
 };
@@ -134,8 +134,12 @@ static void sys_display_reset(void) {
         _delay_ms(1);
         PORTC.OUTTGL = PIN2_bm;
     }
+
+    // reset state to remove dimmed status as it isn't restored.
     sys_display_state = 0;
-    sys_display_contrast = DISPLAY_DEFAULT_CONTRAST;
+
+    // resetting also resets internal contrast value but we won't set
+    // sys_display_contrast here as we'd like to restore it afterwards.
 }
 
 static void sys_display_write_data(uint16_t length, const uint8_t data[static length]) {
@@ -162,10 +166,17 @@ static void sys_display_set_contrast_internal(uint8_t contrast) {
     sys_display_write_command2(DISPLAY_SET_CONTRAST, contrast);
 }
 
+void sys_display_preinit(void) {
+    // to avoid creating a .data section for the bootloader.
+    sys_display_contrast = DISPLAY_DEFAULT_CONTRAST;
+}
+
 void sys_display_init(void) {
     sys_display_reset();
     sys_display_clear_dc();
     sys_display_write_data(sizeof _INIT_SEQUENCE, _INIT_SEQUENCE);
+    // previous contrast was lost on reset, restore it.
+    sys_display_set_contrast_internal(sys_display_contrast);
 }
 
 void sys_display_sleep(void) {
