@@ -17,10 +17,10 @@ since it was already working with minor changes.
 #### Revision 2022A
 
 - Added pull downs on the H-bridge.
-- Removed power monitor due to lack of on board capacity (was originally meant to monitor 
-  shut off and alert the MCU to do last minute operations).
+- Removed power monitor (was originally meant to monitor shut off and alert the MCU to do last 
+    minute operations, but there isn't anywhere near enough on-board capacity to have time to do so).
 - Removed low power reset monitor on the MCU, it caused reset when disconnecting
-  the USB cable due to momentary drop on 2.8V power rail.
+  the USB cable due to momentary drop on 2.8V power rail (not properly decoupled, battery has protection anyway).
 - Changed the battery connector which was too small.
 
 Other notable changes that should be made:
@@ -28,8 +28,9 @@ Other notable changes that should be made:
 - Battery discharge current reading at ADC to allow better SoC estimation.
 - Attempt to reduce high pitch noise (related to either display or 15V boost, 
     may be due to ceramic caps oscillating).
-- Increase clearance around buttons for better mechanical integration.
-- Remove unused H-bridge to drive speaker (only one side used).
+- Increase clearance around buttons for better mechanical integration, or change buttons altogether.
+- Remove unused H-bridge to drive speaker (only one side used). Replace bridge pull-downs with pull-ups.
+- Replace the debug port with an integrated USB to UART chip.
 
 ## Enclosure
 

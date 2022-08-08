@@ -59,7 +59,7 @@ performance, all symbols are present during debugging, screenshots can be taken 
 Moreover, the project doesn't depend on Microchip proprietary debugging tools
 and the simulator has helped tremendously with debugging in this regard.
 
-<img src="../docs/tetris-menu.png" width="45%"/> <img src="../docs/system-flash.png" width="45%"/>
+<img src="../docs/sim-tetris-menu.png" width="45%"/> <img src="../docs/sim-system-flash.png" width="45%"/>
 
 Notable simulation pitfalls:
 
@@ -145,8 +145,8 @@ As such, core functions are optimized for performance and size, and all RAM usag
 Optimization and achieving a lot with little were core goals of this project, so many architecture
 decisions made tend to complicate things and would not be relevant to other projects.
 
-Although nearly all the code is written in C, the disassembly has often been inspected during
-development to ensure proper performance and small code size.
+Although nearly all the code is written in C and only a little Assembly, the disassembly has 
+often been inspected during development to ensure proper performance and small code size.
 
 This may explain some oddities, for example: 
 - Use of gotos, unions, absence of switch statements.
@@ -168,6 +168,7 @@ an app has been started. The main loop is located in the bootloader and handles 
 like filling sound track buffers and power management.
 Callbacks are called to give control to the app, for updating, drawing, power management 
 events, etc. Some MCU interrupts are forwarded to a callback.
+The bootloader currently has support for up to 32 different apps, but this is easily changed.
 
 The bootloader also has several functions marked as noinline to allow them to be called from the
 app and save on code size. This is a bit unwiedly but there seemed to be no alternative short of
@@ -198,7 +199,7 @@ There is a linker script for the bootloader and one for the app.
 Note that numbers given here are for the ATmega3208 and may change if ported to another device.
 
 The bootloader occupies the first 8.25 kB of the program memory, leaving 23.75 kB for the app.
-As for RAM, since both parts run at the same time, some sections are shared and used by both.
+As for RAM, since both parts (bootloader & app) run at the same time, some sections are shared and used by both.
 The app has access to 3 936 bytes of RAM to store its data, the display buffer and the stack.
 
 Some variables may be placed alongside the display buffer to be used as temporary storage when
@@ -319,11 +320,11 @@ Utilities for encoding assets are also usable as standalone applications:
 
 There are several special defines that are set during compilation:
 
-- `BOOTLOADER`: the bootloader is present in the build
+- `BOOTLOADER`: the bootloader is present in the build (always true during simulation).
 - `SIMULATION`: the simulation is being built.
 - `SIMULATION_HEADLESS`: the simulation is being built without the main function.
-- `SIM_MEMORY_ABSOLUTE`: external memory are used in absolute mode (i.e. the whole memory is loaded).
-- `TESTING`: tests are being run.
+- `SIM_MEMORY_ABSOLUTE`: external memories are used in absolute mode (i.e. the whole memory is loaded).
+- `TESTING`: tests are being built.
 - `RUNTIME_CHECKS`: enables runtime checks in several locations (usually for simulation).
 
 
