@@ -56,7 +56,7 @@ void open_levels_dialog(void) {
 }
 
 void open_level_info_dialog(void) {
-    dialog_init_centered(126, 66);
+    dialog_init_centered(126, 73);
     dialog.pos_btn = "START";
     dialog.selection = DIALOG_SELECTION_POS;
     dialog.pos_result = RESULT_START_LEVEL;

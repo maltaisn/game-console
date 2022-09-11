@@ -333,28 +333,34 @@ static void draw_levels_overlay(void) {
  * Draw the content for the level info dialog.
  */
 static void draw_level_info_overlay(void) {
+    char buf[4];
+
     // level title, centered on 1-2 lines
     const flash_t title = level_get_title();
     const uint8_t lines = find_text_line_count(title, 122);
-    const disp_y_t y = lines == 2 ? 35 : 40;
+    const disp_y_t y = lines == 2 ? 38 : 43;
     graphics_set_color(DISPLAY_COLOR_WHITE);
     draw_text_wrap(3, y, 122, 2, title, true);
 
     graphics_set_color(10);
     set_3x5_font();
-    graphics_text(22, 57, "CHIPS NEEDED");
-    graphics_text(30, 66, "TIME LIMIT");
-    graphics_text(34, 75, "BEST TIME");
+    graphics_text(22, 60, "CHIPS NEEDED");
+    graphics_text(30, 69, "TIME LIMIT");
+    graphics_text(34, 78, "BEST TIME");
+
+    graphics_set_color(12);
+    graphics_text(46, 31, "LEVEL");
+    uint16_to_str_zero_pad(buf, (uint8_t) (game.current_level + 1));
+    graphics_text(70, 31, buf);
 
     graphics_set_color(DISPLAY_COLOR_WHITE);
     set_7x7_font();
-    char buf[4];
     uint16_to_str_zero_pad(buf, tworld.chips_left);
-    graphics_text(74, 56, buf);
+    graphics_text(74, 59, buf);
     format_time_left(buf, tworld.time_left);
-    graphics_text(74, 65, buf);
+    graphics_text(74, 68, buf);
     format_time_left(buf, get_best_level_time(game.current_level_pos));
-    graphics_text(74, 74, buf);
+    graphics_text(74, 77, buf);
 }
 
 /**
