@@ -187,8 +187,13 @@ bool level_is_completed(const level_pack_info_t* info, level_idx_t level) {
 }
 
 bool level_is_unlocked(const level_pack_info_t* info, level_idx_t level) {
+#ifdef UNLOCK_ALL_LEVELS
+    return true;
+#else
     return level <= info->last_unlocked || level_is_completed(info, level) ||
            ((info->flags & LEVEL_PACK_FLAG_SECRET_UNLOCKED) && level >= info->first_secret_level);
+
+#endif
 }
 
 bool level_is_secret_locked(const level_pack_info_t* info, level_idx_t level) {

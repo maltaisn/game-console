@@ -18,6 +18,11 @@
 #ifndef TWORLD_TWORLD_LEVEL_H
 #define TWORLD_TWORLD_LEVEL_H
 
+// Define to unlock all levels in simulation
+#ifdef SIMULATION
+#define UNLOCK_ALL_LEVELS
+#endif
+
 #define LEVEL_PACK_COUNT ASSET_LEVEL_PACKS_SIZE
 #define LEVEL_PACK_NAME_MAX_LENGTH 12
 #define LEVEL_PACK_MAX_LEVELS 160
