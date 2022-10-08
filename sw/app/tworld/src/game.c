@@ -84,7 +84,7 @@ bool callback_loop(void) {
                           millis_to_ticks(1000.0 / DISPLAY_MAX_FPS);
     if ((systime_t) (time - last_draw_time) >= frame_delay) {
         // links are cached in display buffer memory, drawing will destroy them.
-        game.flags &= ~FLAG_LINKS_CACHED;
+        game.flags &= ~FLAG_CACHE_VALID;
         last_draw_time = time_get();
         return true;
     }
@@ -133,10 +133,11 @@ static game_state_t update_tworld_state(uint8_t dt) {
     }
 
     if (game.flags & FLAG_GAME_STARTED) {
-        // cache trap and cloner links if needed
-        if (!(game.flags & FLAG_LINKS_CACHED)) {
+        // cache position data if needed
+        if (!(game.flags & FLAG_CACHE_VALID)) {
             level_get_links();
-            game.flags |= FLAG_LINKS_CACHED;
+            tworld_cache_teleporters();
+            game.flags |= FLAG_CACHE_VALID;
         }
 
         // do game steps for all ticks

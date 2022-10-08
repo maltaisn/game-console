@@ -30,17 +30,17 @@
 #define POS_LEVEL_INDEX 4
 
 // Field positions in level data.
-#define POS_PASSWORD 6
-#define POS_INDEX_TITLE 10
-#define POS_INDEX_HINT 12
-#define POS_INDEX_TRAP_LINKS 14
-#define POS_INDEX_CLONER_LINKS 16
-#define POS_LAYER_DATA 18
+#define POS_PASSWORD 7
+#define POS_INDEX_TITLE 11
+#define POS_INDEX_HINT 13
+#define POS_INDEX_TRAP_LINKS 15
+#define POS_INDEX_CLONER_LINKS 17
+#define POS_LAYER_DATA 19
 
 // Unlock threshold in ratio of previous level pack completed levels.
 // Format is UQ0.8 (divide by 256 to get actual value)
 // This corresponds to level 100 completed if there are 149 levels in previous pack.
-#define LEVEL_PACK_UNLOCK_THRESHOLD 172
+#define LEVEL_PACK_UNLOCK_THRESHOLD (uint8_t) ((100 * 256 + 128) / 149)
 
 level_data_t tworld_data;
 
@@ -100,15 +100,17 @@ void level_read_level(void) {
     tworld.addr = addr;
 
     // Read data from flash
-    uint8_t buf[6];
+    uint8_t buf[7];
     flash_read(addr, sizeof buf, buf);
-    tworld.time_left = buf[0] | buf[1] << 8;
-    tworld.chips_left = buf[2] | buf[3] << 8;
+
+    tworld.level_flags = buf[0];
+    tworld.time_left = buf[1] | buf[2] << 8;
+    tworld.chips_left = buf[3] | buf[4] << 8;
 
     // Layer data is encoded in the same format as used at runtime, 6 bits per tile,
     // bottom layer before top layer, row-major order and little-endian.
     // We only need to decompress it.
-    uint16_t layer_data_size = buf[4] | buf[5] << 8;
+    uint16_t layer_data_size = buf[5] | buf[6] << 8;
     lzss_decode(addr + POS_LAYER_DATA, layer_data_size, tworld.bottom_layer);
 
     tworld_init();
@@ -189,6 +191,6 @@ bool level_is_unlocked(const level_pack_info_t* info, level_idx_t level) {
            ((info->flags & LEVEL_PACK_FLAG_SECRET_UNLOCKED) && level >= info->first_secret_level);
 }
 
-bool level_is_secret_locked(const level_pack_info_t *info, level_idx_t level) {
+bool level_is_secret_locked(const level_pack_info_t* info, level_idx_t level) {
     return level >= info->first_secret_level && !(info->flags & LEVEL_PACK_FLAG_SECRET_UNLOCKED);
 }

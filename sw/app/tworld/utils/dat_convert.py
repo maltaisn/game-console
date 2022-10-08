@@ -25,16 +25,17 @@ from assets.types import PackResult, DataObject, PackError
 #     the first offset is from the start of level pack data
 # - level pack name: zero terminated string (max size 12 including terminator).
 # - level data:
-#     - [0..1]: time limit in seconds. 0 for unlimited duration (max 999)
-#     - [2..3]: required number of chips
-#     - [4..5]: layer data size in bytes
-#     - [6..9]: 4 letters password (only A-Z allowed)
-#     - [10..17]: index from the start position of level data to various chunks, in order:
-#         - [10..11]: title
-#         - [12..13]: hint (0 if none)
-#         - [14..15]: trap-button linkage
-#         - [16..17]: cloner-button linkage
-#     - [18..]: LZSS-compressed layer data. Uncompressed layout is:
+#     - [0]: level flags
+#     - [1..2]: time limit in seconds. 0 for unlimited duration (max 999)
+#     - [3..4]: required number of chips
+#     - [5..6]: layer data size in bytes
+#     - [7..10]: 4 letters password (only A-Z allowed)
+#     - [11..18]: index from the start position of level data to various chunks, in order:
+#         - [11..12]: title
+#         - [13..14]: hint (0 if none)
+#         - [15..16]: trap-button linkage
+#         - [17..18]: cloner-button linkage
+#     - [19..]: LZSS-compressed layer data. Uncompressed layout is:
 #         - [0..767]: bottom layer, 6-bit per tile
 #         - [768..1535]: top layer, 6-bit per tile
 #     - title: zero terminated string, max 40 chars
@@ -724,12 +725,28 @@ class DatFileWriter:
             self._write(link.linked_y, 1)
 
     def write_level(self, level: MsLevelData) -> None:
+        flags = 0
+        bottom_layer, top_layer = self._convert_layers(level)
+        self._preprocess_layers(level, bottom_layer, top_layer)
+
+        # check that there aren't too many teleporters
+        teleporters_count = sum(1 for tile in bottom_layer if tile == Tile.TELEPORTER)
+        if teleporters_count > TileWorld.MAX_TELEPORTERS:
+            print(f"  WARNING: many teleporters in level, may be slow "
+                  f"({teleporters_count} > {TileWorld.MAX_TELEPORTERS})")
+            self.warnings_count += 1
+            flags |= Level.FLAG_SCAN_TELEPORTERS
+        elif teleporters_count == 0:
+            # no teleportors, don't prebuild list for nothing.
+            flags |= Level.FLAG_SCAN_TELEPORTERS
+
         # write index entry
         start_pos = len(self.data)
         self._write(start_pos - self._last_level_start, 2,
                     at=(self.levels_written * 2) + self._index_pos)
         self._last_level_start = start_pos
 
+        self._write(flags, 1)
         self._write(level.time_limit, 2)
         self._write(level.required_chips, 2)
         self._write(0, 2)  # reserve space for layer data size
@@ -740,15 +757,13 @@ class DatFileWriter:
 
         self._write(0, 2 * 4)  # reserve space for index
 
-        bottom_layer, top_layer = self._convert_layers(level)
-        self._preprocess_layers(level, bottom_layer, top_layer)
         layer_data_size = self._write_layers(bottom_layer, top_layer)
-        self._write(layer_data_size, 2, at=start_pos + 4)
+        self._write(layer_data_size, 2, at=start_pos + 5)
 
         title = level.title.upper()
         if not (0 < len(title) < 40) or not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-_=#():;* ]+", title):
             raise EncodeError("invalid characters in title or title too long")
-        self._write(len(self.data) - start_pos, 2, at=start_pos + 10)
+        self._write(len(self.data) - start_pos, 2, at=start_pos + 11)
         self.data += level.title.encode("ascii")
         self.data.append(0)  # nul terminator
 
@@ -756,14 +771,14 @@ class DatFileWriter:
             if not (0 < len(level.hint) < 128) or \
                     not re.fullmatch(r"[A-Za-z0-9.,!?'\"\-_=#():;* \n]+", level.hint):
                 raise EncodeError("invalid characters in hint or hint too long")
-            self._write(len(self.data) - start_pos, 2, at=start_pos + 12)
+            self._write(len(self.data) - start_pos, 2, at=start_pos + 13)
             self.data += level.hint.encode("ascii")
             self.data.append(0)  # nul terminator
 
-        self._write(len(self.data) - start_pos, 2, at=start_pos + 14)
+        self._write(len(self.data) - start_pos, 2, at=start_pos + 15)
         self._write_linkage(level.trap_linkage)
 
-        self._write(len(self.data) - start_pos, 2, at=start_pos + 16)
+        self._write(len(self.data) - start_pos, 2, at=start_pos + 17)
         self._write_linkage(level.cloner_linkage)
 
         self.levels_written += 1

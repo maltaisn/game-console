@@ -36,6 +36,9 @@
 
 #define LEVEL_LINKS_MAX_SIZE 32
 
+// Maximum teleporters in prebuilt list (if SCAN_TELEPORTERS flag is not set).
+#define LEVEL_MAX_TELEPORTERS 128
+
 #define GRID_WIDTH 32
 #define GRID_HEIGHT 32
 #define GRID_SIZE (GRID_WIDTH * GRID_HEIGHT)
@@ -78,6 +81,8 @@ typedef struct {
     time_left_t time_left;
     // Number of required chips left.
     uint16_t chips_left;
+    // Constant level flags.
+    uint8_t level_flags;
 
     // This zero length field is only used to mark the start of zero-initialized field on init.
     uint8_t zero_init_start[0];
@@ -145,8 +150,14 @@ typedef struct {
     link_t links[LEVEL_LINKS_MAX_SIZE];
 } links_t;
 
+typedef struct {
+    uint8_t size;
+    position_t teleporters[LEVEL_MAX_TELEPORTERS];
+} teleporters_t;
+
 extern links_t trap_links;
 extern links_t cloner_links;
+extern teleporters_t teleporters;
 
 /**
  * Initialize game state after some fields have been loaded from flash
@@ -161,14 +172,14 @@ void tworld_init(void);
 void tworld_update(void);
 
 /**
+ * Scan the grid and cache teleporter positions.
+ */
+void tworld_cache_teleporters(void);
+
+/**
  * Returns true if game is over (failed or completed).
  */
 bool tworld_is_game_over(void);
-
-/**
- * Returns true if a key was picked up and consumes the event.
- */
-bool tworld_read_key_pickup(void);
 
 /**
  * Returns the current position of Chip.

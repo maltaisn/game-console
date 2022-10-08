@@ -52,12 +52,6 @@ void game_music_start_level_music(uint8_t flags);
 void game_music_start(sound_t music, uint8_t flags);
 
 /**
- * Set the music to loop after the currently playing music is finished.
- * Can be `MUSIC_NONE` to disable looping without stopping music immediately.
- */
-void game_music_loop_next(sound_t music);
-
-/**
  * Stop music playback.
  */
 void game_music_stop(void);

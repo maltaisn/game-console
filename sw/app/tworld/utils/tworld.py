@@ -268,14 +268,14 @@ Actor.STATIC_BALL = Actor(Entity.STATIC, 1)
 Actor.STATIC_BLOB = Actor(Entity.STATIC, 2)
 Actor.STATIC_BLOCK = Actor(Entity.STATIC, 3)
 
+Position = Tuple[int, int]
+
 
 @dataclass(frozen=True)
 class Link:
     """A link between a button and a trap/cloner."""
-    btn_x: int
-    btn_y: int
-    link_x: int
-    link_y: int
+    btn: Position
+    link: Position
 
 
 @dataclass(frozen=True)
@@ -283,6 +283,7 @@ class Level:
     """Level data read from a DAT level pack file."""
     pack_file: Path
     number: int
+    flags: int
     time_limit: int
     required_chips: int
     title: str
@@ -290,6 +291,7 @@ class Level:
     hint: str
     trap_linkage: List[Link]
     cloner_linkage: List[Link]
+    teleporters: List[Position]
     bottom_layer: List[Tile]  # 768b
     top_layer: List[Actor]  # 768b
 
@@ -302,6 +304,9 @@ class Level:
     # but also complicates decoding since data has to be compressed to 6 bits per tile at runtime.
     ENCODED_BITS_PER_TILE = 6
     ENCODED_TILE_MASK = (1 << ENCODED_BITS_PER_TILE) - 1
+
+    # Level flags
+    FLAG_SCAN_TELEPORTERS = 1 << 0  # indicates that no teleporters list should be prebuilt.
 
 
 class EndCause(Enum):
@@ -404,9 +409,6 @@ class Direction:
         return (direction + 1) % 4
 
 
-Position = Tuple[int, int]
-
-
 class TileWorld:
     """Tile World game logic implementation."""
     # level data is always stored in flash, only the address is known.
@@ -467,6 +469,8 @@ class TileWorld:
 
     # maximum actors
     MAX_ACTORS = 128
+    # maximum teleporters if the FLAG_SCAN_TELEPORTERS flag is not set.
+    MAX_TELEPORTERS = 128
     # if set, cloners aren't allowed to spawn more actors if limit is reached.
     MAX_ACTORS_STRICT_CLONERS = True
     # if set, actors aren't created initially if limit is reached.
@@ -558,10 +562,10 @@ class TileWorld:
             for x in range(Level.GRID_WIDTH):
                 yield x, y
 
-    def get_bottom_tile(self, x: int, y: int):
+    def get_bottom_tile(self, x: int, y: int) -> Tile:
         return self.bottom_layer[y * Level.GRID_WIDTH + x]
 
-    def get_top_tile(self, x: int, y: int):
+    def get_top_tile(self, x: int, y: int) -> Actor:
         return self.top_layer[y * Level.GRID_WIDTH + x]
 
     def _set_bottom_tile(self, x: int, y: int, value: Tile) -> None:
@@ -1414,8 +1418,9 @@ class TileWorld:
 
     def _find_link(self, x: int, y: int, links: List[Link]) -> Optional[Position]:
         for link in links:
-            if link.btn_x == x and link.btn_y == y:
-                return link.link_x, link.link_y
+            btn_x, btn_y = link.btn
+            if btn_x == x and btn_y == y:
+                return link.link
         return None
 
     def _spring_trap(self, x: int, y: int) -> None:
@@ -1482,14 +1487,28 @@ class TileWorld:
             # This is needed so that the current teleporter appears unclaimed later.
             self._set_top_tile(act.x, act.y, Actor.NONE)
 
-        pos = act.x + act.y * Level.GRID_WIDTH
-        orig_pos = pos
-        while True:
-            pos = (pos - 1) % Level.GRID_SIZE
-            px = pos % Level.GRID_WIDTH
-            py = pos // Level.GRID_HEIGHT
+        scan = (self.level.flags & Level.FLAG_SCAN_TELEPORTERS) != 0
 
-            if self.get_bottom_tile(px, py) == Tile.TELEPORTER:
+        if scan:
+            # Scan the map to find teleporters, start position is actor position.
+            pos = act.x + act.y * Level.GRID_WIDTH
+            pos_count = Level.GRID_SIZE
+        else:
+            # Use the prebuilt list to find teleporters, get index of current teleporter in list.
+            pos = self.level.teleporters.index((act.x, act.y))
+            if pos == -1:
+                raise TWException("teleporter not found")
+            pos_count = len(self.level.teleporters)
+        orig_pos = pos
+
+        while True:
+            pos = (pos if pos > 0 else pos_count) - 1
+            if scan:
+                px, py = pos % Level.GRID_WIDTH, pos // Level.GRID_WIDTH
+            else:
+                px, py = self.level.teleporters[pos]
+
+            if not scan or self.get_bottom_tile(px, py) == Tile.TELEPORTER:
                 act.x = px
                 act.y = py
                 if not self.get_top_tile(px, py).entity().is_monster_or_block() \
@@ -1597,7 +1616,7 @@ class LevelLoader:
             btn_y = self._read(1)
             link_x = self._read(1)
             link_y = self._read(1)
-            links.append(Link(btn_x, btn_y, link_x, link_y))
+            links.append(Link((btn_x, btn_y), (link_x, link_y)))
         return links
 
     def load(self, level_number: int) -> Level:
@@ -1605,6 +1624,7 @@ class LevelLoader:
         start_pos = self._index[level_number - 1]
         self._pos = start_pos
 
+        flags = self._read(1)
         time_limit = self._read(2)
         required_chips = self._read(2)
         layer_data_size = self._read(2)
@@ -1633,6 +1653,14 @@ class LevelLoader:
             bottom_layer.append(Tile(layer_data[i]))
             top_layer.append(Actor(layer_data[Level.GRID_SIZE + i]))
 
+        teleporters = []
+        for i in range(Level.GRID_SIZE):
+            if bottom_layer[i] == Tile.TELEPORTER:
+                teleporters.append((i % Level.GRID_WIDTH, i // Level.GRID_WIDTH))
+        if len(teleporters) > TileWorld.MAX_TELEPORTERS and \
+                not (flags & Level.FLAG_SCAN_TELEPORTERS):
+            raise TWException("too many teleporters for prebuilt list")
+
         title = self._data[title_pos:self._data.index(b"\x00", title_pos)].decode("ascii")
         if hint_pos != start_pos:
             hint = self._data[hint_pos:self._data.index(b"\x00", hint_pos)].decode("ascii")
@@ -1642,5 +1670,6 @@ class LevelLoader:
         trap_links = self._read_linkage(trap_link_pos)
         cloner_links = self._read_linkage(cloner_link_pos)
 
-        return Level(self.level_pack, level_number, time_limit, required_chips, title, password,
-                     hint, trap_links, cloner_links, bottom_layer, top_layer)
+        return Level(self.level_pack, level_number, flags, time_limit,
+                     required_chips, title, password, hint, trap_links,
+                     cloner_links, teleporters, bottom_layer, top_layer)

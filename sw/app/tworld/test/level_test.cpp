@@ -375,6 +375,7 @@ TEST_P(LevelTest, level_test) {
 
     level_read_level();
     level_get_links();
+    tworld_cache_teleporters();
 
     const Solution& solution = GetParam().solution;
     tworld.prng_value0 = solution.prng_seed;

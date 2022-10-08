@@ -46,12 +46,6 @@ void game_music_start(sound_t music, uint8_t flags) {
     }
 }
 
-void game_music_loop_next(sound_t music) {
-    if (game.options.features & GAME_FEATURE_MUSIC) {
-        loop_music = music;
-    }
-}
-
 void game_music_stop(void) {
     sound_stop(MUSIC_TRACKS_STARTED);
     current_music = MUSIC_NONE;

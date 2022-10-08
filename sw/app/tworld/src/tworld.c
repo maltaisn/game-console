@@ -49,8 +49,11 @@ enum {
     FLAG_CHIP_CAN_UNSLIDE = 1 << 4,
     // Indicates that Chip is stuck on a teleporter.
     FLAG_CHIP_STUCK = 1 << 5,
-    // Indicates that inventory is currently shown.
-    FLAG_INVENTORY_SHOWN = 1 << 6,
+};
+
+enum {
+    // Indicates that the grid will be scanned for teleporters and no list will be prebuilt.
+    LEVEL_FLAG_SCAN_TELEPORTERS = 1 << 0,
 };
 
 // Temporary extra state used to indicate that the actor has died and it's tile
@@ -78,6 +81,7 @@ typedef struct {
 
 SHARED_DISP_BUF links_t trap_links;
 SHARED_DISP_BUF links_t cloner_links;
+SHARED_DISP_BUF teleporters_t teleporters;
 
 static direction_mask_t THIN_WALL_DIR_FROM[] = {
         DIR_NORTH_MASK,  // thin wall north
@@ -1296,13 +1300,33 @@ static void teleport_actor(moving_actor_t* act) {
         set_top_tile(act->pos, ACTOR_NONE);
     }
 
-    const uint16_t orig_idx = act->pos.x + act->pos.y * GRID_WIDTH;
-    uint16_t idx = orig_idx;
-    while (true) {
-        idx = (uint16_t) (idx - 1) % GRID_SIZE;
-        const position_t pos = {idx % GRID_WIDTH, idx / GRID_WIDTH};
+    const bool scan = tworld.level_flags & LEVEL_FLAG_SCAN_TELEPORTERS;
+    uint16_t idx_count;
+    uint16_t idx = 0;
+    if (scan) {
+        // Scan the map to find teleporters, start position is actor position.
+        idx = act->pos.x + act->pos.y * GRID_WIDTH;
+        idx_count = GRID_SIZE;
+    } else {
+        // Use the prebuilt list to find teleporters, get index of current teleporter in list.
+        while (!position_equals(teleporters.teleporters[idx], act->pos)) {
+            ++idx;
+        }
+        idx_count = teleporters.size;
+    }
+    const uint16_t orig_idx = idx;
 
-        if (get_bottom_tile(pos) == TILE_TELEPORTER) {
+    while (true) {
+        idx = (idx > 0 ? idx : idx_count) - 1;
+        position_t pos;
+        if (scan) {
+            pos.x = idx % GRID_WIDTH;
+            pos.y = idx / GRID_WIDTH;
+        } else {
+            pos = teleporters.teleporters[idx];
+        }
+
+        if (!scan || get_bottom_tile(pos) == TILE_TELEPORTER) {
             act->pos = pos;
             if (!actor_is_monster_or_block(get_top_tile(pos)) && can_move(act, act->direction, 0)) {
                 // Actor teleported successfully. Its position was changed just before so that
@@ -1574,6 +1598,26 @@ void tworld_update(void) {
     if (tworld.time_left != TIME_LEFT_NONE) {
         --tworld.time_left;
     }
+}
+
+void tworld_cache_teleporters(void) {
+    if (tworld.level_flags & LEVEL_FLAG_SCAN_TELEPORTERS) {
+        // Do not prebuild list, too many teleporters presumably (or none).
+        return;
+    }
+    uint8_t size = 0;
+    position_t* list = teleporters.teleporters;
+    for (grid_pos_t y = 0; y < GRID_HEIGHT; ++y) {
+        for (grid_pos_t x = 0; x < GRID_WIDTH; ++x) {
+            const position_t pos = {x, y};
+            if (get_bottom_tile(pos) == TILE_TELEPORTER) {
+                *list++ = pos;
+                ++size;
+                tworld_assert(size <= LEVEL_MAX_TELEPORTERS, "too many teleporters to cache");
+            }
+        }
+    }
+    teleporters.size = size;
 }
 
 bool tworld_is_game_over(void) {

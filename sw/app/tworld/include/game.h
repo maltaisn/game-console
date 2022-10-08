@@ -99,8 +99,8 @@ enum {
 enum {
     /** Set when a dialog is currently shown. */
     FLAG_DIALOG_SHOWN = 1 << 0,
-    /** Set when trap and cloner links have been cached to a buffer in RAM. */
-    FLAG_LINKS_CACHED = 1 << 1,
+    /** Set when cached data is valid (trap, cloner & teleporter positions). */
+    FLAG_CACHE_VALID = 1 << 1,
     /** Set when inventory overlay is shown. */
     FLAG_INVENTORY_SHOWN = 1 << 2,
     /** Set when game has been started (timer is counting). */

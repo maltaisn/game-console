@@ -56,7 +56,7 @@ extern const uint16_t ASSET_END_CAUSE[];
 #define asset_end_cause(n) (ASSET_END_CAUSE[n])
 
 #define ASSET_HELP_SIZE 48
-#define ASSET_HELP_INDEX 0x4a627L
+#define ASSET_HELP_INDEX 0x4a87bL
 #define ASSET_HELP_ADDR_SIZE 2
 #define asset_help(n) (({uint16_t _a; flash_read(ASSET_HELP_INDEX + (n) * ASSET_HELP_ADDR_SIZE, 2, &_a); _a;}))
 
